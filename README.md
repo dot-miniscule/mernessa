@@ -1,5 +1,5 @@
 # mernessa
 
-Initial repsitory for project.
+Initial repository for project.
 
 
