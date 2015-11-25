@@ -8,7 +8,8 @@ import (
 //	"appengine/urlfetch"
 )
 
-var delay = 500 * time.Millisecond
+var delay = 1 * time.Second
+var week = int64(60 * 60 * 24 * 7)
 
 func main() {
 /*	c := appengine.NewContext(r)
@@ -16,22 +17,33 @@ func main() {
 
 	stackongo.SetTransport(ut)
 */
-	tags := []string{"google-places-api"}
-	session := stackongo.NewSession("stackoverflow")
-	params := make(stackongo.Params)
-	params.AddVectorized("tagged", tags)
-	params.Add("accepted", false)
+    tags := []string{"google-places-api"}
+    session := stackongo.NewSession("stackoverflow")
+    fromDate := time.Now().Unix() - week
+    toDate := time.Now().Unix()
 
-    go func(params *stackongo.Params) {
+    params := make(stackongo.Params)
+    params.AddVectorized("tagged", tags)
+    params.Add("accepted", false)
+    params.Add("page", 1)
+    params.Add("pagesize", 1)
+
+    params.Add("fromdate", fromDate)
+    params.Add("todate", toDate)
+
+    for i := 0; i < 5; i++ {
         questions, err := session.UnansweredQuestions(params)
 	    if err != nil {
 		    fmt.Println("*****************\n" + err.Error()+ "\n*****************")
 	    }
+        fromDate -= week
+        toDate -= week
+        params.Set("fromdate", fromDate)
+        params.Set("toDate", toDate)
+        for _, question := range questions.Items {
+            fmt.Println(question.Title)
+            fmt.Printf("Link: %v\n\n", question.Link)
+        }
         time.Sleep(delay)
     }
-
-	for _, question := range questions.Items {
-		fmt.Println(question.Title)
-		fmt.Printf("Link: %v\n\n", question.Link)
-	}
 }
