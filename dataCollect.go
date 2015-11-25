@@ -1,22 +1,23 @@
 package main
 
 import (
-	"fmt";
+    "fmt";
     "time";
 
-	"github.com/laktek/Stack-on-Go/stackongo"
-//	"appengine/urlfetch"
+    "github.com/laktek/Stack-on-Go/stackongo"
+//  "appengine/urlfetch"
 )
 
 var delay = 1 * time.Second
 var week = int64(60 * 60 * 24 * 7)
 
 func main() {
-/*	c := appengine.NewContext(r)
-	ut := &urlfetch.Transport{Context: c}
+    /*c := appengine.NewContext(r)
+    ut := &urlfetch.Transport{Context: c}
 
-	stackongo.SetTransport(ut)
+    stackongo.SetTransport(ut)
 */
+    key := "nHI22oWrBEsUN8kHe4ARsQ(("
     tags := []string{"google-places-api"}
     session := stackongo.NewSession("stackoverflow")
     fromDate := time.Now().Unix() - week
@@ -26,7 +27,7 @@ func main() {
     params.AddVectorized("tagged", tags)
     params.Add("accepted", false)
     params.Add("page", 1)
-    params.Add("pagesize", 1)
+    params.Add("pagesize", 5)
 
     params.Add("fromdate", fromDate)
     params.Add("todate", toDate)
