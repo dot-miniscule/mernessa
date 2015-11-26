@@ -25,12 +25,13 @@ var appInfo = struct {
 						"scope": "no_expiry",
 					  },
 	tags			: []string{"google-places-api"},
-	filters			: "!iCF4LoRm6FLTM88m6tvHP8",	// Includes: 
+	filters			: "!5RCKNP5Mc6PLxONkRk26A8tWO",	// Includes: 
 													//	- Wrapper: backoff, error_id, error_message, error_name, has_more, items
 													//	- Question: body, creation_date, link, question_id, title
 }
+
 var delay = 1 * time.Second
-var week = int64(60 * 60 * 24 * 7)
+var week = (24 * 7) * time.Hour
 
 func main() {
 
@@ -42,25 +43,26 @@ func main() {
 
 	// Set starting variable parameters
     page := 1
-	fromDate := time.Now().Unix() - week
-    toDate := time.Now().Unix()
+    toDate := time.Now()
+	fromDate := toDate.Add(-1*week + (24*time.Hour))
 
     // Adding parameters to request
 	params := make(stackongo.Params)
 	params.Add("key", appInfo.key)
     params.Page(page)
     params.Pagesize(5)
-    params.Add("fromdate", fromDate)
-    params.Add("todate", toDate)
+    params.Fromdate(fromDate)
+    params.Todate(toDate)
+	params.Sort("creation")
     params.Add("accepted", false)
     params.AddVectorized("tagged", appInfo.tags)
 	params.Add("site", "stackoverflow")
 	params.Add("filter", appInfo.filters)
 
-    for i := 0; i < 5; i++ {
+	for i := 0; i < 1; i++ {
         questions, err := session.AllQuestions(params)
 		if err != nil {
-			fmt.Println("*****************\n" + err.Error()+ "\n*****************")
+			fmt.Println(err.Error())
 		}
 		for _, question := range questions.Items {
 		    fmt.Println(question)
@@ -69,8 +71,8 @@ func main() {
 	    if questions.Has_more {
 		    page++
 	    } else {
-	        fromDate -= week
-		    toDate -= week
+	        fromDate = fromDate.Add(-1 * week)
+		    toDate = toDate.Add(-1 * week)
 			params.Set("fromdate", fromDate)
 	        params.Set("toDate", toDate)
 	        page = 1
