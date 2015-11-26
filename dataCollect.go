@@ -3,6 +3,7 @@ package main
 import (
     "fmt";
     "time";
+	"encoding/json";
 
     "github.com/laktek/Stack-on-Go/stackongo"
 //	"appengine/urlfetch"
@@ -15,7 +16,7 @@ var appInfo = struct {
 	key				string
 	options			map[string]string
 	tags			[]string
-	filters			string
+	filters			map[string]string
 }{
 	client_id		: "6029",
 	redirect_uri	: "https://stackexchange.com/oauth/login_success",
@@ -25,7 +26,12 @@ var appInfo = struct {
 						"scope": "no_expiry",
 					  },
 	tags			: []string{"google-places-api"},
-	filters			: "!5RCKNP5Mc6PLxONkRk26A8tWO",	// Includes: 
+	filters			: map[string]string {
+						"include"	: `.backoff;.error_id;.error_message;.error_name;.has_more;.items;
+									  question.body;question.creation_date;question.link;question.question_id;question.title`,
+						"base"		: "none",
+						"unsafe"	: "false",
+					  },	// Includes: 
 													//	- Wrapper: backoff, error_id, error_message, error_name, has_more, items
 													//	- Question: body, creation_date, link, question_id, title
 }
@@ -57,15 +63,26 @@ func main() {
     params.Add("accepted", false)
     params.AddVectorized("tagged", appInfo.tags)
 	params.Add("site", "stackoverflow")
-	params.Add("filter", appInfo.filters)
+
+	filter, err := stackongo.CreateFilter(appInfo.filters)
+	fmt.Println(filter)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+//	params.Add("filter", filter.Items[0].Filter)
+	params.Add("filter", "!iCF4LoRm6FLTM88m6tvHP8")
 
 	for i := 0; i < 1; i++ {
         questions, err := session.AllQuestions(params)
 		if err != nil {
 			fmt.Println(err.Error())
+			break
 		}
+
 		for _, question := range questions.Items {
-		    fmt.Println(question)
+		    output, _ := json.MarshalIndent(question, "", "  ")
+			fmt.Println(string(output))
 	    }
 
 	    if questions.Has_more {
