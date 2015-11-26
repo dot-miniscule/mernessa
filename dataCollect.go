@@ -63,8 +63,7 @@ func main() {
 			fmt.Println("*****************\n" + err.Error()+ "\n*****************")
 		}
 		for _, question := range questions.Items {
-		    fmt.Println(question.Title)
-		    fmt.Printf("Link: %v\n\n", question.Link)
+		    fmt.Println(question)
 	    }
 
 	    if questions.Has_more {
