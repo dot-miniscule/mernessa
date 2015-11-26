@@ -24,7 +24,7 @@ var appInfo = struct {
 	options			: map[string]string {
 						"scope": "no_expiry",
 					  },
-	tags			: []string{"google-places-api"}
+	tags			: []string{"google-places-api"},
 	filters			: "!iCF4LoRm6FLTM88m6tvHP8",	// Includes: 
 													//	- Wrapper: backoff, error_id, error_message, error_name, has_more, items
 													//	- Question: body, creation_date, link, question_id, title
