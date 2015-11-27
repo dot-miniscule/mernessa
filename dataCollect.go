@@ -3,6 +3,8 @@ package main
 import (
     "fmt";
     "time";
+	"flag";
+	"io/ioutil";
 	"encoding/json";
 
     "github.com/laktek/Stack-on-Go/stackongo"
@@ -16,7 +18,7 @@ var appInfo = struct {
 	key				string
 	options			map[string]string
 	tags			[]string
-	filters			map[string]string
+	filters			string
 }{
 	client_id		: "6029",
 	redirect_uri	: "https://stackexchange.com/oauth/login_success",
@@ -26,21 +28,23 @@ var appInfo = struct {
 						"scope": "no_expiry",
 					  },
 	tags			: []string{"google-places-api"},
-	filters			: map[string]string {
-						"include"	: `.backoff;.error_id;.error_message;.error_name;.has_more;.items;
-									  question.body;question.creation_date;question.link;question.question_id;question.title`,
-						"base"		: "none",
-						"unsafe"	: "false",
-					  },	// Includes: 
-													//	- Wrapper: backoff, error_id, error_message, error_name, has_more, items
+	filters			: "!5RCKNP5Mc6PLxOe3ChJgVk5f4", // Includes: 
+													//	- Wrapper: backoff, error_id, error_message, error_name, 
+													//			   has_more, items, quota_remaining
 													//	- Question: body, creation_date, link, question_id, title
 }
 
 var delay = 1 * time.Second
 var week = (24 * 7) * time.Hour
 
-func main() {
+var filename = flag.String("file", "", "set where to write the data to")
 
+func main() {
+	flag.Parse()
+	if *filename == "" {
+		fmt.Println("No file specified")
+		return
+	}
 /*   c := appengine.NewContext(r)
     ut := &urlfetch.Transport{Context: c}
     stackongo.SetTransport(ut)
@@ -63,38 +67,15 @@ func main() {
     params.Add("accepted", false)
     params.AddVectorized("tagged", appInfo.tags)
 	params.Add("site", "stackoverflow")
+	params.Add("filter", appInfo.filters)
 
-	filter, err := stackongo.CreateFilter(appInfo.filters)
-	fmt.Println(filter)
+    questions, err := session.AllQuestions(params)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
 	}
-//	params.Add("filter", filter.Items[0].Filter)
-	params.Add("filter", "!iCF4LoRm6FLTM88m6tvHP8")
 
-	for i := 0; i < 1; i++ {
-        questions, err := session.AllQuestions(params)
-		if err != nil {
-			fmt.Println(err.Error())
-			break
-		}
-
-		for _, question := range questions.Items {
-		    output, _ := json.MarshalIndent(question, "", "  ")
-			fmt.Println(string(output))
-	    }
-
-	    if questions.Has_more {
-		    page++
-	    } else {
-	        fromDate = fromDate.Add(-1 * week)
-		    toDate = toDate.Add(-1 * week)
-			params.Set("fromdate", fromDate)
-	        params.Set("toDate", toDate)
-	        page = 1
-		}
-	    params.Page(page)
-		time.Sleep(delay)
+	output, _ := json.Marshal(questions)
+	if err := ioutil.WriteFile(*filename, output, 0644) ; err != nil {
+		fmt.Println(err.Error())
 	}
 }
