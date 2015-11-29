@@ -1,6 +1,6 @@
 # mernessa
-Places-API-Query-Tracker
-Tracks queries on Stackoverflow on Google's Places API
+<p>Places-API-Query-Tracker</p>
+<p>Tracks queries on Stackoverflow on Google's Places API</p>
 
-Vanessa Gregoriou and Meredith Lane
-STEP Trainee, 2015-16. 
+<p>Vanessa Gregoriou and Meredith Lane</p>
+<p>STEP Trainee, 2015-16.</p>
