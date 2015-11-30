@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt";
-	"flag";
-	"io/ioutil";
-	"encoding/json";
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
@@ -24,7 +24,7 @@ func main() {
 		panic(err)
 	}
 	questions := new(stackongo.Questions)
-	if err := json.Unmarshal(input, questions) ; err != nil {
+	if err := json.Unmarshal(input, questions); err != nil {
 		fmt.Print("Error = ")
 		fmt.Println(err.Error())
 	} else {
