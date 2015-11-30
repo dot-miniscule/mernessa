@@ -3,7 +3,7 @@
 
 */
 
-package hello
+package webui
 
 import (
 	"dataCollect"
@@ -11,9 +11,31 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sync"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
+
+type findReply struct {
+	Questions *stackongo.Questions
+}
+
+type reply struct {
+	Reply     *stackongo.Questions
+	FindQuery string
+}
+
+type webData struct {
+	cache     *findReply
+	cacheLock sync.Mutex
+}
+
+type WebServer struct {
+	Port int
+	Path string
+	Tmpl *template.Template
+	Data *webData
+}
 
 //The app engine will run its own main function and imports this code as a package
 //So no main needs to be defined
@@ -30,9 +52,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 
-	if err := page.Execute(w, nil); err != nil {
-		panic(err)
-	}
 	input, err := dataCollect.Collect(r)
 	if err != nil {
 		fmt.Fprintf(w, "%v\n", err.Error())
@@ -45,10 +64,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, question := range questions.Items {
-		fmt.Fprintf(w, "%v: %v\n", question.Title, question.Link)
+	response := reply{
+		Reply:     questions,
+		FindQuery: "",
 	}
-	fmt.Fprintf(w, "%v\n", questions.Quota_remaining)
+	if err := page.Execute(w, response); err != nil {
+		panic(err)
+	}
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string) {
