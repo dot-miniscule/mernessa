@@ -6,10 +6,10 @@
 package webui
 
 import (
-	"dataCollect"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 	"sync"
 
@@ -51,16 +51,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
-
-	input, err := dataCollect.Collect(r)
+	/*
+		input, err := dataCollect.Collect(r)
+		if err != nil {
+			fmt.Fprintf(w, "%v\n", err.Error())
+			return
+		}
+	*/
+	input, err := ioutil.ReadFile("27-11_dataset.json")
 	if err != nil {
-		fmt.Fprintf(w, "%v\n", err.Error())
+		fmt.Fprintf(w, "%v", err.Error())
 		return
 	}
 
 	questions := new(stackongo.Questions)
 	if err := json.Unmarshal(input, questions); err != nil {
-		fmt.Fprintf(w, "%v\n", err.Error())
+		fmt.Fprintf(w, "%v", err.Error())
 		return
 	}
 
