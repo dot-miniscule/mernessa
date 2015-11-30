@@ -10,15 +10,14 @@
     <div class="titleBar">
       <h4>Places API Tag Tracker for StackExchange Quota_remaining: {{$reply.Reply.Quota_remaining}}</h4>
     </div>
-      <div class="wrap">
-        <div class="tabs">
-          <ul class="tab-links">
-            <li class="active"><a href="#unanswered">Unanswered</a></li>
-            <li><a href="#answered">Answered</a></li>
-            <li><a href="#pending">Pending</a></li>
-            <li><a href="#updating">Updating</a></li>
-          </ul>
-        </div>
+    <div class="wrap">
+      <div class="tabs">
+        <ul class="tab-links">
+          <li class="active"><a href="#tab1">Unanswered</a></li>
+          <li><a href="#tab2">Answered</a></li>
+          <li><a href="#tab3">Pending Update</a></li>
+        </ul>
+
         <div class="tab-content">
           <div id="tab1" class="tab active">
           {{range $question := $reply.Reply.Items}}
