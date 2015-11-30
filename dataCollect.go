@@ -36,7 +36,7 @@ var appInfo = struct {
 var delay = 1 * time.Second
 var week = (24 * 7) * time.Hour
 
-func collectData() ([]byte, error) {
+func Collect() ([]byte, error) {
 	session := stackongo.NewSession("stackoverflow")
 
 	// Set starting variable parameters

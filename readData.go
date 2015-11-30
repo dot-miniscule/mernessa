@@ -1,4 +1,4 @@
-package main
+package readData
 
 import (
 	"encoding/json"
