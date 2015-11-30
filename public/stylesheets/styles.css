@@ -1,16 +1,23 @@
 <style>
 
+body {
+  font-family: Arial important; 
+}
+
 .wrap {
   padding:60px 0px;
   background:#4a98d3;
   background:radial-gradient(at 40% 40%, #4a98d3, #00598f);
+  font-family:Arial ;
 }
 
 .titleBar {
+  font-family: Arial;
+  font-size:xx-large ;
   color: #333;
   text-align: center;
   padding: 1em;
-  background: #ffea61;
+  background: #BDBDBD;
   box-shadow: 0 0 0.5em #999;
 }
 
@@ -79,9 +86,4 @@
     .tab.active {
       display:block;
     }
-
-
-
-      
-
 </style>
