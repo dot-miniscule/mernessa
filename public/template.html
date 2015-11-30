@@ -5,9 +5,10 @@
     <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
     <script type="text/javascript" src="/javascripts/tabs.js"></script>
   </head>
+  {{$reply := .}}
   <body>
     <div class="titleBar">
-    Places API Tag Tracker for StackExchange
+      <h4>Places API Tag Tracker for StackExchange Quota_remaining: {{$reply.Reply.Quota_remaining}}</h4>
     </div>
     <div class="wrap">
 
@@ -20,7 +21,6 @@
         </ul>
 
         <div class="tab-content">
-          {{$reply := .}}
           <div id="tab1" class="tab active">
           {{range $question := $reply.Reply.Items}}
             <p>{{$question.Link}}</p>
