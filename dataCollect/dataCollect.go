@@ -2,9 +2,13 @@ package dataCollect
 
 import (
 	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
+
+	"appengine"
+	"appengine/urlfetch"
 )
 
 var appInfo = struct {
@@ -36,7 +40,12 @@ var appInfo = struct {
 var delay = 1 * time.Second
 var week = (24 * 7) * time.Hour
 
-func Collect() ([]byte, error) {
+func Collect(r *http.Request) ([]byte, error) {
+
+	c := appengine.NewContext(r)
+	ut := &urlfetch.Transport{Context: c}
+	stackongo.SetTransport(ut)
+
 	session := stackongo.NewSession("stackoverflow")
 
 	// Set starting variable parameters

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"reflect"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
@@ -34,7 +33,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if err := page.Execute(w, nil); err != nil {
 		panic(err)
 	}
-	input, err := dataCollect.Collect()
+	input, err := dataCollect.Collect(r)
 	if err != nil {
 		fmt.Fprintf(w, "%v\n", err.Error())
 		return
@@ -46,10 +45,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "%v\n", reflect.TypeOf(questions.Items[0]))
-	/*	for question := range questions.Items {
+	for _, question := range questions.Items {
 		fmt.Fprintf(w, "%v: %v\n", question.Title, question.Link)
-	}*/
+	}
 	fmt.Fprintf(w, "%v\n", questions.Quota_remaining)
 }
 
