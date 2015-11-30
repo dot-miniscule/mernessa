@@ -6,16 +6,11 @@
 package hello
 
 import (
-
 	"dataCollect"
 	"encoding/json"
 	"fmt"
-
 	"html/template"
 	"net/http"
-
-	"net/http"
-
 	"reflect"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -36,7 +31,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 
-	 if err := page.Execute(w, nil); err != nil {
+	if err := page.Execute(w, nil); err != nil {
 		panic(err)
 	}
 	input, err := dataCollect.Collect()
