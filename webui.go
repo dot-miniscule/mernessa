@@ -17,13 +17,20 @@ import (
 )
 
 type reply struct {
-	Reply     *stackongo.Questions
-	FindQuery string
+	Wrapper         *stackongo.Questions
+	UnansweredReply []stackongo.Question
+	AnsweredReply   []stackongo.Question
+	PendingReply    []stackongo.Question
+	UpdatingReply   []stackongo.Question
+	FindQuery       string
 }
 
 type webData struct {
-	cache     *reply
-	cacheLock sync.Mutex
+	unansweredCache *reply
+	answeredCache   *reply
+	pendingCache    *reply
+	updateCache     *reply
+	cacheLock       sync.Mutex
 }
 
 //The app engine will run its own main function and imports this code as a package
@@ -64,8 +71,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := reply{
-		Reply:     questions,
-		FindQuery: "",
+		Wrapper:         questions,
+		UnansweredReply: questions.Items[:2],
+		AnsweredReply:   questions.Items[2:4],
+		PendingReply:    questions.Items[4:],
+		UpdatingReply:   nil,
+		FindQuery:       "",
 	}
 	if err := page.Execute(w, response); err != nil {
 		panic(err)

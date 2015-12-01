@@ -9,7 +9,7 @@
   <body>
     <div class="titleBar">
       <h4>Places API Tag Tracker for StackExchange </h4>
-      <h5> Quota_remaining: {{$reply.Reply.Quota_remaining}}</h5> 
+      <h5> Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5> 
     </div>
     <div class="wrap">
 
@@ -32,14 +32,14 @@
                 </tr>
               </thead>
               <tbody>
-                {{range $question := $reply.Reply.Items}}
+                {{range $question := $reply.UnansweredReply}}
                 <tr>
                   <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
                   <form>
                     <td><input type="radio" name="answer" value="answered"></td>
                     <td><input type="radio" name="answer" value="answering"></td>
+                    <td><input type="radio" name="answer" value="pending"></td>
                   </form>
-                  <td><input type="checkbox" name="pending" value="pending"></td>
                 </tr>
                 {{end}}
               </tbody>
@@ -47,11 +47,53 @@
           </div>
 
          <div id="panel2" class="panel">
-            <p>Content for tab 2 goes here.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Answered</th>
+                  <th>Answering</th>
+                  <th>Pending update</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range $question := $reply.AnsweredReply}}
+                <tr>
+                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                  <form>
+                    <td><input type="radio" name="answer" value="answered" checked></td>
+                    <td><input type="radio" name="answer" value="answering"></td>
+                    <td><input type="radio" name="answer" value="pending"></td>
+                  </form>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
          </div>
 
          <div id="panel3" class="panel">
-            <p>Content for tab 3 goes here.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Answered</th>
+                  <th>Answering</th>
+                  <th>Pending update</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range $question := $reply.PendingReply}}
+                <tr>
+                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                  <form>
+                    <td><input type="radio" name="answer" value="answered"></td>
+                    <td><input type="radio" name="answer" value="answering"></td>
+                    <td><input type="radio" name="answer" value="pending" checked></td>
+                  </form>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
          </div>
       </div>
       <!--END TABS-->
