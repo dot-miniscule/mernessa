@@ -21,20 +21,27 @@
         <div class="tab-content">
           <div id="tab1" class="tab active">
             <table>
-              <tr class="thead">
-                <th>Question</th>
-                <th>Answered</th>
-                <th>Answering</th>
-                <th>Pending update</th>
-              </tr>
-              {{range $question := $reply.Reply.Items}}
-              <tr>
-                <td><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                <td><input type="checkbox" value="answered"></td>
-                <td><input type="checkbox" value="answering"></td>
-                <td><input type="checkbox" value="pending"></td>
-              </tr>
-              {{end}}
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Answered</th>
+                  <th>Answering</th>
+                  <th>Pending update</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range $question := $reply.Reply.Items}}
+                <tr>
+                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                  <form>
+                    <td><input type="radio" name="answer" value="answered"></td>
+                    <td><input type="radio" name="answer" value="answering"></td>
+                  </form>
+                  <td><input type="checkbox" name="pending" value="pending"></td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
           </div>
 
           <div id="tab2" class="tab">
