@@ -20,9 +20,21 @@
 
         <div class="tab-content">
           <div id="tab1" class="tab active">
-          {{range $question := $reply.Reply.Items}}
-            <p>{{$question.Link}}</p>
-          {{end}}
+            <table>
+              <tr class="thead">
+                <th>Question</th>
+                <th>Answered</th>
+                <th>Answering</th>
+                <th>Pending update</th>
+              </tr>
+              {{range $question := $reply.Reply.Items}}
+              <tr>
+                <td><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                <td><input type="checkbox" value="answered"></td>
+                <td><input type="checkbox" value="answering"></td>
+                <td><input type="checkbox" value="pending"></td>
+              </tr>
+              {{end}}
           </div>
 
           <div id="tab2" class="tab">
