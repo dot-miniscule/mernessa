@@ -16,25 +16,14 @@ import (
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
-type findReply struct {
-	Questions *stackongo.Questions
-}
-
 type reply struct {
 	Reply     *stackongo.Questions
 	FindQuery string
 }
 
 type webData struct {
-	cache     *findReply
+	cache     *reply
 	cacheLock sync.Mutex
-}
-
-type WebServer struct {
-	Port int
-	Path string
-	Tmpl *template.Template
-	Data *webData
 }
 
 //The app engine will run its own main function and imports this code as a package
