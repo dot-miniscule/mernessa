@@ -81,4 +81,13 @@ table {
 td:not(#question) {
   text-align: center;
 }
+
+/*---------- SUBMIT BUTTON -----------*/
+
+#submitButton {
+  float:right;
+  padding: 0.5em;
+  margin: 10px 10px 10px 10px;
+  border-radius:10px 10px 10px 10px;
+}
 </style>
