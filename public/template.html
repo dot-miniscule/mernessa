@@ -22,10 +22,29 @@
         </ul>
 
          <div id="panel1" class="panel active">
-          {{range $question := $reply.Reply.Items}}
-            <p>{{$question.Link}}</p>
-          {{end}}
-         </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Answered</th>
+                  <th>Answering</th>
+                  <th>Pending update</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range $question := $reply.Reply.Items}}
+                <tr>
+                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                  <form>
+                    <td><input type="radio" name="answer" value="answered"></td>
+                    <td><input type="radio" name="answer" value="answering"></td>
+                  </form>
+                  <td><input type="checkbox" name="pending" value="pending"></td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table> 
+          </div>
 
          <div id="panel2" class="panel">
             <p>Content for tab 2 goes here.</p>

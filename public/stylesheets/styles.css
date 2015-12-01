@@ -28,13 +28,14 @@ body {
   background: #ffea61;
   box-shadow: 0 0 0.5em #999;
 }
-*/
 
 /*------------- TABS ------------- */
 .tab-panels ul {
   margin:0;
   padding:0;
 }
+
+/*------------ LINKS -------------*/ 
 
 .tab-panels ul li {
   list-style-type:none;
@@ -58,6 +59,8 @@ body {
   background:#666;
 }
 
+/*----------- PANELS/CONTENT ----------*/ 
+
 .tab-panels .panel {
   display:none;
   background:#c9c9c9;
@@ -69,5 +72,13 @@ body {
   display:block;
 }
 
+/*---------- TAB CONTENT ------------*/
+table {
+  border-spacing: 0.5rem;
+  padding: 0.5em; 
+}
 
+td:not(#question) {
+  text-align: center;
+}
 </style>

@@ -16,25 +16,14 @@ import (
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
-type findReply struct {
-	Questions *stackongo.Questions
-}
-
 type reply struct {
 	Reply     *stackongo.Questions
 	FindQuery string
 }
 
 type webData struct {
-	cache     *findReply
+	cache     *reply
 	cacheLock sync.Mutex
-}
-
-type WebServer struct {
-	Port int
-	Path string
-	Tmpl *template.Template
-	Data *webData
 }
 
 //The app engine will run its own main function and imports this code as a package
@@ -51,6 +40,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
+
+	// TODO(gregoriou): Uncomment when ready to request from stackoverflow
 	/*
 		input, err := dataCollect.Collect(r)
 		if err != nil {
@@ -58,6 +49,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	*/
+
+	// TODO(gregoriou): Comment out when ready to request from stackoverflow
 	input, err := ioutil.ReadFile("27-11_dataset.json")
 	if err != nil {
 		fmt.Fprintf(w, "%v", err.Error())
