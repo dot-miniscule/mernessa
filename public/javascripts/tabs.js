@@ -30,4 +30,12 @@ $(function() {
 
 });
 
+//---------- SUBMIT BUTTON RELOAD PAGE ----------- //
 
+$(function() {
+  $('#submitButton').on('click', function() {
+  
+    //On mouse click reload the page
+    location.reload(); 
+  });
+});
