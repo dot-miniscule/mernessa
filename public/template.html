@@ -8,35 +8,34 @@
   {{$reply := .}}
   <body>
     <div class="titleBar">
-      <h4>Places API Tag Tracker for StackExchange Quota_remaining: {{$reply.Reply.Quota_remaining}}</h4>
+      <h4>Places API Tag Tracker for StackExchange </h4>
+      <h5> Quota_remaining: {{$reply.Reply.Quota_remaining}}</h5> 
     </div>
     <div class="wrap">
 
       <!------- CONTENT TABS ---------->
-      <div class="tabs">
-        <ul class="tab-links">
-          <li class="active"><a href="#tab1">Unanswered</a></li>
-          <li><a href="#tab2">Answered</a></li>
-          <li><a href="#tab3">Pending Update</a></li>
+      <div class="tab-panels">
+        <ul class="tabs">
+          <li rel="panel1" class="active">Unanswered</li>
+          <li rel="panel2">Answered</li>
+          <li rel="panel3">Pending Update</li>
         </ul>
 
-        <div class="tab-content">
-          <div id="tab1" class="tab active">
+         <div id="panel1" class="panel active">
           {{range $question := $reply.Reply.Items}}
             <p>{{$question.Link}}</p>
           {{end}}
-          </div>
+         </div>
 
-          <div id="tab2" class="tab">
+         <div id="panel2" class="panel">
             <p>Content for tab 2 goes here.</p>
-          </div>
+         </div>
 
-          <div id="tab3" class="tab">
+         <div id="panel3" class="panel">
             <p>Content for tab 3 goes here.</p>
-          </div>
-        </div>
+         </div>
       </div>
-      <!------------END TABS--------> 
-    </div>
+      <!--END TABS-->
+    </div><!-- END WRAPPER --> 
   </body>
 </html>

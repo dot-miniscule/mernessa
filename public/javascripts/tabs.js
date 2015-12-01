@@ -1,18 +1,33 @@
 //----------- TAB SELECTION ------------//
+$(function() {
+  $('.tab-panels .tabs li').on('click', function() {
 
-jQuery(document).ready(function() {
+    //On mouse click find the next element of tab panels
+    //find the closes active one and remove that class
+    //set the current panel to active
+    var $panel = $(this).closest('.tab-panels');
+    $panel.find('.tabs li.active').removeClass('active');
+    $(this).addClass('active');
 
-  jQuery('.tabs .tab-links a').on('click', function(e) {
+    //find which panel to show
+    //The related panel is saved in the list item as an attribute
+    var panelToShow = $(this).attr('rel');
 
-    var currentAttrValue = jQuery(this).attr('href');
+    //Hide the current panel
+    $panel.find('.panel.active').fadeOut(200, showNextPanel);
 
-    //Show and hide tabs
-    jQuery('.tabs' + currentAttrValue).fadeIn(400).siblings().hide();
+    //show next panel
+  
+    function showNextPanel() {
+      $(this).removeClass('active');
 
-    //Change and remove current tab to active
-    jQuery(this).parent('li').addClass('active').siblings().removeClass('active');
+      $('#'+panelToShow).fadeIn(200, function() {
+        $(this).addClass('active');
+      });
+    }
 
-    e.preventDefault(); 
   });
 
 });
+
+
