@@ -51,6 +51,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
+
+	// TODO(gregoriou): Uncomment when ready to request from stackoverflow
 	/*
 		input, err := dataCollect.Collect(r)
 		if err != nil {
@@ -58,6 +60,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	*/
+
+	// TODO(gregoriou): Comment out when ready to request from stackoverflow
 	input, err := ioutil.ReadFile("27-11_dataset.json")
 	if err != nil {
 		fmt.Fprintf(w, "%v", err.Error())
