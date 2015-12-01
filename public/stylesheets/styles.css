@@ -5,10 +5,10 @@ body {
 }
 
 .wrap {
-  padding:60px 0px;
   background:#4a98d3;
   background:radial-gradient(at 40% 40%, #4a98d3, #00598f);
-  font-family:Arial ;
+  font-family:Arial;
+  height:1000px;
 }
 
 .titleBar {
@@ -65,11 +65,32 @@ body {
   display:none;
   background:#c9c9c9;
   padding:30px;
-  border-radius:0 0 10px 10px;
 }
 
 .tab-panels .panel.active {
+  height:200px;
+  overflow:scroll;
   display:block;
+}
+
+/*---------- WEBKIT SCROLLBAR ---------*/
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-thumb {
+  -webkit-border-radius:10px;
+  border-radius:10px;
+  background:#fff;
+}
+
+::-webkit-scrollbar-thumb:vertical:active {
+  background:#fff;
+}
+
+::-webkit-scrollbar-corner {
+  display:none;
+  height:0;
 }
 
 /*---------- TAB CONTENT ------------*/
@@ -80,6 +101,24 @@ table {
 
 td:not(#question) {
   text-align: center;
+}
+
+/*--------- STICKY FOOTER -----------*/
+
+.stickyFooter {
+  height:50px;
+  width:100%;
+  background-attachment:scroll;
+  background-position:0% 0%;
+  position:fixed;
+  bottom:0pt;
+  left:0pt;
+  background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%,rgba(255,255,255,0.25) 47%,rgba(255,255,255,0.6) 100%);
+}
+
+.footerContents {
+  height:50px;
+  margin:auto; 
 }
 
 /*---------- SUBMIT BUTTON -----------*/

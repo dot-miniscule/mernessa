@@ -17,7 +17,6 @@ $(function() {
     $panel.find('.panel.active').fadeOut(200, showNextPanel);
 
     //show next panel
-  
     function showNextPanel() {
       $(this).removeClass('active');
 
@@ -34,8 +33,9 @@ $(function() {
 
 $(function() {
   $('#submitButton').on('click', function() {
-  
     //On mouse click reload the page
-    location.reload(); 
+    location.reload();
+
   });
 });
+
