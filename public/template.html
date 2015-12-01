@@ -19,6 +19,7 @@
           <li rel="panel1" class="active">Unanswered</li>
           <li rel="panel2">Answered</li>
           <li rel="panel3">Pending Update</li>
+          <li rel="panel4">Update</li> 
         </ul>
 
          <div id="panel1" class="panel active">
@@ -95,6 +96,31 @@
               </tbody>
             </table>
          </div>
+
+         <div id="panel4" class="panel"> 
+           <table>
+            <thead>
+              <tr>
+                <th>Question</th>
+                <th>Answered</th>
+                <th>Answering</th>
+                <th>Pending update</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{range $question := $reply.UpdatingReply}}
+              <tr>
+                <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                <form>
+                  <td><input type="radio" name="answer" value="answered"></td>
+                  <td><input type="radio" name="answer" value="answering"></td>
+                  <td><input type="radio" name="answer" value="pending"></td>
+                </form>
+              </tr>
+              {{end}}
+            </tbody>
+           </table>
+         </div> 
       </div>
       <!--END TABS-->
     </div><!-- END WRAPPER --> 
