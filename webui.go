@@ -10,12 +10,19 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
+
+type byCreationDate []stackongo.Question
+
+func (a byCreationDate) Len() int           { return len(a) }
+func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
 
 type reply struct {
 	Wrapper         *stackongo.Questions
@@ -155,6 +162,11 @@ func (w webData) updateCache_User(r *http.Request) {
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		}
 	}
+
+	sort.Stable(byCreationDate(tempData.unansweredCache))
+	sort.Stable(byCreationDate(tempData.answeredCache))
+	sort.Stable(byCreationDate(tempData.pendingCache))
+	sort.Stable(byCreationDate(tempData.updateCache))
 
 	data.unansweredCache = tempData.unansweredCache
 	data.answeredCache = tempData.answeredCache
