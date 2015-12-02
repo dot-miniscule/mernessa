@@ -36,8 +36,8 @@ html, body {
   list-style-type:none;
   display:inline-block;
   background:#666;
-  width:24%;
-  margin:0;
+  width:23%;
+  margin:0px 0px 0px 0px;
   padding:3px ;
   border-radius:10px 10px 0 0;
   color:#c9c9c9;
@@ -57,27 +57,31 @@ html, body {
 
 /*----------- PANELS/CONTENT ----------*/ 
 
+.tab-panels {
+}
+
 .tab-panels .panel {
   display:none;
   background:#c9c9c9;
-  padding:30px;
+  padding:30px ;
 }
 
 .tab-panels .panel.active {
-  height:50%;
   overflow:scroll;
   display:block;
+  height: 75%; 
 }
 
 /*---------- WEBKIT SCROLLBAR ---------*/
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 5px;
+  height:2px;
 }
 
 ::-webkit-scrollbar-thumb {
   -webkit-border-radius:10px;
-  border-radius:10px;
   background:#fff;
+  border-radius: 50px;
 }
 
 ::-webkit-scrollbar-thumb:vertical:active {
@@ -86,7 +90,6 @@ html, body {
 
 ::-webkit-scrollbar-corner {
   display:none;
-  height:0;
 }
 
 /*---------- TAB CONTENT ------------*/
@@ -111,44 +114,60 @@ td:not(#question) {
 /*--------- STICKY FOOTER -----------*/
 
 .stickyFooter {
-  height:50px;
   width:100%;
   background-attachment:scroll;
   background-position:0% 0%;
   position:fixed;
   bottom:0pt;
   left:0pt;
-  background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%,rgba(255,255,255,0.25) 47%,rgba(255,255,255,0.6) 100%);
+  height:50px;
+  background:#fff;
+  border-top-style:solid;
+  border-top-color:#000;
 }
 
 .footerContents {
-  height:50px;
   margin:auto;
   position:relative;
+  background:#fff;
 }
 
 #authorNames {
-  font-size:15px;
+  margin:0px;
+  padding:0px;
+  font-size:12px;
   float:left;
   overflow:hidden;
+  display:inline-block;
+  width:20%;
+  line-height:50%;
+  height:100%;
 }
+
+#authorNames p {
+  margin-left:0.5em;
+  text-align:center;
+}
+
 
 /*---------- SUBMIT BUTTON -----------*/
 
+#submitContainer {
+  float:right ;
+  display:inline-block;
+  width:80%;
+  overflow:hidden;
+  height:100%;
+}
 #submitButton {
   background-color:#e6e6e6;
-  font-weight:bold;
-  font-size:20;
   color:#666;
-  right:4px;
-  bottom:5px;
   border-radius:100px;
   cursor:pointer;
   box-shadow:0 1px 0 rgba(255, 255, 255, 0.5) inset;
-  float:right;
   padding: 0.5em;
   margin: 10px 10px 10px 10px;
   border-radius:10px 10px 10px 10px;
-  position:absolute;
+  float:right;
 }
 </style>
