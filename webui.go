@@ -71,6 +71,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	*/
+
+	data.updateCache_User(r)
+
+	response := reply{
+		Wrapper:         data.wrapper,
+		UnansweredReply: data.unansweredCache,
+		AnsweredReply:   data.answeredCache,
+		PendingReply:    data.pendingCache,
+		UpdatingReply:   data.updateCache,
+		FindQuery:       "",
+	}
+	if err := page.Execute(w, response); err != nil {
+		panic(err)
+	}
+}
+
+// Updates the caches based on input from the app
+func (w webData) updateCache_User(r *http.Request) {
 	r.ParseForm()
 
 	tempData := webData{}
@@ -142,18 +160,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	data.answeredCache = tempData.answeredCache
 	data.pendingCache = tempData.pendingCache
 	data.updateCache = tempData.updateCache
-
-	response := reply{
-		Wrapper:         data.wrapper,
-		UnansweredReply: data.unansweredCache,
-		AnsweredReply:   data.answeredCache,
-		PendingReply:    data.pendingCache,
-		UpdatingReply:   data.updateCache,
-		FindQuery:       "",
-	}
-	if err := page.Execute(w, response); err != nil {
-		panic(err)
-	}
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string) {
