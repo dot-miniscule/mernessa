@@ -14,13 +14,13 @@ $(function() {
     var panelToShow = $(this).attr('rel');
 
     //Hide the current panel
-    $panel.find('.panel.active').fadeOut(200, showNextPanel);
+    $panel.find('.panel.active').slideUp(400, showNextPanel);
 
     //show next panel
     function showNextPanel() {
       $(this).removeClass('active');
 
-      $('#'+panelToShow).fadeIn(200, function() {
+      $('#'+panelToShow).slideDown(400, function() {
         $(this).addClass('active');
       });
     }
