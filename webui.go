@@ -77,7 +77,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	/*
 		input, err := dataCollect.Collect(r)
 		if err != nil {
-			fmt.Fprintf(w, "%v\n", err.Error())
+		    errorHandler(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 	*/
