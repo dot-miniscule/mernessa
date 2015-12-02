@@ -2,33 +2,34 @@
   <head>
     <title>Places API Query Tracker</title>
     <link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script type="text/javascript" src="/javascripts/tabs.js"></script>
   </head>
   {{$reply := .}}
   <body>
+    <div class="wrap">
     <div class="titleBar">
       <h4>Places API Tag Tracker for StackExchange </h4>
-      <h5>{{$reply.FindQuery}}</h5>
-      <h5>Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5> 
+      <h5> Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5>
     </div>
-    <div class="wrap">
-
-      <!------- CONTENT TABS ---------->
+    <!------- CONTENT TABS ---------->
       <div class="tab-panels">
         <ul class="tabs">
           <li rel="panel1" class="active">Unanswered</li>
           <li rel="panel2">Answered</li>
           <li rel="panel3">Pending Update</li>
-          <li rel="panel4">Update</li> 
+          <li rel="panel4">Update</li>
         </ul>
 
         <form name="change_state" method="POST">
          <div id="panel1" class="panel active">
-            <table>
+           <div id="info"> 
+              <p> These are questions that have not yet been answered by the Places API team </p>
+           </div> 
+           <table>
               <thead>
                 <tr>
-                  <th>Question</th>
+                  <th id="qHead">Question</th>
                   <th>Unanswered</th>
                   <th>Answered</th>
                   <th>Pending</th>
@@ -46,7 +47,7 @@
                   </tr>
                   {{end}}
               </tbody>
-            </table> 
+            </table>
           </div>
 
          <div id="panel2" class="panel">
@@ -99,7 +100,7 @@
             </table>
          </div>
 
-         <div id="panel4" class="panel"> 
+         <div id="panel4" class="panel">
            <table>
             <thead>
               <tr>
@@ -122,11 +123,18 @@
               {{end}}
             </tbody>
            </table>
-         </div>  
+         </div>
       </div>
       <!--END TABS-->
-    <input type="submit" id=submitButton value="Submit">
-    </form>
-    </div><!-- END WRAPPER --> 
+      <div class="stickyFooter">
+        <div class="footerContents">
+          <div id="authorNames">
+            <p>Vanessa Gregoriou & Meredith Lane</p><br>
+            <p>STEP Interns, 2015</p>
+          </div>
+          <input type="submit" id=submitButton value="Submit">
+        </div>
+      </div>
+    </div><!-- END WRAPPER -->
   </body>
 </html>

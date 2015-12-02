@@ -1,38 +1,33 @@
 <style>
 
-body {
-  font-family: Arial important; 
+html, body {
+  padding:0;
+  height:100%;
+  margin:0px 0px 0px 0px;
 }
 
 .wrap {
-  padding:60px 0px;
-  background:#4a98d3;
+  font-family:Tahoma, Geneva, sans-serif;
+  font-size:15px;
   background:radial-gradient(at 40% 40%, #4a98d3, #00598f);
-  font-family:Arial ;
+  min-height:100%;
+  position:relative;
 }
 
+
 .titleBar {
-  font-family: Arial;
+  padding-top:0.25em;
   font-size:xx-large ;
   color: #333;
   text-align: center;
-  padding: 1em;
   background: #BDBDBD;
-  box-shadow: 0 0 0.5em #999;
-}
-
-#errorContainer {
-  color: #333;
-  text-align: center;
-  padding: 1em;
-  background: #ffea61;
-  box-shadow: 0 0 0.5em #999;
 }
 
 /*------------- TABS ------------- */
 .tab-panels ul {
   margin:0;
   padding:0;
+  width:100%;
 }
 
 /*------------ LINKS -------------*/ 
@@ -40,11 +35,12 @@ body {
 .tab-panels ul li {
   list-style-type:none;
   display:inline-block;
-  background:#999;
+  background:#666;
+  width:24%;
   margin:0;
-  padding:3px 10px;
+  padding:3px ;
   border-radius:10px 10px 0 0;
-  color:#fff;
+  color:#c9c9c9;
   font-weight:200;
   cursor:pointer;
 }
@@ -55,8 +51,8 @@ body {
 }
 
 .tab-panels ul li.active {
-  color:#fff;
-  background:#666;
+  color:#000;
+  background:#c9c9c9;
 }
 
 /*----------- PANELS/CONTENT ----------*/ 
@@ -65,29 +61,94 @@ body {
   display:none;
   background:#c9c9c9;
   padding:30px;
-  border-radius:0 0 10px 10px;
 }
 
 .tab-panels .panel.active {
+  height:50%;
+  overflow:scroll;
   display:block;
+}
+
+/*---------- WEBKIT SCROLLBAR ---------*/
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-thumb {
+  -webkit-border-radius:10px;
+  border-radius:10px;
+  background:#fff;
+}
+
+::-webkit-scrollbar-thumb:vertical:active {
+  background:#fff;
+}
+
+::-webkit-scrollbar-corner {
+  display:none;
+  height:0;
 }
 
 /*---------- TAB CONTENT ------------*/
 table {
   border-spacing: 0.5rem;
-  padding: 0.5em; 
+  padding: 0.5em;
+  background:#fff;
+  width:100%;
+}
+#qHead {
+  text-align:left ;
+}
+
+#question {
+  padding: 1em;
 }
 
 td:not(#question) {
   text-align: center;
 }
 
+/*--------- STICKY FOOTER -----------*/
+
+.stickyFooter {
+  height:50px;
+  width:100%;
+  background-attachment:scroll;
+  background-position:0% 0%;
+  position:fixed;
+  bottom:0pt;
+  left:0pt;
+  background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%,rgba(255,255,255,0.25) 47%,rgba(255,255,255,0.6) 100%);
+}
+
+.footerContents {
+  height:50px;
+  margin:auto;
+  position:relative;
+}
+
+#authorNames {
+  font-size:15px;
+  float:left;
+  overflow:hidden;
+}
+
 /*---------- SUBMIT BUTTON -----------*/
 
 #submitButton {
+  background-color:#e6e6e6;
+  font-weight:bold;
+  font-size:20;
+  color:#666;
+  right:4px;
+  bottom:5px;
+  border-radius:100px;
+  cursor:pointer;
+  box-shadow:0 1px 0 rgba(255, 255, 255, 0.5) inset;
   float:right;
   padding: 0.5em;
   margin: 10px 10px 10px 10px;
   border-radius:10px 10px 10px 10px;
+  position:absolute;
 }
 </style>
