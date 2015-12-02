@@ -97,6 +97,13 @@ table {
   background:#fff;
   width:100%;
 }
+#qHead {
+  text-align:left ;
+}
+
+#question {
+  padding: 1em;
+}
 
 td:not(#question) {
   text-align: center;
