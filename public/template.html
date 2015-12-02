@@ -7,19 +7,18 @@
   </head>
   {{$reply := .}}
   <body>
+    <div class="wrap">
     <div class="titleBar">
       <h4>Places API Tag Tracker for StackExchange </h4>
-      <h5> Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5> 
+      <h5> Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5>
     </div>
-    <div class="wrap">
-
-      <!------- CONTENT TABS ---------->
+    <!------- CONTENT TABS ---------->
       <div class="tab-panels">
         <ul class="tabs">
           <li rel="panel1" class="active">Unanswered</li>
           <li rel="panel2">Answered</li>
           <li rel="panel3">Pending Update</li>
-          <li rel="panel4">Update</li> 
+          <li rel="panel4">Update</li>
         </ul>
 
          <div id="panel1" class="panel active">
@@ -44,7 +43,7 @@
                 </tr>
                 {{end}}
               </tbody>
-            </table> 
+            </table>
           </div>
 
          <div id="panel2" class="panel">
@@ -97,7 +96,7 @@
             </table>
          </div>
 
-         <div id="panel4" class="panel"> 
+         <div id="panel4" class="panel">
            <table>
             <thead>
               <tr>
@@ -120,14 +119,18 @@
               {{end}}
             </tbody>
            </table>
-         </div> 
+         </div>
       </div>
       <!--END TABS-->
       <div class="stickyFooter">
-        <div class="footerContents"> 
+        <div class="footerContents">
+          <div id="authorNames">
+            <p>Vanessa Gregoriou & Meredith Lane</p><br>
+            <p>STEP Interns, 2015</p>
+          </div>
           <input type="submit" id=submitButton value="Submit">
         </div>
       </div>
-    </div><!-- END WRAPPER --> 
+    </div><!-- END WRAPPER -->
   </body>
 </html>

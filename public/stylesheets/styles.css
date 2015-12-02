@@ -1,38 +1,34 @@
 <style>
 
-body {
-  font-family: Arial important; 
+html, body {
+  padding:0;
+  height:100%;
+  font-family: Arial important;
+  margin:0px 0px 0px 0px;
 }
 
 .wrap {
-  background:#4a98d3;
-  background:radial-gradient(at 40% 40%, #4a98d3, #00598f);
   font-family:Arial;
-  height:1000px;
+  background:radial-gradient(at 40% 40%, #4a98d3, #00598f);
+  min-height:100%;
+  position:relative;
 }
 
+
 .titleBar {
+  padding-top:0.25em;
   font-family: Arial;
   font-size:xx-large ;
   color: #333;
   text-align: center;
-  padding: 1em;
   background: #BDBDBD;
-  box-shadow: 0 0 0.5em #999;
-}
-
-#errorContainer {
-  color: #333;
-  text-align: center;
-  padding: 1em;
-  background: #ffea61;
-  box-shadow: 0 0 0.5em #999;
 }
 
 /*------------- TABS ------------- */
 .tab-panels ul {
   margin:0;
   padding:0;
+  width:100%;
 }
 
 /*------------ LINKS -------------*/ 
@@ -40,11 +36,12 @@ body {
 .tab-panels ul li {
   list-style-type:none;
   display:inline-block;
-  background:#999;
+  background:#666;
+  width:24%;
   margin:0;
-  padding:3px 10px;
+  padding:3px ;
   border-radius:10px 10px 0 0;
-  color:#fff;
+  color:#c9c9c9;
   font-weight:200;
   cursor:pointer;
 }
@@ -55,8 +52,8 @@ body {
 }
 
 .tab-panels ul li.active {
-  color:#fff;
-  background:#666;
+  color:#000;
+  background:#c9c9c9;
 }
 
 /*----------- PANELS/CONTENT ----------*/ 
@@ -96,7 +93,9 @@ body {
 /*---------- TAB CONTENT ------------*/
 table {
   border-spacing: 0.5rem;
-  padding: 0.5em; 
+  padding: 0.5em;
+  background:#fff;
+  width:100%;
 }
 
 td:not(#question) {
@@ -119,6 +118,12 @@ td:not(#question) {
 .footerContents {
   height:50px;
   margin:auto; 
+}
+
+#authorNames {
+  font-size:15px;
+  float:left;
+  overflow:hidden;
 }
 
 /*---------- SUBMIT BUTTON -----------*/
