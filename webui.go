@@ -25,12 +25,15 @@ func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
 
 type reply struct {
-	Wrapper         *stackongo.Questions
-	UnansweredReply []stackongo.Question
-	AnsweredReply   []stackongo.Question
-	PendingReply    []stackongo.Question
-	UpdatingReply   []stackongo.Question
-	FindQuery       string
+	Wrapper   *stackongo.Questions
+	Caches    []cacheInfo
+	FindQuery string
+}
+
+type cacheInfo struct {
+	CacheType string
+	Questions []stackongo.Question
+	Info      string
 }
 
 type webData struct {
@@ -38,7 +41,7 @@ type webData struct {
 	unansweredCache []stackongo.Question
 	answeredCache   []stackongo.Question
 	pendingCache    []stackongo.Question
-	updateCache     []stackongo.Question
+	updatingCache   []stackongo.Question
 	cacheLock       sync.Mutex
 }
 
@@ -79,23 +82,41 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 	*/
 
-	data.updateCache_User(r)
+	data.updatingCache_User(r)
 
 	response := reply{
-		Wrapper:         data.wrapper,
-		UnansweredReply: data.unansweredCache,
-		AnsweredReply:   data.answeredCache,
-		PendingReply:    data.pendingCache,
-		UpdatingReply:   data.updateCache,
-		FindQuery:       "",
+		Wrapper: data.wrapper,
+		Caches: []cacheInfo{
+			cacheInfo{
+				CacheType: "unanswered",
+				Questions: data.unansweredCache,
+				Info:      "These are questions that have not yet been answered by the Places API team",
+			},
+			cacheInfo{
+				CacheType: "answered",
+				Questions: data.answeredCache,
+				Info:      "These are questions that have been answered by the Places API team",
+			},
+			cacheInfo{
+				CacheType: "pending",
+				Questions: data.pendingCache,
+				Info:      "These are questions that are being answered by the Places API team",
+			},
+			cacheInfo{
+				CacheType: "updating",
+				Questions: data.updatingCache,
+				Info:      "These are questions that will be answered in the next release",
+			},
+		},
+		FindQuery: "",
 	}
 	if err := page.Execute(w, response); err != nil {
 		panic(err)
 	}
 }
 
-// Updates the caches based on input from the app
-func (w webData) updateCache_User(r *http.Request) {
+// updatings the caches based on input from the app
+func (w webData) updatingCache_User(r *http.Request) {
 	r.ParseForm()
 
 	tempData := webData{}
@@ -109,7 +130,7 @@ func (w webData) updateCache_User(r *http.Request) {
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		case "updating":
-			tempData.updateCache = append(tempData.updateCache, question)
+			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		}
@@ -125,7 +146,7 @@ func (w webData) updateCache_User(r *http.Request) {
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		case "updating":
-			tempData.updateCache = append(tempData.updateCache, question)
+			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		}
@@ -141,14 +162,14 @@ func (w webData) updateCache_User(r *http.Request) {
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		case "updating":
-			tempData.updateCache = append(tempData.updateCache, question)
+			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		}
 	}
 
-	for i, question := range data.updateCache {
-		tag := "update_state"
+	for i, question := range data.updatingCache {
+		tag := "updating_state"
 		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
 		form_input := r.PostFormValue(tag)
 		switch form_input {
@@ -157,7 +178,7 @@ func (w webData) updateCache_User(r *http.Request) {
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		case "updating":
-			tempData.updateCache = append(tempData.updateCache, question)
+			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		}
@@ -166,12 +187,12 @@ func (w webData) updateCache_User(r *http.Request) {
 	sort.Stable(byCreationDate(tempData.unansweredCache))
 	sort.Stable(byCreationDate(tempData.answeredCache))
 	sort.Stable(byCreationDate(tempData.pendingCache))
-	sort.Stable(byCreationDate(tempData.updateCache))
+	sort.Stable(byCreationDate(tempData.updatingCache))
 
 	data.unansweredCache = tempData.unansweredCache
 	data.answeredCache = tempData.answeredCache
 	data.pendingCache = tempData.pendingCache
-	data.updateCache = tempData.updateCache
+	data.updatingCache = tempData.updatingCache
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string) {

@@ -18,13 +18,14 @@
         <li rel="unanswered" class="active">Unanswered</li>
         <li rel="answered">Answered</li>
         <li rel="pending">Pending Update</li>
-        <li rel="update">Update</li>
+        <li rel="updating">Update</li>
       </ul>
 
       <form name="change_state" method="POST">
-        <div id="unanswered" class="panel active">
+        {{range $cache := $reply.Caches}}
+        <div id="{{$cache.CacheType}}" class="panel">
           <div id="info"> 
-            <p> These are questions that have not yet been answered by the Places API team </p>
+              <p>{{$cache.Info}}</p>
           </div> 
           <table>
             <thead>
@@ -37,104 +38,37 @@
               </tr>
             </thead>
             <tbody>
-              {{range $i, $question := $reply.UnansweredReply}}
+              {{range $i, $question := $cache.Questions}}
                 <tr>
                   <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                  <td><input type="radio" name="unanswered_state{{$i}}" value="unanswered" checked></td>
-                  <td><input type="radio" name="unanswered_state{{$i}}" value="answered"></td>
-                  <td><input type="radio" name="unanswered_state{{$i}}" value="pending"></td>
-                  <td><input type="radio" name="unanswered_state{{$i}}" value="updating"></td>
+                  <td><input type="radio" name="{{$cache.CacheType}}_state{{$i}}" value="unanswered"></td>
+                  <td><input type="radio" name="{{$cache.CacheType}}_state{{$i}}" value="answered"></td>
+                  <td><input type="radio" name="{{$cache.CacheType}}_state{{$i}}" value="pending"></td>
+                  <td><input type="radio" name="{{$cache.CacheType}}_state{{$i}}" value="updating"></td>
                 </tr>
+                <script>
+                  $("#{{$cache.CacheType}}").find("input[value='{{$cache.CacheType}}']").prop("checked", true);
+                </script>
               {{end}}
             </tbody>
           </table>
         </div>
+        {{end}}
+        <script>
+          $("#unanswered").addClass("active");
+        </script>
 
-        <div id="answered" class="panel">
-          <table>
-            <thead>
-              <tr>
-                <th>Question</th>
-                <th>Unanswered</th>
-                <th>Answered</th>
-                <th>Pending</th>
-                <th>Update</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{range $i, $question := $reply.AnsweredReply}}
-                <tr>
-                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                  <td><input type="radio" name="answered_state{{$i}}" value="unanswered"></td>
-                  <td><input type="radio" name="answered_state{{$i}}" value="answered" checked></td>
-                  <td><input type="radio" name="answered_state{{$i}}" value="pending"></td>
-                  <td><input type="radio" name="answered_state{{$i}}" value="updating"></td>
-                </tr>
-              {{end}}
-            </tbody>
-          </table>
-        </div>
-
-        <div id="pending" class="panel">
-          <table>
-            <thead>
-              <tr>
-                <th>Question</th>
-                <th>Unanswered</th>
-                <th>Answered</th>
-                <th>Pending</th>
-                <th>Update</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{range $i, $question := $reply.PendingReply}}
-                <tr>
-                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                  <td><input type="radio" name="pending_state{{$i}}" value="unanswered"></td>
-                  <td><input type="radio" name="pending_state{{$i}}" value="answered"></td>
-                  <td><input type="radio" name="pending_state{{$i}}" value="pending" checked></td>
-                  <td><input type="radio" name="pending_state{{$i}}" value="updating"></td>
-                </tr>
-              {{end}}
-            </tbody>
-          </table>
-        </div>
-
-        <div id="update" class="panel">
-          <table>
-            <thead>
-              <tr>
-                <th>Question</th>
-                <th>Unanswered</th>
-                <th>Answered</th>
-                <th>Pending</th>
-                <th>Update</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{range $i, $question := $reply.UpdatingReply}}
-                <tr>
-                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                  <td><input type="radio" name="update_state{{$i}}" value="unanswered"></td>
-                  <td><input type="radio" name="update_state{{$i}}" value="answered"></td>
-                  <td><input type="radio" name="update_state{{$i}}" value="pending"></td>
-                  <td><input type="radio" name="update_state{{$i}}" value="updating" checked></td>
-                </tr>
-              {{end}}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <!--END TABS-->
-      <div class="stickyFooter">
-        <div class="footerContents">
-          <div id="authorNames">
-            <p>Vanessa Gregoriou & Meredith Lane</p><br>
-            <p>STEP Interns, 2015</p>
+        <!--END TABS-->
+        <div class="stickyFooter">
+          <div class="footerContents">
+            <div id="authorNames">
+              <p>Vanessa Gregoriou & Meredith Lane</p><br>
+              <p>STEP Interns, 2015</p>
+            </div>
+            <input type="submit" id=submitButton value="Submit">
           </div>
-          <input type="submit" id=submitButton value="Submit">
         </div>
-      </div>
+      </form>
     </div><!-- END WRAPPER -->
   </body>
 </html>

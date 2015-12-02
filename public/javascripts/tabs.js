@@ -18,7 +18,7 @@ $(function() {
 
     //show next panel
     function showNextPanel() {
-      $(this).removeClass('active');
+      $('.panel.active').removeClass('active');
 
       $('#'+panelToShow).slideDown(400, function() {
         $(this).addClass('active');
