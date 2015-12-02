@@ -7,10 +7,11 @@ package webui
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -26,17 +27,31 @@ type reply struct {
 }
 
 type webData struct {
-	unansweredCache *reply
-	answeredCache   *reply
-	pendingCache    *reply
-	updateCache     *reply
+	wrapper         *stackongo.Questions
+	unansweredCache []stackongo.Question
+	answeredCache   []stackongo.Question
+	pendingCache    []stackongo.Question
+	updateCache     []stackongo.Question
 	cacheLock       sync.Mutex
 }
+
+var data = webData{}
 
 //The app engine will run its own main function and imports this code as a package
 //So no main needs to be defined
 //All routes go in to init
 func init() {
+	// TODO(gregoriou): Comment out when ready to request from stackoverflow
+	input, err := ioutil.ReadFile("27-11_dataset.json")
+	if err != nil {
+		return
+	}
+	data.wrapper = new(stackongo.Questions)
+	if err := json.Unmarshal(input, data.wrapper); err != nil {
+		return
+	}
+	data.unansweredCache = data.wrapper.Items
+
 	http.HandleFunc("/", handler)
 }
 
@@ -56,26 +71,84 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	*/
+	r.ParseForm()
 
-	// TODO(gregoriou): Comment out when ready to request from stackoverflow
-	input, err := ioutil.ReadFile("27-11_dataset.json")
-	if err != nil {
-		fmt.Fprintf(w, "%v", err.Error())
-		return
+	tempData := webData{}
+	for i, question := range data.unansweredCache {
+		tag := "unanswered_state"
+		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
+		form_input := r.PostFormValue(tag)
+		switch form_input {
+		case "answered":
+			tempData.answeredCache = append(tempData.answeredCache, question)
+		case "pending":
+			tempData.pendingCache = append(tempData.pendingCache, question)
+		case "updating":
+			tempData.updateCache = append(tempData.updateCache, question)
+		default:
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		}
 	}
 
-	questions := new(stackongo.Questions)
-	if err := json.Unmarshal(input, questions); err != nil {
-		fmt.Fprintf(w, "%v", err.Error())
-		return
+	for i, question := range data.answeredCache {
+		tag := "answered_state"
+		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
+		form_input := r.PostFormValue(tag)
+		switch form_input {
+		case "answered":
+			tempData.answeredCache = append(tempData.answeredCache, question)
+		case "pending":
+			tempData.pendingCache = append(tempData.pendingCache, question)
+		case "updating":
+			tempData.updateCache = append(tempData.updateCache, question)
+		default:
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		}
 	}
+
+	for i, question := range data.pendingCache {
+		tag := "pending_state"
+		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
+		form_input := r.PostFormValue(tag)
+		switch form_input {
+		case "answered":
+			tempData.answeredCache = append(tempData.answeredCache, question)
+		case "pending":
+			tempData.pendingCache = append(tempData.pendingCache, question)
+		case "updating":
+			tempData.updateCache = append(tempData.updateCache, question)
+		default:
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		}
+	}
+
+	for i, question := range data.updateCache {
+		tag := "update_state"
+		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
+		form_input := r.PostFormValue(tag)
+		switch form_input {
+		case "answered":
+			tempData.answeredCache = append(tempData.answeredCache, question)
+		case "pending":
+			tempData.pendingCache = append(tempData.pendingCache, question)
+		case "updating":
+			tempData.updateCache = append(tempData.updateCache, question)
+		default:
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		}
+	}
+
+	data.unansweredCache = tempData.unansweredCache
+	data.answeredCache = tempData.answeredCache
+	data.pendingCache = tempData.pendingCache
+	data.updateCache = tempData.updateCache
 
 	response := reply{
-		Wrapper:         questions,
-		UnansweredReply: questions.Items[:2],
-		AnsweredReply:   questions.Items[2:4],
-		PendingReply:    questions.Items[4:],
-		UpdatingReply:   nil,
+		Wrapper:         data.wrapper,
+		UnansweredReply: data.unansweredCache,
+		AnsweredReply:   data.answeredCache,
+		PendingReply:    data.pendingCache,
+		UpdatingReply:   data.updateCache,
 		FindQuery:       "",
 	}
 	if err := page.Execute(w, response); err != nil {

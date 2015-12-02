@@ -21,6 +21,7 @@
           <li rel="panel4">Update</li>
         </ul>
 
+        <form name="change_state" method="POST">
          <div id="panel1" class="panel active">
            <div id="info"> 
               <p> These are questions that have not yet been answered by the Places API team </p>
@@ -29,22 +30,22 @@
               <thead>
                 <tr>
                   <th id="qHead">Question</th>
+                  <th>Unanswered</th>
                   <th>Answered</th>
-                  <th>Answering</th>
-                  <th>Pending update</th>
+                  <th>Pending</th>
+                  <th>Update</th>
                 </tr>
               </thead>
               <tbody>
-                {{range $question := $reply.UnansweredReply}}
-                <tr>
-                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                  <form>
-                    <td><input type="radio" name="answer" value="answered"></td>
-                    <td><input type="radio" name="answer" value="answering"></td>
-                    <td><input type="radio" name="answer" value="pending"></td>
-                  </form>
-                </tr>
-                {{end}}
+                  {{range $i, $question := $reply.UnansweredReply}}
+                  <tr>
+                      <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                      <td><input type="radio" name="unanswered_state{{$i}}" value="unanswered" checked></td>
+                      <td><input type="radio" name="unanswered_state{{$i}}" value="answered"></td>
+                      <td><input type="radio" name="unanswered_state{{$i}}" value="pending"></td>
+                      <td><input type="radio" name="unanswered_state{{$i}}" value="updating"></td>
+                  </tr>
+                  {{end}}
               </tbody>
             </table>
           </div>
@@ -54,22 +55,22 @@
               <thead>
                 <tr>
                   <th>Question</th>
+                  <th>Unanswered</th>
                   <th>Answered</th>
-                  <th>Answering</th>
-                  <th>Pending update</th>
+                  <th>Pending</th>
+                  <th>Update</th>
                 </tr>
               </thead>
               <tbody>
-                {{range $question := $reply.AnsweredReply}}
+                {{range $i, $question := $reply.AnsweredReply}}
                 <tr>
-                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                  <form>
-                    <td><input type="radio" name="answer" value="answered" checked></td>
-                    <td><input type="radio" name="answer" value="answering"></td>
-                    <td><input type="radio" name="answer" value="pending"></td>
-                  </form>
-                </tr>
-                {{end}}
+                    <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                    <td><input type="radio" name="answered_state{{$i}}" value="unanswered"></td>
+                    <td><input type="radio" name="answered_state{{$i}}" value="answered" checked></td>
+                    <td><input type="radio" name="answered_state{{$i}}" value="pending"></td>
+                    <td><input type="radio" name="answered_state{{$i}}" value="updating"></td>
+                  </tr>
+                  {{end}}
               </tbody>
             </table>
          </div>
@@ -79,20 +80,20 @@
               <thead>
                 <tr>
                   <th>Question</th>
+                  <th>Unanswered</th>
                   <th>Answered</th>
-                  <th>Answering</th>
-                  <th>Pending update</th>
+                  <th>Pending</th>
+                  <th>Update</th>
                 </tr>
               </thead>
               <tbody>
-                {{range $question := $reply.PendingReply}}
+                {{range $i, $question := $reply.PendingReply}}
                 <tr>
                   <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                  <form>
-                    <td><input type="radio" name="answer" value="answered"></td>
-                    <td><input type="radio" name="answer" value="answering"></td>
-                    <td><input type="radio" name="answer" value="pending" checked></td>
-                  </form>
+                  <td><input type="radio" name="pending_state{{$i}}" value="unanswered"></td>
+                  <td><input type="radio" name="pending_state{{$i}}" value="answered"></td>
+                  <td><input type="radio" name="pending_state{{$i}}" value="pending" checked></td>
+                  <td><input type="radio" name="pending_state{{$i}}" value="updating"></td>
                 </tr>
                 {{end}}
               </tbody>
@@ -104,20 +105,20 @@
             <thead>
               <tr>
                 <th>Question</th>
+                <th>Unanswered</th>
                 <th>Answered</th>
-                <th>Answering</th>
-                <th>Pending update</th>
+                <th>Pending</th>
+                <th>Update</th>
               </tr>
             </thead>
             <tbody>
-              {{range $question := $reply.UpdatingReply}}
+              {{range $i, $question := $reply.UpdatingReply}}
               <tr>
                 <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                <form>
-                  <td><input type="radio" name="answer" value="answered"></td>
-                  <td><input type="radio" name="answer" value="answering"></td>
-                  <td><input type="radio" name="answer" value="pending"></td>
-                </form>
+                <td><input type="radio" name="update_state{{$i}}" value="unanswered"></td>
+                <td><input type="radio" name="update_state{{$i}}" value="answered"></td>
+                <td><input type="radio" name="update_state{{$i}}" value="pending"></td>
+                <td><input type="radio" name="update_state{{$i}}" value="updating" checked></td>
               </tr>
               {{end}}
             </tbody>
