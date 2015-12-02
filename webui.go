@@ -52,7 +52,7 @@ var data = webData{}
 //All routes go in to init
 func init() {
 	// TODO(gregoriou): Comment out when ready to request from stackoverflow
-	input, err := ioutil.ReadFile("27-11_dataset.json")
+	input, err := ioutil.ReadFile("2-12_dataset.json")
 	if err != nil {
 		return
 	}
