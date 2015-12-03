@@ -148,14 +148,14 @@ func (w webData) updatingCache_User(r *http.Request) {
 		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
 		form_input := r.PostFormValue(tag)
 		switch form_input {
-		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, question)
+		case "unanswered":
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
+			tempData.answeredCache = append(tempData.answeredCache, question)
 		}
 	}
 
@@ -164,14 +164,14 @@ func (w webData) updatingCache_User(r *http.Request) {
 		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
 		form_input := r.PostFormValue(tag)
 		switch form_input {
+		case "unanswered":
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		case "answered":
 			tempData.answeredCache = append(tempData.answeredCache, question)
-		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, question)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
+			tempData.pendingCache = append(tempData.pendingCache, question)
 		}
 	}
 
@@ -180,14 +180,14 @@ func (w webData) updatingCache_User(r *http.Request) {
 		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
 		form_input := r.PostFormValue(tag)
 		switch form_input {
+		case "unanswered":
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		case "answered":
 			tempData.answeredCache = append(tempData.answeredCache, question)
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
-		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
+			tempData.updatingCache = append(tempData.updatingCache, question)
 		}
 	}
 
