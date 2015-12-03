@@ -193,14 +193,14 @@ td:not(#question) {
   height:100%;
 }
 #submitButton {
-  background-color:#e6e6e6;
-  color:#666;
-  border-radius:100px;
+  background-color:#c6c6c6;
+  box-shadow:none;
   cursor:pointer;
-  box-shadow:0 1px 0 rgba(255, 255, 255, 0.5) inset;
   padding: 0.5em;
   margin: 10px 10px 10px 10px;
-  border-radius:10px 10px 10px 10px;
   float:right;
+  border-style:solid;
+  border-radius:10px;
+  border-color:#c6c6c6;
 }
 </style>
