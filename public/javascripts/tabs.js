@@ -24,9 +24,7 @@ $(function() {
         $(this).addClass('active');
       });
     }
-
   });
-
 });
 
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
@@ -35,7 +33,6 @@ $(function() {
   $('#submitButton').on('click', function() {
     //On mouse click reload the page
     location.reload();
-
   });
 });
 
@@ -43,6 +40,8 @@ $(function() {
 //--------- LOCK/UNLOCK RADIO BUTTON ---------//
 //Nested for loop.
 //Super gross.
+//TO BE FIXED AT A LATER DATE
+//FOR NOW IT WORKS
 function changeImage() {
   var image = document.getElementsByClassName('lockIcon');
   var radios = document.getElementsByClassName('radios');
