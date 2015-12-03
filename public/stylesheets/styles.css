@@ -46,7 +46,7 @@ html, body {
   padding:0.5em;
 }
 
-.tab-panels ul li:hover {
+.tab-panels ul li:not(.tag):hover {
   color:#fff;
   background:#666;
 }
@@ -127,6 +127,22 @@ tbody {
 
 td:not(#question) {
   text-align: center;
+}
+
+/*--- TAGS --- */
+
+.tagContainer ul {
+  list-style-type:none;
+  font-size:12px;
+  margin-top:10px;
+}
+
+.tagContainer ul li {
+  display:inline;
+  border-radius: 5px;
+  padding:3px;
+  border:solid #c6c6c6;
+  background:#c6c6c6;
 }
 
 /*--------- STICKY FOOTER -----------*/

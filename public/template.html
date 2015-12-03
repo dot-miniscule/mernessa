@@ -46,11 +46,13 @@
                     <td id="question">
                       <a href={{$question.Link}}>{{$question.Title}}</a>
                       <br>
-                      <ul>
-                        {{range $tag := $question.Tags}}
-                          <li class="tag">{{$tag}}</li>
+                      <div class="tagContainer">
+                        <ul>
+                        {{range $tag := $question.Tags}}  
+                        <li class="tag">{{$tag}}</li>
                         {{end}}
-                      </ul>
+                        </ul>  
+                      </div>
                     </td>
                     <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="unanswered" disabled="true"></td>
                     <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="answered" disabled="true"></td>
