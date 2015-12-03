@@ -92,15 +92,31 @@ html, body {
   display:none;
 }
 
-/*---------- TAB CONTENT ------------*/
+/*---------- TABLE CONTENT ------------*/
 table {
-  border-spacing: 0.5rem;
-  padding: 0.5em;
+  border-spacing: 0.5em;
   background:#fff;
   width:100%;
+  border-style:solid ;
 }
+
 #qHead {
-  text-align:left ;
+  text-align:left;
+  padding:1em;
+}
+
+th {
+  padding:1em;
+}
+
+tbody {
+  border: thin solid black ;
+}
+
+#lockIcon {
+  height:30;
+  width:30;
+  padding:1.5em;
 }
 
 #question {
@@ -122,8 +138,7 @@ td:not(#question) {
   left:0pt;
   height:50px;
   background:#fff;
-  border-top-style:solid;
-  border-top-color:#000;
+  border:solid black ;
 }
 
 .footerContents {

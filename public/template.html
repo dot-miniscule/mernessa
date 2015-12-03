@@ -18,41 +18,44 @@
       <ul class="tabs">
         <li rel="unanswered" class="active">Unanswered</li>
         <li rel="answered">Answered</li>
-        <li rel="pending">Pending Update</li>
+        <li rel="pending">Pending</li>
         <li rel="updating">Update</li>
       </ul>
 
       <form name="change_state" method="POST">
         {{range $cache := $reply.Caches}}
         <div id="{{$cache.CacheType}}" class="panel">
-          <div id="info"> 
+          <div id="info">
               <p>{{$cache.Info}}</p>
-          </div> 
-          <table>
-            <thead>
-              <tr>
-                <th id="qHead">Question</th>
-                <th>Unanswered</th>
-                <th>Answered</th>
-                <th>Pending</th>
-                <th>Update</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{range $i, $question := $cache.Questions}}
+          </div>
+          <div class="tableContainer">
+            <table>
+              <thead>
                 <tr>
-                  <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
-                  <td><input type="radio" name="{{$cache.CacheType}}_state{{$i}}" value="unanswered"></td>
-                  <td><input type="radio" name="{{$cache.CacheType}}_state{{$i}}" value="answered"></td>
-                  <td><input type="radio" name="{{$cache.CacheType}}_state{{$i}}" value="pending"></td>
-                  <td><input type="radio" name="{{$cache.CacheType}}_state{{$i}}" value="updating"></td>
+                  <th id="qHead">Question</th>
+                  <th>Unanswered</th>
+                  <th>Answered</th>
+                  <th>Pending</th>
+                  <th>Update</th>
+                  <th><img id="lockIcon" onclick="changeImage()" src="/images/lock.png">
                 </tr>
-                <script>
+              </thead>
+              <tbody>
+                {{range $i, $question := $cache.Questions}}
+                  <tr>
+                    <td id="question"><a href={{$question.Link}}>{{$question.Title}}</a></td>
+                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="unanswered" disabled="true"></td>
+                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="answered" disabled="true"></td>
+                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="pending" disabled="true"></td>
+                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="updating" disabled="true"></td>
+                  </tr>
+                  <script>
                   $("#{{$cache.CacheType}}").find("input[value='{{$cache.CacheType}}']").prop("checked", true);
-                </script>
-              {{end}}
-            </tbody>
-          </table>
+                  </script>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
         </div>
         {{end}}
         <script>

@@ -39,3 +39,21 @@ $(function() {
   });
 });
 
+
+//--------- LOCK/UNLOCK RADIO BUTTON ---------//
+function changeImage() {
+  var image = document.getElementById('lockIcon');
+  var radios = document.getElementsByClassName('radios');
+  if(image.src.match("unlock")) {
+    image.src = "/images/lock.png";
+    for(var i=0; i<radios.length; i++) {
+      radios[i].disabled = true; 
+    }
+  } else {
+    image.src = "/images/unlock.png" ;
+    for(var i=0; i<radios.length; i++) {
+      radios[i].disabled = false;
+    }
+
+  }
+}
