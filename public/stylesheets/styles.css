@@ -32,7 +32,7 @@ html, body {
 
 /*------------ LINKS -------------*/ 
 
-.tab-panels ul li {
+.tab-panels ul li.navigation {
   list-style-type:none;
   display:inline-block;
   background:#666;

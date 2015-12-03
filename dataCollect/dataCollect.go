@@ -1,5 +1,7 @@
 package dataCollect
 
+//package main
+
 import (
 	"encoding/json"
 	"net/http"
@@ -26,7 +28,7 @@ var appInfo = struct {
 	key:           "nHI22oWrBEsUN8kHe4ARsQ((",
 	tags:          []string{"google-places-api"},
 
-	filters: "!5RCKNP5Mc6PLxOe3ChJgVk5f4",
+	filters: "!846.hCHXJtBDPB1pe-0GnXRad1cyWBkz(ithJ4-ztkzynXtQgKxaGE4ry3jiLpLNWv5",
 	// Filters include:
 	//	- Wrapper: backoff, error_id, error_message, error_name,
 	//             has_more, items, quota_remaining
@@ -41,7 +43,6 @@ var delay = 1 * time.Second
 var week = (24 * 7) * time.Hour
 
 func Collect(r *http.Request) ([]byte, error) {
-
 	c := appengine.NewContext(r)
 	ut := &urlfetch.Transport{Context: c}
 	stackongo.SetTransport(ut)
@@ -51,14 +52,12 @@ func Collect(r *http.Request) ([]byte, error) {
 	// Set starting variable parameters
 	page := 1
 	toDate := time.Now()
-	fromDate := toDate.Add(-1*week + (24 * time.Hour))
 
 	// Adding parameters to request
 	params := make(stackongo.Params)
 	params.Add("key", appInfo.key)
 	params.Page(page)
-	params.Pagesize(5)
-	params.Fromdate(fromDate)
+	params.Pagesize(100)
 	params.Todate(toDate)
 	params.Sort("creation")
 	params.Add("accepted", false)
@@ -73,3 +72,13 @@ func Collect(r *http.Request) ([]byte, error) {
 
 	return json.Marshal(questions)
 }
+
+// for collecting datasets - will remove before launch
+/*func main() {
+	input, err := Collect(nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	ioutil.WriteFile("3-12_dataset.json", input, 640)
+}*/
