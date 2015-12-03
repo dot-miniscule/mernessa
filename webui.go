@@ -7,6 +7,7 @@ package webui
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"appengine"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
@@ -54,10 +57,12 @@ func init() {
 	// TODO(gregoriou): Comment out when ready to request from stackoverflow
 	input, err := ioutil.ReadFile("2-12_dataset.json")
 	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 	data.wrapper = new(stackongo.Questions)
 	if err := json.Unmarshal(input, data.wrapper); err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 	data.unansweredCache = data.wrapper.Items
@@ -72,6 +77,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
+
+	c := appengine.NewContext(r)
 
 	// TODO(gregoriou): Uncomment when ready to request from stackoverflow
 	/*
@@ -111,7 +118,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		FindQuery: "",
 	}
 	if err := page.Execute(w, response); err != nil {
-		panic(err)
+		c.Criticalf("%v", err.Error())
 	}
 }
 
@@ -141,14 +148,14 @@ func (w webData) updatingCache_User(r *http.Request) {
 		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
 		form_input := r.PostFormValue(tag)
 		switch form_input {
-		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, question)
+		case "unanswered":
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
+			tempData.answeredCache = append(tempData.answeredCache, question)
 		}
 	}
 
@@ -157,14 +164,14 @@ func (w webData) updatingCache_User(r *http.Request) {
 		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
 		form_input := r.PostFormValue(tag)
 		switch form_input {
+		case "unanswered":
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		case "answered":
 			tempData.answeredCache = append(tempData.answeredCache, question)
-		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, question)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
+			tempData.pendingCache = append(tempData.pendingCache, question)
 		}
 	}
 
@@ -173,14 +180,14 @@ func (w webData) updatingCache_User(r *http.Request) {
 		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
 		form_input := r.PostFormValue(tag)
 		switch form_input {
+		case "unanswered":
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		case "answered":
 			tempData.answeredCache = append(tempData.answeredCache, question)
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
-		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
+			tempData.updatingCache = append(tempData.updatingCache, question)
 		}
 	}
 
