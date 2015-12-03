@@ -41,19 +41,23 @@ $(function() {
 
 
 //--------- LOCK/UNLOCK RADIO BUTTON ---------//
+//Nested for loop.
+//Super gross.
 function changeImage() {
-  var image = document.getElementById('lockIcon');
+  var image = document.getElementsByClassName('lockIcon');
   var radios = document.getElementsByClassName('radios');
-  if(image.src.match("unlock")) {
-    image.src = "/images/lock.png";
-    for(var i=0; i<radios.length; i++) {
-      radios[i].disabled = true; 
-    }
-  } else {
-    image.src = "/images/unlock.png" ;
-    for(var i=0; i<radios.length; i++) {
-      radios[i].disabled = false;
-    }
 
+  for(var j=0; j<image.length; j++) {
+    if(image[j].src.match("unlock")) {
+      image[j].src = "/images/lockSmall.png";
+      for(var i=0; i<radios.length; i++) {
+        radios[i].disabled = true;
+      }
+    } else {
+      image[j].src = "/images/unlockSmall.png" ;
+      for(var i=0; i<radios.length; i++) {
+        radios[i].disabled = false;
+      }
+    }
   }
 }
