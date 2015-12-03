@@ -12,7 +12,7 @@ import (
 
 var tags = []string{"google-places-api"}
 
-func refreshCache(r *http.Request) error {
+func refreshCache(r *http.Request) (*stackongo.Questions, error) {
 	// Set starting variable parameters
 	page := 1
 	toDate := time.Now()
@@ -29,7 +29,7 @@ func refreshCache(r *http.Request) error {
 	return dataCollect.Collect(r, params)
 }
 
-func newSearch(r *http.Request, params stackongo.Params) ([]byte, error) {
+func newSearch(r *http.Request, params stackongo.Params) (*stackongo.Questions, error) {
 	return dataCollect.Collect(r, params)
 }
 

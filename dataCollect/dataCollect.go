@@ -1,7 +1,6 @@
 package dataCollect
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -38,7 +37,7 @@ var appInfo = struct {
 var delay = 1 * time.Second
 var week = (24 * 7) * time.Hour
 
-func Collect(r *http.Request, params stackongo.Params) ([]byte, error) {
+func Collect(r *http.Request, params stackongo.Params) (*stackongo.Questions, error) {
 	c := appengine.NewContext(r)
 	ut := &urlfetch.Transport{Context: c}
 	stackongo.SetTransport(ut)
@@ -49,10 +48,5 @@ func Collect(r *http.Request, params stackongo.Params) ([]byte, error) {
 	params.Add("filter", appInfo.filters)
 	params.Add("site", "stackoverflow")
 
-	questions, err := session.AllQuestions(params)
-	if err != nil {
-		return nil, err
-	}
-
-	return json.Marshal(questions)
+	return session.AllQuestions(params)
 }
