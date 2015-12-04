@@ -68,16 +68,14 @@ func init() {
 	data.unansweredCache = data.wrapper.Items
 
 	http.HandleFunc("/", handler)
-	http.HandleFunc("/tag", tagHandler)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
+
+	if r.URL.Path != "/" && r.URL.Path != "/tag" {
 		errorHandler(w, r, http.StatusNotFound, "")
 		return
 	}
-
-	page := template.Must(template.ParseFiles("public/template.html"))
 
 	c := appengine.NewContext(r)
 
@@ -91,6 +89,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	*/
 
 	updatingCache_User(r)
+
+	if r.URL.Path == "/tag" {
+		tagHandler(w, r)
+		return
+	}
 
 	response := genReply{
 		Wrapper: data.wrapper,
@@ -118,6 +121,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		},
 		FindQuery: "",
 	}
+
+	page := template.Must(template.ParseFiles("public/template.html"))
 	if err := page.Execute(w, response); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
