@@ -27,7 +27,7 @@ func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
 
-type reply struct {
+type genReply struct {
 	Wrapper   *stackongo.Questions
 	Caches    []cacheInfo
 	FindQuery string
@@ -68,6 +68,7 @@ func init() {
 	data.unansweredCache = data.wrapper.Items
 
 	http.HandleFunc("/", handler)
+	http.HandleFunc("/tag", tagHandler)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -89,9 +90,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 	*/
 
-	data.updatingCache_User(r)
+	updatingCache_User(r)
 
-	response := reply{
+	response := genReply{
 		Wrapper: data.wrapper,
 		Caches: []cacheInfo{
 			cacheInfo{
@@ -122,8 +123,68 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Handler to find all questions with specific tags
+func tagHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	tag := r.FormValue("q")
+	tempData := webData{}
+
+	for _, question := range data.unansweredCache {
+		if contains(question.Tags, tag) {
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		}
+	}
+	for _, question := range data.answeredCache {
+		if contains(question.Tags, tag) {
+			tempData.answeredCache = append(tempData.answeredCache, question)
+		}
+	}
+	for _, question := range data.pendingCache {
+		if contains(question.Tags, tag) {
+			tempData.pendingCache = append(tempData.pendingCache, question)
+		}
+	}
+	for _, question := range data.updatingCache {
+		if contains(question.Tags, tag) {
+			tempData.updatingCache = append(tempData.updatingCache, question)
+		}
+	}
+
+	response := genReply{
+		Wrapper: data.wrapper,
+		Caches: []cacheInfo{
+			cacheInfo{
+				CacheType: "unanswered",
+				Questions: tempData.unansweredCache,
+				Info:      "These are questions that have not yet been answered by the Places API team",
+			},
+			cacheInfo{
+				CacheType: "answered",
+				Questions: tempData.answeredCache,
+				Info:      "These are questions that have been answered by the Places API team",
+			},
+			cacheInfo{
+				CacheType: "pending",
+				Questions: tempData.pendingCache,
+				Info:      "These are questions that are being answered by the Places API team",
+			},
+			cacheInfo{
+				CacheType: "updating",
+				Questions: tempData.updatingCache,
+				Info:      "These are questions that will be answered in the next release",
+			},
+		},
+		FindQuery: "",
+	}
+
+	page := template.Must(template.ParseFiles("public/tagTemplate.html"))
+	if err := page.Execute(w, response); err != nil {
+		fmt.Errorf("%v", err.Error())
+	}
+}
+
 // updatings the caches based on input from the app
-func (w webData) updatingCache_User(r *http.Request) {
+func updatingCache_User(r *http.Request) {
 	r.ParseForm()
 
 	tempData := webData{}
@@ -212,4 +273,13 @@ func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string
 			return
 		}
 	}
+}
+
+func contains(slice []string, toFind string) bool {
+	for _, tag := range slice {
+		if strings.EqualFold(tag, toFind) {
+			return true
+		}
+	}
+	return false
 }
