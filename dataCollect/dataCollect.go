@@ -1,9 +1,6 @@
 package dataCollect
 
-//package main
-
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -19,14 +16,12 @@ var appInfo = struct {
 	client_secret string
 	key           string
 	options       map[string]string
-	tags          []string
 	filters       string
 }{
 	client_id:     "6029",
 	redirect_uri:  "https://stackexchange.com/oauth/login_success",
 	client_secret: "ymefu0zw2TIULhSTM03qyg((",
 	key:           "nHI22oWrBEsUN8kHe4ARsQ((",
-	tags:          []string{"google-places-api"},
 
 	filters: "!846.hCHXJtBDPB1pe-0GnXRad1cyWBkz(ithJ4-ztkzynXtQgKxaGE4ry3jiLpLNWv5",
 	// Filters include:
@@ -42,43 +37,16 @@ var appInfo = struct {
 var delay = 1 * time.Second
 var week = (24 * 7) * time.Hour
 
-func Collect(r *http.Request) ([]byte, error) {
+func Collect(r *http.Request, params stackongo.Params) (*stackongo.Questions, error) {
 	c := appengine.NewContext(r)
 	ut := &urlfetch.Transport{Context: c}
 	stackongo.SetTransport(ut)
 
 	session := stackongo.NewSession("stackoverflow")
 
-	// Set starting variable parameters
-	page := 1
-	toDate := time.Now()
-
-	// Adding parameters to request
-	params := make(stackongo.Params)
 	params.Add("key", appInfo.key)
-	params.Page(page)
-	params.Pagesize(100)
-	params.Todate(toDate)
-	params.Sort("creation")
-	params.Add("accepted", false)
-	params.AddVectorized("tagged", appInfo.tags)
-	params.Add("site", "stackoverflow")
 	params.Add("filter", appInfo.filters)
+	params.Add("site", "stackoverflow")
 
-	questions, err := session.AllQuestions(params)
-	if err != nil {
-		return nil, err
-	}
-
-	return json.Marshal(questions)
+	return session.AllQuestions(params)
 }
-
-// for collecting datasets - will remove before launch
-/*func main() {
-	input, err := Collect(nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	ioutil.WriteFile("3-12_dataset.json", input, 640)
-}*/
