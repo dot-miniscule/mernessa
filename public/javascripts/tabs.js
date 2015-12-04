@@ -60,3 +60,8 @@ function changeImage() {
     }
   }
 }
+
+//-------- TOOLTIPS -------//
+$(document).ready(function() {
+  $('[data-toggle="tooltip"]').tooltip();
+});
