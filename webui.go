@@ -90,46 +90,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	updatingCache_User(r)
 
-	if r.URL.Path == "/tag" {
-		tagHandler(w, r)
+	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
+		tagHandler(w, r, c)
 		return
 	}
 
-	response := genReply{
-		Wrapper: data.wrapper,
-		Caches: []cacheInfo{
-			cacheInfo{
-				CacheType: "unanswered",
-				Questions: data.unansweredCache,
-				Info:      "These are questions that have not yet been answered by the Places API team",
-			},
-			cacheInfo{
-				CacheType: "answered",
-				Questions: data.answeredCache,
-				Info:      "These are questions that have been answered by the Places API team",
-			},
-			cacheInfo{
-				CacheType: "pending",
-				Questions: data.pendingCache,
-				Info:      "These are questions that are being answered by the Places API team",
-			},
-			cacheInfo{
-				CacheType: "updating",
-				Questions: data.updatingCache,
-				Info:      "These are questions that will be answered in the next release",
-			},
-		},
-		FindQuery: "",
-	}
-
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, response); err != nil {
+	if err := page.Execute(w, writeResponse(data.unansweredCache, data.answeredCache, data.pendingCache, data.updatingCache)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
 // Handler to find all questions with specific tags
-func tagHandler(w http.ResponseWriter, r *http.Request) {
+func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
 	r.ParseForm()
 	tag := r.FormValue("q")
 	tempData := webData{}
@@ -155,36 +128,38 @@ func tagHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response := genReply{
+	page := template.Must(template.ParseFiles("public/tagTemplate.html"))
+	if err := page.Execute(w, writeResponse(tempData.unansweredCache, tempData.answeredCache, tempData.pendingCache, tempData.updatingCache)); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
+}
+
+func writeResponse(unanswered []stackongo.Question, answered []stackongo.Question, pending []stackongo.Question, updating []stackongo.Question) genReply {
+	return genReply{
 		Wrapper: data.wrapper,
 		Caches: []cacheInfo{
 			cacheInfo{
 				CacheType: "unanswered",
-				Questions: tempData.unansweredCache,
+				Questions: unanswered,
 				Info:      "These are questions that have not yet been answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "answered",
-				Questions: tempData.answeredCache,
+				Questions: answered,
 				Info:      "These are questions that have been answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "pending",
-				Questions: tempData.pendingCache,
+				Questions: pending,
 				Info:      "These are questions that are being answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "updating",
-				Questions: tempData.updatingCache,
+				Questions: updating,
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
 		FindQuery: "",
-	}
-
-	page := template.Must(template.ParseFiles("public/tagTemplate.html"))
-	if err := page.Execute(w, response); err != nil {
-		fmt.Errorf("%v", err.Error())
 	}
 }
 
