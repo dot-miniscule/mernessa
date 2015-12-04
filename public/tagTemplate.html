@@ -49,7 +49,7 @@
                       <div class="tagContainer">
                         <ul>
                         {{range $tag := $question.Tags}}  
-                        <li class="tag">{{$tag}}</li>
+                          <li class="tag"><a href="/tag?q={{$tag}}">{{$tag}}</a></li>
                         {{end}}
                         </ul>  
                       </div>
