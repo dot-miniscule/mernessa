@@ -128,7 +128,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
 		}
 	}
 
-	page := template.Must(template.ParseFiles("public/tagTemplate.html"))
+	page := template.Must(template.ParseFiles("public/template.html"))
 	if err := page.Execute(w, writeResponse(tempData.unansweredCache, tempData.answeredCache, tempData.pendingCache, tempData.updatingCache)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
