@@ -23,31 +23,35 @@ import (
 
 type byCreationDate []stackongo.Question
 
+// Functions for sorting
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
 
+// Reply to send to template
 type genReply struct {
 	Wrapper   *stackongo.Questions
 	Caches    []cacheInfo
 	FindQuery string
 }
 
+// Info on the various caches
 type cacheInfo struct {
-	CacheType string
-	Questions []stackongo.Question
-	Info      string
+	CacheType string               // "unanswered"/"answered"/"pending"/"updating"
+	Questions []stackongo.Question // list of questions
+	Info      string               // blurb about the cache
 }
 
 type webData struct {
-	wrapper         *stackongo.Questions
+	wrapper         *stackongo.Questions // Request information
 	unansweredCache []stackongo.Question
 	answeredCache   []stackongo.Question
 	pendingCache    []stackongo.Question
 	updatingCache   []stackongo.Question
-	cacheLock       sync.Mutex
+	cacheLock       sync.Mutex // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
+// Global variable with cache info
 var data = webData{}
 
 //The app engine will run its own main function and imports this code as a package
@@ -55,28 +59,30 @@ var data = webData{}
 //All routes go in to init
 func init() {
 	// TODO(gregoriou): Comment out when ready to request from stackoverflow
-	input, err := ioutil.ReadFile("3-12_dataset.json")
+	input, err := ioutil.ReadFile("3-12_dataset.json") // Read from most recent file
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	data.wrapper = new(stackongo.Questions)
+	data.wrapper = new(stackongo.Questions) // Create a new wrapper
 	if err := json.Unmarshal(input, data.wrapper); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	data.unansweredCache = data.wrapper.Items
+	data.unansweredCache = data.wrapper.Items // At start, all questions are unanswered
 
 	http.HandleFunc("/", handler)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 
+	// Check for tag subpage as well
 	if r.URL.Path != "/" && r.URL.Path != "/tag" {
 		errorHandler(w, r, http.StatusNotFound, "")
 		return
 	}
 
+	// Create a new appengine context for logging purposes
 	c := appengine.NewContext(r)
 
 	// TODO(gregoriou): Uncomment when ready to request from stackoverflow
@@ -88,14 +94,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 	*/
 
+	// update the new cache at refresh
 	updatingCache_User(r)
 
+	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
 		tagHandler(w, r, c)
 		return
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
+	// WriteResponse creates a new response with the various caches
 	if err := page.Execute(w, writeResponse(data.unansweredCache, data.answeredCache, data.pendingCache, data.updatingCache)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
@@ -103,10 +112,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 // Handler to find all questions with specific tags
 func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
-	r.ParseForm()
+	// Collect query
 	tag := r.FormValue("q")
+
+	// Create and fill in a new webData struct
 	tempData := webData{}
 
+	// range through the question caches and add if the question contains the tag
 	for _, question := range data.unansweredCache {
 		if contains(question.Tags, tag) {
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
@@ -134,10 +146,11 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
 	}
 }
 
+// Write a genReply struct with the inputted Question slices
 func writeResponse(unanswered []stackongo.Question, answered []stackongo.Question, pending []stackongo.Question, updating []stackongo.Question) genReply {
 	return genReply{
-		Wrapper: data.wrapper,
-		Caches: []cacheInfo{
+		Wrapper: data.wrapper, // The global wrapper
+		Caches: []cacheInfo{ // Slices caches and their relevant info
 			cacheInfo{
 				CacheType: "unanswered",
 				Questions: unanswered,
@@ -165,13 +178,16 @@ func writeResponse(unanswered []stackongo.Question, answered []stackongo.Questio
 
 // updatings the caches based on input from the app
 func updatingCache_User(r *http.Request) {
+	// required to collect post form data
 	r.ParseForm()
 
 	tempData := webData{}
+
+	// Collect the submitted form info based on the name of the form
 	for i, question := range data.unansweredCache {
-		tag := "unanswered_state"
-		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
-		form_input := r.PostFormValue(tag)
+		name := "unanswered_state"
+		name = strings.Join([]string{name, strconv.Itoa(i)}, "")
+		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "answered":
 			tempData.answeredCache = append(tempData.answeredCache, question)
@@ -185,9 +201,9 @@ func updatingCache_User(r *http.Request) {
 	}
 
 	for i, question := range data.answeredCache {
-		tag := "answered_state"
-		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
-		form_input := r.PostFormValue(tag)
+		name := "answered_state"
+		name = strings.Join([]string{name, strconv.Itoa(i)}, "")
+		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "unanswered":
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
@@ -201,9 +217,9 @@ func updatingCache_User(r *http.Request) {
 	}
 
 	for i, question := range data.pendingCache {
-		tag := "pending_state"
-		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
-		form_input := r.PostFormValue(tag)
+		name := "pending_state"
+		name = strings.Join([]string{name, strconv.Itoa(i)}, "")
+		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "unanswered":
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
@@ -217,9 +233,9 @@ func updatingCache_User(r *http.Request) {
 	}
 
 	for i, question := range data.updatingCache {
-		tag := "updating_state"
-		tag = strings.Join([]string{tag, strconv.Itoa(i)}, "")
-		form_input := r.PostFormValue(tag)
+		name := "updating_state"
+		name = strings.Join([]string{name, strconv.Itoa(i)}, "")
+		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "unanswered":
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
@@ -232,11 +248,13 @@ func updatingCache_User(r *http.Request) {
 		}
 	}
 
+	// sort slices by creation date
 	sort.Stable(byCreationDate(tempData.unansweredCache))
 	sort.Stable(byCreationDate(tempData.answeredCache))
 	sort.Stable(byCreationDate(tempData.pendingCache))
 	sort.Stable(byCreationDate(tempData.updatingCache))
 
+	// replace global caches with new caches
 	data.unansweredCache = tempData.unansweredCache
 	data.answeredCache = tempData.answeredCache
 	data.pendingCache = tempData.pendingCache
@@ -255,6 +273,7 @@ func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string
 	}
 }
 
+// Returns true if toFind is an element of slice
 func contains(slice []string, toFind string) bool {
 	for _, tag := range slice {
 		if strings.EqualFold(tag, toFind) {
