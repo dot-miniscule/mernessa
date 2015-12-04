@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,9 +22,9 @@ import (
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
+// Functions for sorting
 type byCreationDate []stackongo.Question
 
-// Functions for sorting
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
@@ -53,6 +54,7 @@ type webData struct {
 
 // Global variable with cache info
 var data = webData{}
+var users = make(map[string]*webData)
 
 //The app engine will run its own main function and imports this code as a package
 //So no main needs to be defined
@@ -77,7 +79,7 @@ func init() {
 func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Check for tag subpage as well
-	if r.URL.Path != "/" && r.URL.Path != "/tag" {
+	if r.URL.Path != "/" && r.URL.Path != "/tag" && r.URL.Path != "/user" {
 		errorHandler(w, r, http.StatusNotFound, "")
 		return
 	}
@@ -100,6 +102,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
 		tagHandler(w, r, c)
+		return
+	}
+
+	// Send to user subpage
+	if r.URL.Path == "/user" {
+		userHandler(w, r, c)
 		return
 	}
 
@@ -146,6 +154,20 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
 	}
 }
 
+func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
+	user := r.FormValue("name")
+
+	page := template.Must(template.ParseFiles("public/template.html"))
+
+	if _, ok := users[user]; !ok {
+		page.Execute(w, writeResponse(nil, nil, nil, nil))
+		return
+	}
+	if err := page.Execute(w, writeResponse(nil, users[user].answeredCache, users[user].pendingCache, users[user].updatingCache)); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
+}
+
 // Write a genReply struct with the inputted Question slices
 func writeResponse(unanswered []stackongo.Question, answered []stackongo.Question, pending []stackongo.Question, updating []stackongo.Question) genReply {
 	return genReply{
@@ -176,10 +198,15 @@ func writeResponse(unanswered []stackongo.Question, answered []stackongo.Questio
 	}
 }
 
-// updatings the caches based on input from the app
+// updating the caches based on input from the app
 func updatingCache_User(r *http.Request) {
 	// required to collect post form data
 	r.ParseForm()
+
+	user := r.PostFormValue("username")
+	if _, ok := users[user]; !ok {
+		users[user] = &webData{}
+	}
 
 	tempData := webData{}
 
@@ -214,6 +241,11 @@ func updatingCache_User(r *http.Request) {
 		default:
 			tempData.answeredCache = append(tempData.answeredCache, question)
 		}
+		for i, q := range users[user].answeredCache {
+			if reflect.DeepEqual(question, q) {
+				users[user].answeredCache = append(users[user].answeredCache[:i], users[user].answeredCache[i+1:]...)
+			}
+		}
 	}
 
 	for i, question := range data.pendingCache {
@@ -229,6 +261,11 @@ func updatingCache_User(r *http.Request) {
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		default:
 			tempData.pendingCache = append(tempData.pendingCache, question)
+		}
+		for i, q := range users[user].pendingCache {
+			if reflect.DeepEqual(question, q) {
+				users[user].pendingCache = append(users[user].pendingCache[:i], users[user].pendingCache[i+1:]...)
+			}
 		}
 	}
 
@@ -246,6 +283,11 @@ func updatingCache_User(r *http.Request) {
 		default:
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		}
+		for i, q := range users[user].updatingCache {
+			if reflect.DeepEqual(question, q) {
+				users[user].updatingCache = append(users[user].updatingCache[:i], users[user].updatingCache[i+1:]...)
+			}
+		}
 	}
 
 	// sort slices by creation date
@@ -259,6 +301,13 @@ func updatingCache_User(r *http.Request) {
 	data.answeredCache = tempData.answeredCache
 	data.pendingCache = tempData.pendingCache
 	data.updatingCache = tempData.updatingCache
+
+	users[user].answeredCache = append(users[user].answeredCache, tempData.answeredCache...)
+	users[user].pendingCache = append(users[user].pendingCache, tempData.pendingCache...)
+	users[user].updatingCache = append(users[user].updatingCache, tempData.updatingCache...)
+	sort.Stable(byCreationDate(users[user].answeredCache))
+	sort.Stable(byCreationDate(users[user].pendingCache))
+	sort.Stable(byCreationDate(users[user].updatingCache))
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string) {
@@ -276,7 +325,7 @@ func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string
 // Returns true if toFind is an element of slice
 func contains(slice []string, toFind string) bool {
 	for _, tag := range slice {
-		if strings.EqualFold(tag, toFind) {
+		if reflect.DeepEqual(tag, toFind) {
 			return true
 		}
 	}
