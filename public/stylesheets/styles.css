@@ -12,6 +12,7 @@ html, body {
   background:radial-gradient(at 40% 40%, #4a98d3, #00598f);
   min-height:100%;
   position:relative;
+  width:980px;
 }
 
 
@@ -138,11 +139,10 @@ td:not(#question) {
 }
 
 .tagContainer ul li {
-  display:inline;
-  padding-top:20px;
-  margin-top:100px;
+  display:inline-block;
+  margin-top:5px;
+  padding:2px;
   border-radius: 5px;
-  padding:3px;
   border:solid #c6c6c6;
   background:#c6c6c6;
   white-space:nowrap;
