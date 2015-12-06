@@ -10,6 +10,14 @@ body {
   margin:0;
 }
 
+a {
+  color:#3366ff;
+}
+
+a:hover {
+  color:#668cff;
+}
+
 .wrap {
   width:980px;
   font-family:'Roboto', sans-serif;
@@ -29,6 +37,13 @@ body {
   color: #333;
   text-align: center;
   background: #BDBDBD;
+}
+
+#welcomeSentence {
+  font-weight:bold;
+  color:#fff;
+  padding:2px;
+  margin:2px;
 }
 
 /*------------- TABS ------------- */
@@ -137,7 +152,7 @@ td:not(#question) {
 /*--- TAGS --- */
 
 .tagContainer {
-  margin-top:10px;
+  margin-top:4px;
 }
 
 .tagContainer ul {
@@ -147,13 +162,11 @@ td:not(#question) {
 
 .tagContainer ul li {
   display:inline-block;
-  margin-top:5px;
   padding:2px;
+  margin:2px;
   border-radius: 5px;
-  border:solid #c6c6c6;
-  -->
-
-  
+  border:solid #e6e6e6;
+  background:#e6e6e6;
 }
 
 /*--------- STICKY FOOTER -----------*/
