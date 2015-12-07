@@ -84,21 +84,36 @@ func init() {
 	}
 	data.unansweredCache = data.wrapper.Items // At start, all questions are unanswered
 
-	http.HandleFunc("/home", handler)
-	http.HandleFunc("/profile", loginHandler)
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/home", mainHandler)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 
-	auth_url := backend.AuthURL(map[string]string{"scope": "no_expiry"})
+	auth_url := backend.AuthURL()
 	header := w.Header()
 	header.Add("Location", auth_url)
 	w.WriteHeader(302)
+}
 
-	// Check for tag subpage as well
-	if r.URL.Path != "/" && r.URL.Path != "/tag" && r.URL.Path != "/user" && r.URL.Path != "/login" {
-		errorHandler(w, r, http.StatusNotFound, "")
+func mainHandler(w http.ResponseWriter, r *http.Request) {
+	backend.SetTransport(r)
+	_ = backend.NewSession(r)
+
+	code := r.URL.Query().Get("code")
+	access_token, err := backend.ObtainAccessToken(code)
+	if err != nil {
+		fmt.Fprintf(w, "%v: %v", err.Error(), code)
 		return
+	}
+	user, err := backend.AuthenticatedUser(map[string]string{}, access_token["access_token"])
+	if err != nil {
+		fmt.Fprintf(w, "%v %v", err.Error(), user)
+		return
+	}
+	if _, ok := users[user.User_id]; !ok {
+		users[user.User_id] = &userData{}
+		users[user.User_id].init(user)
 	}
 
 	// Create a new appengine context for logging purposes
@@ -118,13 +133,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
-		tagHandler(w, r, c)
+		tagHandler(w, r, c, user)
 		return
 	}
 
 	// Send to user subpage
 	if r.URL.Path == "/user" {
-		userHandler(w, r, c)
+		userHandler(w, r, c, user)
 		return
 	}
 	/*
@@ -135,13 +150,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	*/
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(data.unansweredCache, data.answeredCache, data.pendingCache, data.updatingCache)); err != nil {
+	if err := page.Execute(w, writeResponse(user, data.unansweredCache, data.answeredCache, data.pendingCache, data.updatingCache)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
 // Handler to find all questions with specific tags
-func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
+func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	// Collect query
 	tag := r.FormValue("q")
 
@@ -171,47 +186,27 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(tempData.unansweredCache, tempData.answeredCache, tempData.pendingCache, tempData.updatingCache)); err != nil {
+	if err := page.Execute(w, writeResponse(user, tempData.unansweredCache, tempData.answeredCache, tempData.pendingCache, tempData.updatingCache)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
-func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
+func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	userID, _ := strconv.Atoi(r.FormValue("name"))
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 
 	if _, ok := users[userID]; !ok {
-		page.Execute(w, writeResponse(nil, nil, nil, nil))
+		page.Execute(w, writeResponse(user, nil, nil, nil, nil))
 		return
 	}
-	if err := page.Execute(w, writeResponse(nil, users[userID].answeredCache, users[userID].pendingCache, users[userID].updatingCache)); err != nil {
+	if err := page.Execute(w, writeResponse(user, nil, users[userID].answeredCache, users[userID].pendingCache, users[userID].updatingCache)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	code := r.URL.Query().Get("code")
-	access_token, err := backend.ObtainAccessToken(code)
-	if err != nil {
-		fmt.Fprintf(w, "%v", err.Error())
-		return
-	}
-
-	user, err := backend.AuthenticatedUser(map[string]string{}, map[string]string{"access_token": access_token["access_token"]})
-	if err != nil {
-		fmt.Fprintf(w, "%v", err.Error())
-		return
-	}
-	if _, ok := users[user.User_id]; !ok {
-		users[user.User_id] = &userData{}
-		users[user.User_id].init(user)
-	}
-
-}
-
 // Write a genReply struct with the inputted Question slices
-func writeResponse(unanswered []stackongo.Question, answered []stackongo.Question, pending []stackongo.Question, updating []stackongo.Question) genReply {
+func writeResponse(user stackongo.User, unanswered []stackongo.Question, answered []stackongo.Question, pending []stackongo.Question, updating []stackongo.Question) genReply {
 	return genReply{
 		Wrapper: data.wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
@@ -236,6 +231,7 @@ func writeResponse(unanswered []stackongo.Question, answered []stackongo.Questio
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
+		User:      user,
 		FindQuery: "",
 	}
 }
