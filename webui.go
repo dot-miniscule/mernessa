@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 
+	"backend"
+
 	"appengine"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -33,6 +35,7 @@ func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].C
 type genReply struct {
 	Wrapper   *stackongo.Questions
 	Caches    []cacheInfo
+	User      stackongo.User
 	FindQuery string
 }
 
@@ -52,9 +55,16 @@ type webData struct {
 	cacheLock       sync.Mutex // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
+type userData struct {
+	user_info     stackongo.User
+	answeredCache []stackongo.Question
+	pendingCache  []stackongo.Question
+	updatingCache []stackongo.Question
+}
+
 // Global variable with cache info
 var data = webData{}
-var users = make(map[string]*webData)
+var users = make(map[int]*userData)
 
 //The app engine will run its own main function and imports this code as a package
 //So no main needs to be defined
@@ -66,6 +76,7 @@ func init() {
 		fmt.Println(err.Error())
 		return
 	}
+
 	data.wrapper = new(stackongo.Questions) // Create a new wrapper
 	if err := json.Unmarshal(input, data.wrapper); err != nil {
 		fmt.Println(err.Error())
@@ -73,13 +84,19 @@ func init() {
 	}
 	data.unansweredCache = data.wrapper.Items // At start, all questions are unanswered
 
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/home", handler)
+	http.HandleFunc("/profile", loginHandler)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 
+	auth_url := backend.AuthURL(map[string]string{"scope": "no_expiry"})
+	header := w.Header()
+	header.Add("Location", auth_url)
+	w.WriteHeader(302)
+
 	// Check for tag subpage as well
-	if r.URL.Path != "/" && r.URL.Path != "/tag" && r.URL.Path != "/user" {
+	if r.URL.Path != "/" && r.URL.Path != "/tag" && r.URL.Path != "/user" && r.URL.Path != "/login" {
 		errorHandler(w, r, http.StatusNotFound, "")
 		return
 	}
@@ -110,7 +127,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		userHandler(w, r, c)
 		return
 	}
-
+	/*
+		if r.URL.Path == "/login" {
+			loginHandler(w, r, c)
+			return
+		}
+	*/
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
 	if err := page.Execute(w, writeResponse(data.unansweredCache, data.answeredCache, data.pendingCache, data.updatingCache)); err != nil {
@@ -126,7 +148,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
 	// Create and fill in a new webData struct
 	tempData := webData{}
 
-	// range through the question caches and add if the question contains the tag
+	// range through the question caches golang stackongoand add if the question contains the tag
 	for _, question := range data.unansweredCache {
 		if contains(question.Tags, tag) {
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
@@ -155,17 +177,37 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context) {
-	user := r.FormValue("name")
+	userID, _ := strconv.Atoi(r.FormValue("name"))
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 
-	if _, ok := users[user]; !ok {
+	if _, ok := users[userID]; !ok {
 		page.Execute(w, writeResponse(nil, nil, nil, nil))
 		return
 	}
-	if err := page.Execute(w, writeResponse(nil, users[user].answeredCache, users[user].pendingCache, users[user].updatingCache)); err != nil {
+	if err := page.Execute(w, writeResponse(nil, users[userID].answeredCache, users[userID].pendingCache, users[userID].updatingCache)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	access_token, err := backend.ObtainAccessToken(code)
+	if err != nil {
+		fmt.Fprintf(w, "%v", err.Error())
+		return
+	}
+
+	user, err := backend.AuthenticatedUser(map[string]string{}, map[string]string{"access_token": access_token["access_token"]})
+	if err != nil {
+		fmt.Fprintf(w, "%v", err.Error())
+		return
+	}
+	if _, ok := users[user.User_id]; !ok {
+		users[user.User_id] = &userData{}
+		users[user.User_id].init(user)
+	}
+
 }
 
 // Write a genReply struct with the inputted Question slices
@@ -203,9 +245,15 @@ func updatingCache_User(r *http.Request) {
 	// required to collect post form data
 	r.ParseForm()
 
-	user := r.PostFormValue("username")
+	user, _ := strconv.Atoi(r.PostFormValue("username"))
 	if _, ok := users[user]; !ok {
-		users[user] = &webData{}
+		users[user] = &userData{}
+		userInfo, err := backend.GetUser(user, map[string]string{})
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		users[user].init(userInfo)
 	}
 
 	tempData := webData{}
@@ -330,4 +378,11 @@ func contains(slice []string, toFind string) bool {
 		}
 	}
 	return false
+}
+
+func (user userData) init(u stackongo.User) {
+	user.user_info = u
+	user.answeredCache = []stackongo.Question{}
+	user.pendingCache = []stackongo.Question{}
+	user.updatingCache = []stackongo.Question{}
 }
