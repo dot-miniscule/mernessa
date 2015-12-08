@@ -13,7 +13,7 @@
         <h4>Places API Tag Tracker for StackExchange </h4>
         <h5>Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5>
       </div>
-      <p id="welcomeSentence"> Welcome, {{$reply.User.Display_name}}
+      <p id="welcomeSentence"> Welcome, <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}}</a>
       <!-- CONTENT TABS -->
       <div class="tab-panels">
         <ul class="tabs">
@@ -22,7 +22,6 @@
           <li rel="pending" class="navigation">Pending</li>
           <li rel="updating" class="navigation">Update</li>
         </ul>
-
         <form name="change_state" method="POST">
           {{range $cache := $reply.Caches}}
           <div id="{{$cache.CacheType}}" class="panel">
@@ -68,13 +67,12 @@
               </table>
             </div> <!-- END TABLE CONTAINER -->
           </div> <!-- END PANEL -->
-        {{end}}
-        <script>
-          $("#unanswered").addClass("active");
-        </script>
-      </form> 
-    </div>
-        <!--END TABS-->
+          {{end}}
+          <script>
+            $("#unanswered").addClass("active");
+          </script>
+      </div>
+      <!--END TABS-->
       <div class="stickyFooter">
         <div class="footerContents">
           <div id="authorNames">
@@ -83,8 +81,8 @@
             <p>STEP Interns, 2015</p>
           </div>
           <div id="submitContainer"> 
-            <input type="text" name="username">
             <input type="submit" id=submitButton value="Submit">
+        </form> 
           </div>
         </div>
       </div>

@@ -67,6 +67,7 @@ type userData struct {
 // Global variable with cache info
 var data = webData{}
 var users = make(map[int]*userData)
+var qns = make(map[int]stackongo.User)
 
 //The app engine will run its own main function and imports this code as a package
 //So no main needs to be defined
@@ -100,34 +101,35 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
+	// Create a new appengine context for logging purposes
+	c := appengine.NewContext(r)
+
 	backend.SetTransport(r)
 	_ = backend.NewSession(r)
 
-	var code string
-	cookie, err := r.Cookie("code")
-	if err != nil {
-		code = r.URL.Query().Get("code")
-	} else {
-		code = cookie.Value
+	code := r.URL.Query().Get("code")
+
+	access_tokens, err := backend.ObtainAccessToken(code)
+	if err == nil {
+		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: access_tokens["access_token"]})
 	}
 
-	access_token, err := backend.ObtainAccessToken(code)
+	token, err := r.Cookie("access_token")
 	if err != nil {
-		fmt.Fprintf(w, "%v: %v", err.Error(), code)
+		handler(w, r)
 		return
 	}
-	user, err := backend.AuthenticatedUser(map[string]string{}, access_token["access_token"])
+
+	user, err := backend.AuthenticatedUser(map[string]string{}, token.Value)
 	if err != nil {
-		fmt.Fprintf(w, "%v %v", err.Error(), user)
+		c.Errorf(err.Error())
 		return
 	}
+
 	if _, ok := users[user.User_id]; !ok {
 		users[user.User_id] = &userData{}
-		users[user.User_id].init(user, access_token["access_token"])
+		users[user.User_id].init(user, token.Value)
 	}
-
-	// Create a new appengine context for logging purposes
-	c := appengine.NewContext(r)
 
 	// TODO(gregoriou): Uncomment when ready to request from stackoverflow
 	/*
@@ -139,7 +141,7 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 	*/
 
 	// update the new cache at refresh
-	updatingCache_User(r)
+	updatingCache_User(r, c, user)
 
 	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
@@ -202,7 +204,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	userID, _ := strconv.Atoi(r.FormValue("name"))
+	userID, _ := strconv.Atoi(r.FormValue("id"))
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 
@@ -247,19 +249,18 @@ func writeResponse(user stackongo.User, unanswered []stackongo.Question, answere
 }
 
 // updating the caches based on input from the app
-func updatingCache_User(r *http.Request) {
+func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) {
 	// required to collect post form data
 	r.ParseForm()
 
-	user, _ := strconv.Atoi(r.PostFormValue("username"))
-	if _, ok := users[user]; !ok {
-		users[user] = &userData{}
-		userInfo, err := backend.GetUser(user, map[string]string{})
+	if _, ok := users[user.User_id]; !ok {
+		users[user.User_id] = &userData{}
+		userInfo, err := backend.GetUser(user.User_id, map[string]string{})
 		if err != nil {
-			fmt.Println(err.Error())
+			c.Errorf(err.Error())
 			return
 		}
-		users[user].init(userInfo, "")
+		users[user.User_id].init(userInfo, "")
 	}
 
 	tempData := webData{}
@@ -279,6 +280,9 @@ func updatingCache_User(r *http.Request) {
 		default:
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		}
+		if form_input != "unanswered" {
+			qns[question.Question_id] = user
+		}
 	}
 
 	for i, question := range data.answeredCache {
@@ -295,10 +299,18 @@ func updatingCache_User(r *http.Request) {
 		default:
 			tempData.answeredCache = append(tempData.answeredCache, question)
 		}
-		for i, q := range users[user].answeredCache {
-			if reflect.DeepEqual(question, q) {
-				users[user].answeredCache = append(users[user].answeredCache[:i], users[user].answeredCache[i+1:]...)
+		editor := qns[question.Question_id]
+
+		for i, q := range users[editor.User_id].answeredCache {
+			if question.Question_id == q.Question_id {
+				users[editor.User_id].answeredCache = append(users[editor.User_id].answeredCache[:i], users[editor.User_id].answeredCache[i+1:]...)
 			}
+		}
+		if form_input != "unanswered" {
+			qns[question.Question_id] = user
+		} else {
+			qns[question.Question_id] = stackongo.User{}
+			delete(qns, question.Question_id)
 		}
 	}
 
@@ -316,10 +328,18 @@ func updatingCache_User(r *http.Request) {
 		default:
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		}
-		for i, q := range users[user].pendingCache {
-			if reflect.DeepEqual(question, q) {
-				users[user].pendingCache = append(users[user].pendingCache[:i], users[user].pendingCache[i+1:]...)
+		editor := qns[question.Question_id]
+
+		for i, q := range users[editor.User_id].pendingCache {
+			if question.Question_id == q.Question_id {
+				users[editor.User_id].pendingCache = append(users[editor.User_id].pendingCache[:i], users[editor.User_id].pendingCache[i+1:]...)
 			}
+		}
+		if form_input != "unanswered" {
+			qns[question.Question_id] = user
+		} else {
+			qns[question.Question_id] = stackongo.User{}
+			delete(qns, question.Question_id)
 		}
 	}
 
@@ -337,11 +357,20 @@ func updatingCache_User(r *http.Request) {
 		default:
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		}
-		for i, q := range users[user].updatingCache {
-			if reflect.DeepEqual(question, q) {
-				users[user].updatingCache = append(users[user].updatingCache[:i], users[user].updatingCache[i+1:]...)
+		editor := qns[question.Question_id]
+
+		for i, q := range users[editor.User_id].updatingCache {
+			if question.Question_id == q.Question_id {
+				users[editor.User_id].updatingCache = append(users[editor.User_id].updatingCache[:i], users[editor.User_id].updatingCache[i+1:]...)
 			}
 		}
+		if form_input != "unanswered" {
+			qns[question.Question_id] = user
+		} else {
+			qns[question.Question_id] = stackongo.User{}
+			delete(qns, question.Question_id)
+		}
+
 	}
 
 	// sort slices by creation date
@@ -356,12 +385,12 @@ func updatingCache_User(r *http.Request) {
 	data.pendingCache = tempData.pendingCache
 	data.updatingCache = tempData.updatingCache
 
-	users[user].answeredCache = append(users[user].answeredCache, tempData.answeredCache...)
-	users[user].pendingCache = append(users[user].pendingCache, tempData.pendingCache...)
-	users[user].updatingCache = append(users[user].updatingCache, tempData.updatingCache...)
-	sort.Stable(byCreationDate(users[user].answeredCache))
-	sort.Stable(byCreationDate(users[user].pendingCache))
-	sort.Stable(byCreationDate(users[user].updatingCache))
+	users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, tempData.answeredCache...)
+	users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, tempData.pendingCache...)
+	users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, tempData.updatingCache...)
+	sort.Stable(byCreationDate(users[user.User_id].answeredCache))
+	sort.Stable(byCreationDate(users[user.User_id].pendingCache))
+	sort.Stable(byCreationDate(users[user.User_id].updatingCache))
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string) {
