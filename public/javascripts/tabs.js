@@ -36,7 +36,6 @@ $(function() {
   });
 });
 
-
 //--------- LOCK/UNLOCK RADIO BUTTON ---------//
 //Nested for loop.
 //Super gross.
@@ -61,7 +60,7 @@ function changeImage() {
   }
 }
 
-//-------- TOOLTIPS -------//
+//-------- SETTING COOKIES -------//
 $(document).ready(function() {
   setCookies();
 });
