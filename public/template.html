@@ -49,19 +49,17 @@
                       <div class="tagContainer">
                         <ul>
                         {{range $tag := $question.Tags}}  
-                        <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?q={{$tag}}">{{$tag}}</a></li>
+                          <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?q={{$tag}}">{{$tag}}</a></li>
                         {{end}}
-                        </ul>  
+                        </ul>
                       </div>
+                    
                     </td>
                     <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="unanswered" disabled="true"></td>
                     <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="answered" disabled="true"></td>
                     <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="pending" disabled="true"></td>
                     <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="updating" disabled="true"></td>
                   </tr>
-                  <script>
-                  $("#{{$cache.CacheType}}").find("input[value='{{$cache.CacheType}}']").prop("checked", true);
-                  </script>
                 {{end}}
                 </tbody>
               </table>

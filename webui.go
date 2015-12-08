@@ -36,7 +36,7 @@ type genReply struct {
 	Wrapper   *stackongo.Questions
 	Caches    []cacheInfo
 	User      stackongo.User
-	UserCode  string
+	Qns       map[int]stackongo.User
 	FindQuery string
 }
 
@@ -68,6 +68,9 @@ type userData struct {
 var data = webData{}
 var users = make(map[int]*userData)
 var qns = make(map[int]stackongo.User)
+var guest = stackongo.User{
+	Display_name: "guest",
+}
 
 //The app engine will run its own main function and imports this code as a package
 //So no main needs to be defined
@@ -273,14 +276,17 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		switch form_input {
 		case "answered":
 			tempData.answeredCache = append(tempData.answeredCache, question)
+			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
+			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
+			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
 		default:
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		}
-		if form_input != "unanswered" {
+		if form_input != "" && form_input != "unanswered" {
 			qns[question.Question_id] = user
 		}
 	}
@@ -292,10 +298,15 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		switch form_input {
 		case "unanswered":
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		case "answered":
+			tempData.answeredCache = append(tempData.answeredCache, question)
+			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
+			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
+			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
 		default:
 			tempData.answeredCache = append(tempData.answeredCache, question)
 		}
@@ -306,11 +317,11 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				users[editor.User_id].answeredCache = append(users[editor.User_id].answeredCache[:i], users[editor.User_id].answeredCache[i+1:]...)
 			}
 		}
-		if form_input != "unanswered" {
-			qns[question.Question_id] = user
-		} else {
+		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
+		} else if form_input != "" {
+			qns[question.Question_id] = user
 		}
 	}
 
@@ -323,8 +334,13 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		case "answered":
 			tempData.answeredCache = append(tempData.answeredCache, question)
+			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
+		case "pending":
+			tempData.pendingCache = append(tempData.pendingCache, question)
+			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
+			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
 		default:
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		}
@@ -335,11 +351,11 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				users[editor.User_id].pendingCache = append(users[editor.User_id].pendingCache[:i], users[editor.User_id].pendingCache[i+1:]...)
 			}
 		}
-		if form_input != "unanswered" {
-			qns[question.Question_id] = user
-		} else {
+		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
+		} else if form_input != "" {
+			qns[question.Question_id] = user
 		}
 	}
 
@@ -352,8 +368,13 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		case "answered":
 			tempData.answeredCache = append(tempData.answeredCache, question)
+			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
 		case "pending":
 			tempData.pendingCache = append(tempData.pendingCache, question)
+			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
+		case "updating":
+			tempData.updatingCache = append(tempData.updatingCache, question)
+			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
 		default:
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		}
@@ -364,13 +385,12 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				users[editor.User_id].updatingCache = append(users[editor.User_id].updatingCache[:i], users[editor.User_id].updatingCache[i+1:]...)
 			}
 		}
-		if form_input != "unanswered" {
-			qns[question.Question_id] = user
-		} else {
+		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
+		} else if form_input != "" {
+			qns[question.Question_id] = user
 		}
-
 	}
 
 	// sort slices by creation date
@@ -385,9 +405,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	data.pendingCache = tempData.pendingCache
 	data.updatingCache = tempData.updatingCache
 
-	users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, tempData.answeredCache...)
-	users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, tempData.pendingCache...)
-	users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, tempData.updatingCache...)
 	sort.Stable(byCreationDate(users[user.User_id].answeredCache))
 	sort.Stable(byCreationDate(users[user.User_id].pendingCache))
 	sort.Stable(byCreationDate(users[user.User_id].updatingCache))
