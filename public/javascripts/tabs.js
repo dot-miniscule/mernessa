@@ -63,5 +63,13 @@ function changeImage() {
 
 //-------- TOOLTIPS -------//
 $(document).ready(function() {
-  $('[data-toggle="tooltip"]').tooltip();
+  setCookies();
 });
+
+//-------- COOKIES --------//
+function setCookies() {
+  var code = location.search.split('code=')[1];
+  if (code !== undefined && code !== "") {
+    document.cookie = "code=" + code;
+  }
+}

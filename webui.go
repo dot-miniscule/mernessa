@@ -36,6 +36,7 @@ type genReply struct {
 	Wrapper   *stackongo.Questions
 	Caches    []cacheInfo
 	User      stackongo.User
+	UserCode  string
 	FindQuery string
 }
 
@@ -57,6 +58,7 @@ type webData struct {
 
 type userData struct {
 	user_info     stackongo.User
+	access_token  string
 	answeredCache []stackongo.Question
 	pendingCache  []stackongo.Question
 	updatingCache []stackongo.Question
@@ -86,10 +88,11 @@ func init() {
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/home", mainHandler)
+	http.HandleFunc("/tag", mainHandler)
+	http.HandleFunc("/user", mainHandler)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-
 	auth_url := backend.AuthURL()
 	header := w.Header()
 	header.Add("Location", auth_url)
@@ -100,7 +103,14 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 	backend.SetTransport(r)
 	_ = backend.NewSession(r)
 
-	code := r.URL.Query().Get("code")
+	var code string
+	cookie, err := r.Cookie("code")
+	if err != nil {
+		code = r.URL.Query().Get("code")
+	} else {
+		code = cookie.Value
+	}
+
 	access_token, err := backend.ObtainAccessToken(code)
 	if err != nil {
 		fmt.Fprintf(w, "%v: %v", err.Error(), code)
@@ -113,7 +123,7 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, ok := users[user.User_id]; !ok {
 		users[user.User_id] = &userData{}
-		users[user.User_id].init(user)
+		users[user.User_id].init(user, access_token["access_token"])
 	}
 
 	// Create a new appengine context for logging purposes
@@ -249,7 +259,7 @@ func updatingCache_User(r *http.Request) {
 			fmt.Println(err.Error())
 			return
 		}
-		users[user].init(userInfo)
+		users[user].init(userInfo, "")
 	}
 
 	tempData := webData{}
@@ -376,8 +386,9 @@ func contains(slice []string, toFind string) bool {
 	return false
 }
 
-func (user userData) init(u stackongo.User) {
+func (user userData) init(u stackongo.User, token string) {
 	user.user_info = u
+	user.access_token = token
 	user.answeredCache = []stackongo.Question{}
 	user.pendingCache = []stackongo.Question{}
 	user.updatingCache = []stackongo.Question{}

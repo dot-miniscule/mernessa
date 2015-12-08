@@ -35,7 +35,7 @@ var (
 		//	- Question: body, creation_date, link, question_id, title
 
 		options: map[string]string{
-			"scope": "write_access, private_info, read_inbox",
+			"scope": "write_access, no_expiry",
 		},
 	}
 	session = new(stackongo.Session)
