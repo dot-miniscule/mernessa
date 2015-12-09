@@ -136,7 +136,6 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update the new cache on submit
-	c.Infof("submitting")
 	updatingCache_User(r, c, user)
 
 	// Send to tag subpage
@@ -268,7 +267,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "answered":
-			c.Infof(form_input)
 			tempData.answeredCache = append(tempData.answeredCache, question)
 			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
 		case "pending":
