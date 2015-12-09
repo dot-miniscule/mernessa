@@ -117,15 +117,14 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 	backend.SetTransport(r)
 	_ = backend.NewSession(r)
 
-	code := r.URL.Query().Get("code")
-
-	access_tokens, err := backend.ObtainAccessToken(code)
-	if err == nil {
-		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: access_tokens["access_token"]})
-	}
-
 	token, err := r.Cookie("access_token")
 	if err != nil {
+		code := r.URL.Query().Get("code")
+
+		access_tokens, err := backend.ObtainAccessToken(code)
+		if err == nil {
+			http.SetCookie(w, &http.Cookie{Name: "access_token", Value: access_tokens["access_token"]})
+		}
 		handler(w, r)
 		return
 	}
@@ -136,24 +135,9 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := users[user.User_id]; !ok {
-		users[user.User_id] = &userData{}
-		users[user.User_id].init(user, token.Value)
-	}
-
-	// TODO(gregoriou): Uncomment when ready to request from stackoverflow
-	/*
-		input, err := dataCollect.Collect(r)
-		if err != nil {
-		    errorHandler(w, r, http.StatusInternalServerError, err.Error())
-			return
-		}
-	*/
-
 	// update the new cache on submit
-	if r.PostFormValue("submit") == "Submit" {
-		updatingCache_User(r, c, user)
-	}
+	c.Infof("submitting")
+	updatingCache_User(r, c, user)
 
 	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
@@ -271,7 +255,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		userInfo, err := backend.GetUser(user.User_id, map[string]string{})
 		if err != nil {
 			c.Errorf(err.Error())
-			return
 		}
 		users[user.User_id].init(userInfo, "")
 	}
@@ -285,6 +268,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "answered":
+			c.Infof(form_input)
 			tempData.answeredCache = append(tempData.answeredCache, question)
 			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
 		case "pending":

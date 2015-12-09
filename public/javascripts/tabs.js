@@ -32,7 +32,17 @@ $(function() {
 $(function() {
   $('#submitButton').on('click', function() {
     //On mouse click reload the page
-    location.reload();
+//    window.location;
+  });
+});
+
+$(function() {
+  $('#stateForm').submit(function() {
+    document.getElementById("submitButton").value = "Submitting";
+    $.post( "/", $( "#stateForm" ).serialize()).done(function( data ) {
+      window.location = window.location.href.split("#")[0];
+    });
+    return false;
   });
 });
 

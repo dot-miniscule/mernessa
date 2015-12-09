@@ -22,7 +22,7 @@
           <li rel="pending" class="navigation">Pending</li>
           <li rel="updating" class="navigation">Update</li>
         </ul>
-        <form name="change_state" method="POST">
+        <form name="change_state" id="stateForm" method="POST">
           {{range $cache := $reply.Caches}}
           <div id="{{$cache.CacheType}}" class="panel">
             <div id="info">
@@ -81,7 +81,7 @@
             <p>STEP Interns, 2015</p>
           </div>
           <div id="submitContainer"> 
-            <input type="submit" name="submit" id=submitButton value="Submit">
+            <input type="submit" name="btnSubmit" id=submitButton value="Submit">
         </form> 
           </div>
         </div>
