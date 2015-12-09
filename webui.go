@@ -72,6 +72,13 @@ var guest = stackongo.User{
 	Display_name: "guest",
 }
 
+func (r genReply) GetUserID(id int) int {
+	return r.Qns[id].User_id
+}
+func (r genReply) GetUserName(id int) string {
+	return r.Qns[id].Display_name
+}
+
 //The app engine will run its own main function and imports this code as a package
 //So no main needs to be defined
 //All routes go in to init
@@ -90,8 +97,8 @@ func init() {
 	}
 	data.unansweredCache = data.wrapper.Items // At start, all questions are unanswered
 
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/home", mainHandler)
+	http.HandleFunc("/login", handler)
+	http.HandleFunc("/", mainHandler)
 	http.HandleFunc("/tag", mainHandler)
 	http.HandleFunc("/user", mainHandler)
 }
@@ -143,8 +150,10 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	*/
 
-	// update the new cache at refresh
-	updatingCache_User(r, c, user)
+	// update the new cache on submit
+	if r.PostFormValue("submit") == "Submit" {
+		updatingCache_User(r, c, user)
+	}
 
 	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
@@ -247,6 +256,7 @@ func writeResponse(user stackongo.User, unanswered []stackongo.Question, answere
 			},
 		},
 		User:      user,
+		Qns:       qns,
 		FindQuery: "",
 	}
 }
@@ -310,17 +320,19 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		default:
 			tempData.answeredCache = append(tempData.answeredCache, question)
 		}
-		editor := qns[question.Question_id]
 
-		for i, q := range users[editor.User_id].answeredCache {
-			if question.Question_id == q.Question_id {
-				users[editor.User_id].answeredCache = append(users[editor.User_id].answeredCache[:i], users[editor.User_id].answeredCache[i+1:]...)
-			}
-		}
 		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
 		} else if form_input != "" {
+
+			editor := qns[question.Question_id]
+			for i, q := range users[editor.User_id].answeredCache {
+				if question.Question_id == q.Question_id {
+					users[editor.User_id].answeredCache = append(users[editor.User_id].answeredCache[:i], users[editor.User_id].answeredCache[i+1:]...)
+				}
+			}
+
 			qns[question.Question_id] = user
 		}
 	}
@@ -344,17 +356,18 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		default:
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		}
-		editor := qns[question.Question_id]
-
-		for i, q := range users[editor.User_id].pendingCache {
-			if question.Question_id == q.Question_id {
-				users[editor.User_id].pendingCache = append(users[editor.User_id].pendingCache[:i], users[editor.User_id].pendingCache[i+1:]...)
-			}
-		}
 		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
 		} else if form_input != "" {
+
+			editor := qns[question.Question_id]
+			for i, q := range users[editor.User_id].pendingCache {
+				if question.Question_id == q.Question_id {
+					users[editor.User_id].pendingCache = append(users[editor.User_id].pendingCache[:i], users[editor.User_id].pendingCache[i+1:]...)
+				}
+			}
+
 			qns[question.Question_id] = user
 		}
 	}
@@ -378,17 +391,18 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		default:
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		}
-		editor := qns[question.Question_id]
-
-		for i, q := range users[editor.User_id].updatingCache {
-			if question.Question_id == q.Question_id {
-				users[editor.User_id].updatingCache = append(users[editor.User_id].updatingCache[:i], users[editor.User_id].updatingCache[i+1:]...)
-			}
-		}
 		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
 		} else if form_input != "" {
+
+			editor := qns[question.Question_id]
+			for i, q := range users[editor.User_id].updatingCache {
+				if question.Question_id == q.Question_id {
+					users[editor.User_id].updatingCache = append(users[editor.User_id].updatingCache[:i], users[editor.User_id].updatingCache[i+1:]...)
+				}
+			}
+
 			qns[question.Question_id] = user
 		}
 	}
