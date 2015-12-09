@@ -6,8 +6,8 @@ import (
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/urlfetch"
 )
 
 var appInfo = struct {

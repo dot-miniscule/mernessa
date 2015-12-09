@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
