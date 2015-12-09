@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
+	"log"
 	"backend"
 
 	"appengine"
@@ -94,6 +94,36 @@ func init() {
 	http.HandleFunc("/home", mainHandler)
 	http.HandleFunc("/tag", mainHandler)
 	http.HandleFunc("/user", mainHandler)
+
+	db := backend.SqlInit()
+
+	//test query
+	rows, err := db.Query("select * from questions")
+	if err != nil {
+		log.Fatal("Query failed:\t", err)
+	}
+
+	defer rows.Close()
+
+	var (
+		id int
+		title string
+		url string
+	)
+	for rows.Next() {
+		err := rows.Scan(&id, &title, &url)
+		if err != nil {
+			log.Fatal("Reading failure:\t", err)
+		}
+
+		log.Println(id, title, url)
+	}
+
+	//Check for errors after iterating over the rows
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
