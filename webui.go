@@ -33,11 +33,10 @@ func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].C
 
 // Reply to send to template
 type genReply struct {
-	Wrapper   *stackongo.Questions
-	Caches    []cacheInfo
-	User      stackongo.User
-	Qns       map[int]stackongo.User
-	FindQuery string
+	Wrapper *stackongo.Questions   // Information about the query
+	Caches  []cacheInfo            // Slice of the 4 caches (Unanswered, Answered, Pending, Updating)
+	User    stackongo.User         // Information on the current user
+	Qns     map[int]stackongo.User // Map of users by question ids
 }
 
 // Info on the various caches
@@ -49,29 +48,36 @@ type cacheInfo struct {
 
 type webData struct {
 	wrapper         *stackongo.Questions // Request information
-	unansweredCache []stackongo.Question
-	answeredCache   []stackongo.Question
-	pendingCache    []stackongo.Question
-	updatingCache   []stackongo.Question
-	cacheLock       sync.Mutex // For multithreading, will use to avoid updating cache and serving cache at the same time
+	unansweredCache []stackongo.Question // Unanswered questions
+	answeredCache   []stackongo.Question // Answered questions
+	pendingCache    []stackongo.Question // Pending questions
+	updatingCache   []stackongo.Question // Updating questions
+	cacheLock       sync.Mutex           // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
 type userData struct {
-	user_info     stackongo.User
-	access_token  string
-	answeredCache []stackongo.Question
-	pendingCache  []stackongo.Question
-	updatingCache []stackongo.Question
+	user_info     stackongo.User       // SE user info
+	access_token  string               // Token to access info
+	answeredCache []stackongo.Question // Questions answered by user
+	pendingCache  []stackongo.Question // Questions being answered by user
+	updatingCache []stackongo.Question // Questions that are being updated
 }
 
 // Global variable with cache info
 var data = webData{}
+
+// Map of users by user ids
 var users = make(map[int]*userData)
+
+// Map relating question ids to users
 var qns = make(map[int]stackongo.User)
+
+// Standard guest user
 var guest = stackongo.User{
 	Display_name: "guest",
 }
 
+// Functions for template to recieve data from maps
 func (r genReply) GetUserID(id int) int {
 	return r.Qns[id].User_id
 }
@@ -91,52 +97,70 @@ func init() {
 	}
 
 	data.wrapper = new(stackongo.Questions) // Create a new wrapper
+
+	// Unmarshal input from file into structs
 	if err := json.Unmarshal(input, data.wrapper); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 	data.unansweredCache = data.wrapper.Items // At start, all questions are unanswered
 
-	http.HandleFunc("/login", handler)
-	http.HandleFunc("/", mainHandler)
-	http.HandleFunc("/tag", mainHandler)
-	http.HandleFunc("/user", mainHandler)
+	http.HandleFunc("/login", authHandler)
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/tag", handler)
+	http.HandleFunc("/user", handler)
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
+// Handler for authorizing user
+func authHandler(w http.ResponseWriter, r *http.Request) {
 	auth_url := backend.AuthURL()
 	header := w.Header()
 	header.Add("Location", auth_url)
 	w.WriteHeader(302)
 }
 
-func mainHandler(w http.ResponseWriter, r *http.Request) {
+// Handler for main information to be read and written from
+func handler(w http.ResponseWriter, r *http.Request) {
 	// Create a new appengine context for logging purposes
 	c := appengine.NewContext(r)
 
 	backend.SetTransport(r)
 	_ = backend.NewSession(r)
 
+	// Collect access token from browswer cookie
+	// If cookie does not exist, obtain token using code from URL and set as cookie
+	// If code does not exist, redirect to login page for authorization
 	token, err := r.Cookie("access_token")
+	var access_tokens map[string]string
 	if err != nil {
 		code := r.URL.Query().Get("code")
-
-		access_tokens, err := backend.ObtainAccessToken(code)
-		if err == nil {
-			http.SetCookie(w, &http.Cookie{Name: "access_token", Value: access_tokens["access_token"]})
+		if code != "" {
+			c.Infof("Getting new user code")
+			handler(w, r)
+			return
 		}
-		handler(w, r)
-		return
+		access_tokens, err = backend.ObtainAccessToken(code)
+		if err == nil {
+			c.Infof("Setting cookie: access_token")
+			http.SetCookie(w, &http.Cookie{Name: "access_token", Value: access_tokens["access_token"]})
+		} else {
+			c.Errorf(err.Error())
+			errorHandler(w, r, 0, err.Error())
+			return
+		}
 	}
 
 	user, err := backend.AuthenticatedUser(map[string]string{}, token.Value)
 	if err != nil {
 		c.Errorf(err.Error())
+		errorHandler(w, r, 0, err.Error())
 		return
 	}
 
 	// update the new cache on submit
+	data.cacheLock.Lock()
 	updatingCache_User(r, c, user)
+	data.cacheLock.Unlock()
 
 	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
@@ -149,12 +173,7 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 		userHandler(w, r, c, user)
 		return
 	}
-	/*
-		if r.URL.Path == "/login" {
-			loginHandler(w, r, c)
-			return
-		}
-	*/
+
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
 	if err := page.Execute(w, writeResponse(user, data.unansweredCache, data.answeredCache, data.pendingCache, data.updatingCache)); err != nil {
@@ -198,6 +217,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 	}
 }
 
+// Handler to find all questions answered/being answered by the user in URL
 func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	userID, _ := strconv.Atoi(r.FormValue("id"))
 
@@ -238,9 +258,8 @@ func writeResponse(user stackongo.User, unanswered []stackongo.Question, answere
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
-		User:      user,
-		Qns:       qns,
-		FindQuery: "",
+		User: user, // Current user information
+		Qns:  qns,  // Map users by questions answered
 	}
 }
 
@@ -249,13 +268,10 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	// required to collect post form data
 	r.ParseForm()
 
+	// If the user is not in the database, add a new entry
 	if _, ok := users[user.User_id]; !ok {
 		users[user.User_id] = &userData{}
-		userInfo, err := backend.GetUser(user.User_id, map[string]string{})
-		if err != nil {
-			c.Errorf(err.Error())
-		}
-		users[user.User_id].init(userInfo, "")
+		users[user.User_id].init(user, "")
 	}
 
 	tempData := webData{}
@@ -278,6 +294,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		default:
 			tempData.unansweredCache = append(tempData.unansweredCache, question)
 		}
+
+		// Map the user to the question if the question is done
 		if form_input != "" && form_input != "unanswered" {
 			qns[question.Question_id] = user
 		}
@@ -303,9 +321,12 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			tempData.answeredCache = append(tempData.answeredCache, question)
 		}
 
+		// If the question is now unanswered, delete question from map
 		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
+
+			// Else remove question from original editor's cache and map user to question
 		} else if form_input != "" {
 
 			editor := qns[question.Question_id]
@@ -339,9 +360,13 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		default:
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		}
+
+		// If the question is now unanswered, delete question from map
 		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
+
+			// Else remove question from original editor's cache and map user to question
 		} else if form_input != "" {
 
 			editor := qns[question.Question_id]
@@ -375,9 +400,13 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		default:
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		}
+
+		// If the question is now unanswered, delete question from map
 		if form_input == "unanswered" {
 			qns[question.Question_id] = stackongo.User{}
 			delete(qns, question.Question_id)
+
+			// Else remove question from original editor's cache and map user to question
 		} else if form_input != "" {
 
 			editor := qns[question.Question_id]
@@ -392,7 +421,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		}
 	}
 
-	// sort slices by creation date
+	// sort caches by creation date
 	sort.Stable(byCreationDate(tempData.unansweredCache))
 	sort.Stable(byCreationDate(tempData.answeredCache))
 	sort.Stable(byCreationDate(tempData.pendingCache))
@@ -404,11 +433,13 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	data.pendingCache = tempData.pendingCache
 	data.updatingCache = tempData.updatingCache
 
+	// sort user caches by creation date
 	sort.Stable(byCreationDate(users[user.User_id].answeredCache))
 	sort.Stable(byCreationDate(users[user.User_id].pendingCache))
 	sort.Stable(byCreationDate(users[user.User_id].updatingCache))
 }
 
+// Handler for errors
 func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string) {
 	w.WriteHeader(status)
 	switch status {
@@ -431,6 +462,7 @@ func contains(slice []string, toFind string) bool {
 	return false
 }
 
+// Initializes userData struct
 func (user userData) init(u stackongo.User, token string) {
 	user.user_info = u
 	user.access_token = token
