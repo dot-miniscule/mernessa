@@ -28,17 +28,11 @@ $(function() {
 });
 
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
-
-$(function() {
-  $('#submitButton').on('click', function() {
-    //On mouse click reload the page
-//    window.location;
-  });
-});
-
 $(function() {
   $('#stateForm').submit(function() {
     document.getElementById("submitButton").value = "Submitting";
+
+    // Intercept form submission and redirect back to the original page
     $.post( "/", $( "#stateForm" ).serialize()).done(function( data ) {
       window.location = window.location.href.split("#")[0];
     });

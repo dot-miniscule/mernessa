@@ -312,6 +312,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			for i, q := range users[editor.User_id].answeredCache {
 				if question.Question_id == q.Question_id {
 					users[editor.User_id].answeredCache = append(users[editor.User_id].answeredCache[:i], users[editor.User_id].answeredCache[i+1:]...)
+					break
 				}
 			}
 
@@ -347,6 +348,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			for i, q := range users[editor.User_id].pendingCache {
 				if question.Question_id == q.Question_id {
 					users[editor.User_id].pendingCache = append(users[editor.User_id].pendingCache[:i], users[editor.User_id].pendingCache[i+1:]...)
+					break
 				}
 			}
 
@@ -382,6 +384,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			for i, q := range users[editor.User_id].updatingCache {
 				if question.Question_id == q.Question_id {
 					users[editor.User_id].updatingCache = append(users[editor.User_id].updatingCache[:i], users[editor.User_id].updatingCache[i+1:]...)
+					break
 				}
 			}
 
