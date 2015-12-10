@@ -90,6 +90,7 @@ func AuthenticatedUser(params map[string]string, access_token string) (stackongo
 }
 
 func GetUser(user_id int, params map[string]string) (stackongo.User, error) {
+	params["key"] = appInfo.key
 	users, err := session.GetUsers([]int{user_id}, params)
 	if err != nil {
 		return stackongo.User{}, err
