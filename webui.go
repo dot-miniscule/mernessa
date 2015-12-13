@@ -14,7 +14,6 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 
 	"backend"
@@ -47,6 +46,7 @@ type cacheInfo struct {
 }
 
 type webData struct {
+	lastUpdateTime  int64                // Time the cache was last updated in Unix
 	wrapper         *stackongo.Questions // Request information
 	unansweredCache []stackongo.Question // Unanswered questions
 	answeredCache   []stackongo.Question // Answered questions
@@ -159,7 +159,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// update the new cache on submit
 	data.cacheLock.Lock()
-	updatingCache_User(r, c, user)
+	cookie, _ := r.Cookie("submitting")
+	if cookie != nil {
+		if cookie.Value == "true" {
+			err = updatingCache_User(r, c, user)
+			if err != nil {
+				c.Errorf(err.Error())
+			}
+			http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
+		}
+	}
 	data.cacheLock.Unlock()
 
 	// Send to tag subpage
@@ -179,6 +188,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if err := page.Execute(w, writeResponse(user, data.unansweredCache, data.answeredCache, data.pendingCache, data.updatingCache)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
+
 }
 
 // Handler to find all questions with specific tags
@@ -264,7 +274,12 @@ func writeResponse(user stackongo.User, unanswered []stackongo.Question, answere
 }
 
 // updating the caches based on input from the app
-func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) {
+func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
+	c.Infof("updating cache")
+	if true /* time on sql db is later than lastUpdatedTime */ {
+		// Don't update
+		// send error
+	}
 	// required to collect post form data
 	r.ParseForm()
 
@@ -277,33 +292,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	tempData := webData{}
 
 	// Collect the submitted form info based on the name of the form
-	for i, question := range data.unansweredCache {
-		name := "unanswered_state"
-		name = strings.Join([]string{name, strconv.Itoa(i)}, "")
-		form_input := r.PostFormValue(name)
-		switch form_input {
-		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, question)
-			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
-		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, question)
-			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
-		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, question)
-			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
-		default:
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
-		}
-
-		// Map the user to the question if the question is done
-		if form_input != "" && form_input != "unanswered" {
-			qns[question.Question_id] = user
-		}
-	}
-
-	for i, question := range data.answeredCache {
-		name := "answered_state"
-		name = strings.Join([]string{name, strconv.Itoa(i)}, "")
+	for _, question := range data.unansweredCache {
+		name := "unanswered_" + strconv.Itoa(question.Question_id)
 		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "unanswered":
@@ -317,7 +307,32 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
 			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
-		default:
+		case "no_change":
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		}
+
+		// Map the user to the question if the question is done
+		if form_input != "no_change" && form_input != "unanswered" {
+			qns[question.Question_id] = user
+		}
+	}
+
+	for _, question := range data.answeredCache {
+		name := "answered_" + strconv.Itoa(question.Question_id)
+		form_input := r.PostFormValue(name)
+		switch form_input {
+		case "unanswered":
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		case "answered":
+			tempData.answeredCache = append(tempData.answeredCache, question)
+			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
+		case "pending":
+			tempData.pendingCache = append(tempData.pendingCache, question)
+			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
+		case "updating":
+			tempData.updatingCache = append(tempData.updatingCache, question)
+			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
+		case "no_change":
 			tempData.answeredCache = append(tempData.answeredCache, question)
 		}
 
@@ -327,7 +342,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			delete(qns, question.Question_id)
 
 			// Else remove question from original editor's cache and map user to question
-		} else if form_input != "" {
+		} else if form_input != "no_change" {
 
 			editor := qns[question.Question_id]
 			for i, q := range users[editor.User_id].answeredCache {
@@ -341,9 +356,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		}
 	}
 
-	for i, question := range data.pendingCache {
-		name := "pending_state"
-		name = strings.Join([]string{name, strconv.Itoa(i)}, "")
+	for _, question := range data.pendingCache {
+		name := "pending_" + strconv.Itoa(question.Question_id)
 		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "unanswered":
@@ -357,7 +371,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
 			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
-		default:
+		case "no_change":
 			tempData.pendingCache = append(tempData.pendingCache, question)
 		}
 
@@ -367,7 +381,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			delete(qns, question.Question_id)
 
 			// Else remove question from original editor's cache and map user to question
-		} else if form_input != "" {
+		} else if form_input != "no_change" {
 
 			editor := qns[question.Question_id]
 			for i, q := range users[editor.User_id].pendingCache {
@@ -381,9 +395,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		}
 	}
 
-	for i, question := range data.updatingCache {
-		name := "updating_state"
-		name = strings.Join([]string{name, strconv.Itoa(i)}, "")
+	for _, question := range data.updatingCache {
+		name := "updating_" + strconv.Itoa(question.Question_id)
 		form_input := r.PostFormValue(name)
 		switch form_input {
 		case "unanswered":
@@ -397,7 +410,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, question)
 			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
-		default:
+		case "no_change":
 			tempData.updatingCache = append(tempData.updatingCache, question)
 		}
 
@@ -407,7 +420,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			delete(qns, question.Question_id)
 
 			// Else remove question from original editor's cache and map user to question
-		} else if form_input != "" {
+		} else if form_input != "no_change" {
 
 			editor := qns[question.Question_id]
 			for i, q := range users[editor.User_id].updatingCache {
@@ -437,6 +450,9 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	sort.Stable(byCreationDate(users[user.User_id].answeredCache))
 	sort.Stable(byCreationDate(users[user.User_id].pendingCache))
 	sort.Stable(byCreationDate(users[user.User_id].updatingCache))
+
+	/* change lastUpdatedTime and time on db */
+	return nil
 }
 
 // Handler for errors

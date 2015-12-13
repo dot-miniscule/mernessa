@@ -31,6 +31,7 @@ $(function() {
 $(function() {
   $('#stateForm').submit(function() {
     document.getElementById("submitButton").value = "Submitting";
+    document.cookie = "submitting=true";
 
     // Intercept form submission and redirect back to the original page
     $.post( "/", $( "#stateForm" ).serialize()).done(function( data ) {

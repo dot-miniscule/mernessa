@@ -37,32 +37,32 @@
                     <th>Answered</th>
                     <th>Pending</th>
                     <th>Update</th>
-                    <th><a href="#" data-tooltip="tooltip" title="Click here to activate lock" ><img class="lockIcon" onclick="changeImage()" src="/images/lockSmall.png"></a>
                   </tr>
                 </thead>
                 <tbody>
-                  {{range $i, $question := $cache.Questions}}
-                  <tr>
-                    <td id="question">
-                      <a href={{$question.Link}}>{{$question.Title}}</a>
-                      <br>
-                      <div class="tagContainer">
-                        <ul>
-                        {{range $tag := $question.Tags}}  
-                          <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?q={{$tag}}">{{$tag}}</a></li>
+                  {{range $question := $cache.Questions}}
+                    <tr>
+                      <td id="question">
+                        <a href={{$question.Link}}>{{$question.Title}}</a>
+                        <br>
+                        <div class="tagContainer">
+                          <ul>
+                          {{range $tag := $question.Tags}}  
+                            <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?q={{$tag}}">{{$tag}}</a></li>
+                          {{end}}
+                          </ul>
+                        </div>
+                        {{if ne $cache.CacheType "unanswered"}}
+                          <a href="/user?id={{$reply.GetUserID $question.Question_id}}">{{$reply.GetUserName $question.Question_id}}</a>
                         {{end}}
-                        </ul>
-                      </div>
-                      {{if ne $cache.CacheType "unanswered"}}
-                      <a href="/user?id={{$reply.GetUserID $question.Question_id}}">{{$reply.GetUserName $question.Question_id}}</a>
-                      {{end}}
-                    </td>
-                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="unanswered" disabled="true"></td>
-                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="answered" disabled="true"></td>
-                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="pending" disabled="true"></td>
-                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="updating" disabled="true"></td>
-                  </tr>
-                {{end}}
+                      </td>
+                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>
+                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="answered"></td>
+                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="pending"></td>
+                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="updating"></td>
+                      <td style="display:none"><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="no_change" checked="checked"></td>
+                    </tr>
+                  {{end}}
                 </tbody>
               </table>
             </div> <!-- END TABLE CONTAINER -->
