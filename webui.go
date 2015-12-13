@@ -6,18 +6,18 @@
 package webui
 
 import (
+	"backend"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"log"
-	"backend"
 
 	"appengine"
 
@@ -66,6 +66,7 @@ type userData struct {
 
 // Global variable with cache info
 var data = webData{}
+var pageData = webData{}
 var users = make(map[int]*userData)
 var qns = make(map[int]stackongo.User)
 var guest = stackongo.User{
@@ -83,47 +84,94 @@ func init() {
 		return
 	}
 
-	data.wrapper = new(stackongo.Questions) // Create a new wrapper
-	if err := json.Unmarshal(input, data.wrapper); err != nil {
+	db := backend.SqlInit()
+
+	pageData.wrapper = new(stackongo.Questions) // Create a new wrapper
+	if err := json.Unmarshal(input, pageData.wrapper); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	data.unansweredCache = data.wrapper.Items // At start, all questions are unanswered
+	//Comment Out the next line to avoid ridiculous loading times
+	//pageData.unansweredCache = pageData.wrapper.Items // At start, all questions are unanswered
+
+	//Iterate through each question returned, and add it to the database.
+	for _, item := range pageData.unansweredCache {
+		//INSERT IGNORE ensures that the same question won't be added again
+		//This will probably need to change as we better develop the workflow from local to stack exchange.
+		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL) VALUES (?, ?, ?)")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		_, err = stmt.Exec(item.Question_id, item.Title, item.Link)
+		if err != nil {
+			log.Fatal("Insertion failed of question failed:\t", err)
+		}
+
+		//Need to add the tags in to the database as well, and ensure that they are joined to the questions
+		//Use a secondary mapping table to store the relationship between tags and questions.
+		//TODO: Complete mapping of tags to questions
+		for _, tag := range item.Tags {
+			stmt, err = db.Prepare("INSERT IGNORE INTO tags(tag) VALUES (?)")
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			_, err = stmt.Exec(tag)
+			if err != nil {
+				log.Fatal("Insertion of tag \"", tag, "\" failed:", err)
+			}
+		}
+	}
+
+	log.Println("New records added successfully!")
+
+	//Reading from database
+	var (
+		url     string
+		title   string
+		id      int
+		updated int
+		state   string
+	)
+	rows, err := db.Query("select * from questions")
+	if err != nil {
+		log.Fatal("query failed:\t", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&id, &title, &url, &updated, &state)
+		if err != nil {
+			log.Fatal(err)
+		}
+		currentQ := stackongo.Question{
+			Question_id: id,
+			Title:       title,
+			Link:        url,
+		}
+
+		//Switch on the state as read from the database to ensure question is added to correct cace
+		switch state {
+		case "unanswered":
+			data.unansweredCache = append(data.unansweredCache, currentQ)
+		case "answered":
+			data.unansweredCache = append(data.answeredCache, currentQ)
+		case "pending":
+			data.pendingCache = append(data.pendingCache, currentQ)
+		case "updating":
+			data.updatingCache = append(data.updatingCache, currentQ)
+
+		}
+	}
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/home", mainHandler)
 	http.HandleFunc("/tag", mainHandler)
 	http.HandleFunc("/user", mainHandler)
 
-	db := backend.SqlInit()
-
-	//test query
-	rows, err := db.Query("select * from questions")
-	if err != nil {
-		log.Fatal("Query failed:\t", err)
-	}
-
-	defer rows.Close()
-
-	var (
-		id int
-		title string
-		url string
-	)
-	for rows.Next() {
-		err := rows.Scan(&id, &title, &url)
-		if err != nil {
-			log.Fatal("Reading failure:\t", err)
-		}
-
-		log.Println(id, title, url)
-	}
-
-	//Check for errors after iterating over the rows
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -253,7 +301,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 // Write a genReply struct with the inputted Question slices
 func writeResponse(user stackongo.User, unanswered []stackongo.Question, answered []stackongo.Question, pending []stackongo.Question, updating []stackongo.Question) genReply {
 	return genReply{
-		Wrapper: data.wrapper, // The global wrapper
+		Wrapper: pageData.wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
 			cacheInfo{
 				CacheType: "unanswered",
