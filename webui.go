@@ -394,7 +394,6 @@ func writeResponse(user stackongo.User, c appengine.Context) genReply {
 	if err != nil {
 		log.Fatal("query failed:\t", err)
 	}
-	updateTableTimes("questions")
 	defer func() {
 		c.Infof("Closing rows: WriteResponse")
 		rows.Close()
@@ -422,6 +421,7 @@ func writeResponse(user stackongo.User, c appengine.Context) genReply {
 			data.updatingCache = append(data.updatingCache, currentQ)
 		}
 	}
+	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
 		Wrapper: pageData.wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
@@ -570,8 +570,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			}
 		}
 		//Update the table on SQL keeping track of table modifications
-		updateTableTimes("questions")
 	}
+	updateTableTimes("questions")
 
 	/* old updating method
 	for _, question := range data.unansweredCache {
