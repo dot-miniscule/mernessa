@@ -569,50 +569,11 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				c.Errorf("Update query failed:\t%v", err.Error())
 			}
 		}
-		//Update the table on SQL keeping track of table modifications
-		updateTableTimes("questions")
 	}
+	//Update the table on SQL keeping track of table modifications
+	updateTableTimes("questions")
 
 	/* old updating method
-	for _, question := range data.unansweredCache {
-		newState = "unanswered"
-		name := "unanswered_" + strconv.Itoa(question.Question_id)
-		form_input := r.PostFormValue(name)
-		switch form_input {
-		case "unanswered":
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
-		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, question)
-			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
-			newState = "answered"
-		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, question)
-			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
-			newState = "pending"
-		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, question)
-			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
-			newState = "updating"
-		case "no_change":
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
-		}
-
-		// Map the user to the question if the question is done
-		if form_input != "no_change" && form_input != "unanswered" {
-			qns[question.Question_id] = user
-		}
-		if newState != "unanswered" {
-			stmts, err := db.Prepare("UPDATE questions SET state=? where question_id=?")
-			if err != nil {
-				log.Println(err)
-			}
-			_, err = stmts.Exec(newState, question.Question_id)
-			if err != nil {
-				log.Println("Update query failed:\t", err)
-			}
-		}
-	}
-
 	for _, question := range data.answeredCache {
 		newState = "answered"
 		name := "answered_" + strconv.Itoa(question.Question_id)
@@ -667,129 +628,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			}
 		}
 	}
-
-	for _, question := range data.pendingCache {
-		newState = "pending"
-		name := "pending_" + strconv.Itoa(question.Question_id)
-		form_input := r.PostFormValue(name)
-		switch form_input {
-		case "unanswered":
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
-			newState = "unanswered"
-		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, question)
-			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
-			newState = "answered"
-		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, question)
-			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
-			newState = "pending"
-		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, question)
-			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
-		case "no_change":
-			tempData.pendingCache = append(tempData.pendingCache, question)
-		}
-
-		// If the question is now unanswered, delete question from map
-		if form_input == "unanswered" {
-			qns[question.Question_id] = stackongo.User{}
-			delete(qns, question.Question_id)
-
-			// Else remove question from original editor's cache and map user to question
-		} else if form_input != "no_change" {
-
-			editor := qns[question.Question_id]
-			for i, q := range users[editor.User_id].pendingCache {
-				if question.Question_id == q.Question_id {
-					users[editor.User_id].pendingCache = append(users[editor.User_id].pendingCache[:i], users[editor.User_id].pendingCache[i+1:]...)
-					break
-				}
-			}
-
-			qns[question.Question_id] = user
-		}
-
-		if newState != "pending" {
-			stmts, err := db.Prepare("UPDATE questions SET state=? where question_id=?")
-			if err != nil {
-				log.Println(err)
-			}
-			_, err = stmts.Exec(newState, question.Question_id)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-	}
-
-	for _, question := range data.updatingCache {
-		newState = "updating"
-		n// Map the user to the question if the question is done
-		if form_input != "no_change" && form_input != "unanswered" {
-			qns[question.Question_id] = user
-		}
-		if newState != "unanswered" {
-			stmts, err := db.Prepare("UPDATE questions SET state=? where question_id=?")
-			if err != nil {
-				log.Println(err)
-			}
-			_, err = stmts.Exec(newState, question.Question_id)
-			if err != nil {
-				log.Println("Update query failed:\t", err)
-			}
-		}ame := "updating_" + strconv.Itoa(question.Question_id)
-		form_input := r.PostFormValue(name)
-		switch form_input {
-		case "unanswered":
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
-			newState = "unanswered"
-		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, question)
-			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
-			newState = "answered"
-		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, question)
-			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
-			newState = "pending"
-		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, question)
-			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
-			newState = "updating"
-		case "no_change":
-			tempData.updatingCache = append(tempData.updatingCache, question)
-			newState = "updating"
-		}
-
-		// If the question is now unanswered, delete question from map
-		if form_input == "unanswered" {
-			qns[question.Question_id] = stackongo.User{}
-			delete(qns, question.Question_id)
-
-			// Else remove question from original editor's cache and map user to question
-		} else if form_input != "no_change" {
-
-			editor := qns[question.Question_id]
-			for i, q := range users[editor.User_id].updatingCache {
-				if question.Question_id == q.Question_id {
-					users[editor.User_id].updatingCache = append(users[editor.User_id].updatingCache[:i], users[editor.User_id].updatingCache[i+1:]...)
-					break
-				}
-			}
-
-			qns[question.Question_id] = user
-		}
-
-		if newState != "updating" {
-			stmts, err := db.Prepare("UPDATE questions SET state=? where question_id=?")
-			if err != nil {
-				log.Println(err)
-			}
-			_, err = stmts.Exec(newState, question.Question_id)
-			if err != nil {
-
-			}
-		}
-	}
 	*/
 
 	// sort user caches by creation date
@@ -797,7 +635,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	sort.Stable(byCreationDate(users[user.User_id].pendingCache))
 	sort.Stable(byCreationDate(users[user.User_id].updatingCache))
 
-	/* change lastUpdatedTime and time on db */
 	return nil
 }
 
