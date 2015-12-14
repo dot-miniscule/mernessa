@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"appengine"
 
@@ -84,7 +85,7 @@ var db *sql.DB
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
-var mostRecentUpdate int64
+var mostRecentUpdate int32
 
 // Functions for template to recieve data from maps
 func (r genReply) GetUserID(id int) int {
@@ -198,9 +199,53 @@ func readFromDb() webData {
 
 		}
 	}
-
+	mostRecentUpdate = int32(time.Now().Unix())
 	return tempData
+}
 
+/* Function to check if the DB has been updated since we last queried it
+Returns true if our cache needs to be refreshed
+False if is all g */
+func checkDBUpdateTime(tableName string) bool {
+	var (
+		id           int
+		table_name   string
+		last_updated int32
+	)
+	rows, err := db.Query("SELECT last_updated FROM update_times where table_name=?")
+	if err != nil {
+		log.Println(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&id, &table_name, &last_updated)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	if last_updated > mostRecentUpdate {
+		return true
+	} else {
+		return false
+	}
+}
+
+/* Function to update a stored table containing the last update times for all tables in the database
+A crude way to find out if the working cache needs to be refreshed from the database.
+Stores the current Unix time in update_times table on Cloud SQL */
+func updateTableTimes(tableName string) {
+	stmts, err := db.Prepare("UPDATE update_times SET last_updated=(?) WHERE table_name=(?)")
+	if err != nil {
+		log.Println(err)
+	}
+
+	_, err = stmts.Exec(int32(time.Now().Unix()), tableName)
+	if err != nil {
+		log.Fatal("Could not update time for ", tableName+":\t", err)
+	}
 }
 
 // Handler for authorizing user
@@ -369,12 +414,10 @@ func writeResponse(user stackongo.User, unanswered []stackongo.Question, answere
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
 	if true /* time on sql db is later than lastUpdatedTime */ {
-		// Don't update
-		// send error
-		// MEREDITH TODO: Add CHECKSUM TABLE to check whether db has been updated since last pull
 		// At the moment its just going to pull from db regardless at the moment, so at least data is up to date.
 
 		data = readFromDb()
+		log.Println("Data read from DB Successfully!")
 	}
 
 	// required to collect post form data
