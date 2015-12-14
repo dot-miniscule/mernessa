@@ -78,7 +78,13 @@ var qns = make(map[int]stackongo.User)
 var guest = stackongo.User{
 	Display_name: "guest",
 }
+
+// Pointer to database connection to communicate with Cloud SQL
 var db *sql.DB
+
+//Stores the last time the database was read into the cache
+//This is then checked against the update time of the database and determine whether the cache should be updated
+var mostRecentUpdate int64
 
 // Functions for template to recieve data from maps
 func (r genReply) GetUserID(id int) int {
@@ -98,15 +104,16 @@ func init() {
 		fmt.Println(err.Error())
 		return
 	}
-
+	//Initalize db
 	db = backend.SqlInit()
 
+	//Read questions from Stack wrapper
 	pageData.wrapper = new(stackongo.Questions) // Create a new wrapper
 	if err := json.Unmarshal(input, pageData.wrapper); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	//Comment Out the next line to avoid ridiculous loading times
+	//Comment Out the next line to avoid ridiculous loading times while in development phase
 	//pageData.unansweredCache = pageData.wrapper.Items // At start, all questions are unanswered
 
 	//Iterate through each question returned, and add it to the database.
@@ -141,8 +148,17 @@ func init() {
 	}
 
 	log.Println("New records added successfully!")
+	data = readFromDb()
+	http.HandleFunc("/login", authHandler)
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/tag", handler)
+	http.HandleFunc("/user", handler)
+}
 
+func readFromDb() webData {
 	//Reading from database
+	log.Println("Refreshing database read")
+	tempData := webData{}
 	var (
 		url     string
 		title   string
@@ -150,13 +166,14 @@ func init() {
 		updated int
 		state   string
 	)
+	//Select all questions in the database and read into a new data object
 	rows, err := db.Query("select * from questions")
 	if err != nil {
 		log.Fatal("query failed:\t", err)
 	}
 
 	defer rows.Close()
-
+	//Iterate through each row and add to the correct cache
 	for rows.Next() {
 		err := rows.Scan(&id, &title, &url, &updated, &state)
 		if err != nil {
@@ -171,21 +188,19 @@ func init() {
 		//Switch on the state as read from the database to ensure question is added to correct cace
 		switch state {
 		case "unanswered":
-			data.unansweredCache = append(data.unansweredCache, currentQ)
+			tempData.unansweredCache = append(tempData.unansweredCache, currentQ)
 		case "answered":
-			data.unansweredCache = append(data.answeredCache, currentQ)
+			tempData.answeredCache = append(tempData.answeredCache, currentQ)
 		case "pending":
-			data.pendingCache = append(data.pendingCache, currentQ)
+			tempData.pendingCache = append(tempData.pendingCache, currentQ)
 		case "updating":
-			data.updatingCache = append(data.updatingCache, currentQ)
+			tempData.updatingCache = append(tempData.updatingCache, currentQ)
 
 		}
 	}
 
-	http.HandleFunc("/login", authHandler)
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/tag", handler)
-	http.HandleFunc("/user", handler)
+	return tempData
+
 }
 
 // Handler for authorizing user
@@ -356,7 +371,12 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	if true /* time on sql db is later than lastUpdatedTime */ {
 		// Don't update
 		// send error
+		// MEREDITH TODO: Add CHECKSUM TABLE to check whether db has been updated since last pull
+		// At the moment its just going to pull from db regardless at the moment, so at least data is up to date.
+
+		data = readFromDb()
 	}
+
 	// required to collect post form data
 	r.ParseForm()
 
