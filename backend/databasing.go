@@ -3,7 +3,6 @@ package backend
 import (
 	"database/sql"
 	"log"
-	"net"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -22,13 +21,13 @@ type databaseInfo struct {
 //and manages a pool of connections as needed
 //returns a *sql.DB to query elsewhere.
 func SqlInit() *sql.DB {
-	ipv6 := "tcp(" + net.JoinHostPort("2001:4860:4864:1:aebb:124d:884e:3108", "3306") + ")"
-	log.Println("JoinHostPort -", ipv6)
+	//ipv6:= "tcp(" + net.JoinHostPort("2001:4860:4864:1:aebb:124d:884e:3108", "3306") + ")"
+	//log.Println("JoinHostPort -", ipv6)
 	sqldb := databaseInfo{
 		"root",
 		"mernessa",
 		"password",
-		ipv6,
+		"tcp(173.194.225.82:3306)",
 	}
 
 	dbString := "mysql" + sqldb.username + ":" + sqldb.password + "@" + sqldb.IP + "/" + sqldb.dbName
