@@ -1,7 +1,6 @@
 /*
-	This Go Package responds to any request by sending a response containing the message Hello, vanessa.
 
-*/
+ */
 
 package webui
 
@@ -232,9 +231,8 @@ func checkDBUpdateTime(tableName string) bool {
 	}
 }
 
-/* Function to update a stored table containing the last update times for all tables in the database
-A crude way to find out if the working cache needs to be refreshed from the database.
-Stores the current Unix time in update_times table on Cloud SQL */
+//A crude way to find out if the working cache needs to be refreshed from the database.
+//Stores the current Unix time in update_times table on Cloud SQL */
 func updateTableTimes(tableName string) {
 	stmts, err := db.Prepare("UPDATE update_times SET last_updated=(?) WHERE table_name=(?)")
 	if err != nil {
@@ -382,11 +380,10 @@ func writeResponse(user stackongo.User) genReply {
 	var data = webData{}
 	//Reading from database
 	var (
-		url     string
-		title   string
-		id      int
-		updated int
-		state   string
+		url   string
+		title string
+		id    int
+		state string
 	)
 	rows, err := db.Query("select * from questions")
 	if err != nil {
@@ -396,7 +393,7 @@ func writeResponse(user stackongo.User) genReply {
 	defer rows.Close()
 
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &updated, &state)
+		err := rows.Scan(&id, &title, &url, &state)
 		if err != nil {
 			log.Fatal(err)
 		}
