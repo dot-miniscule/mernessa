@@ -146,10 +146,11 @@ func init() {
 			}
 		}
 	}
-
-	log.Println("New records added successfully!")
-
-	data = readFromDb()
+	//Check if the database needs to be updated again based on the last refresh time.
+	if checkDBUpdateTime("questions") == true {
+		data = readFromDb()
+		mostRecentUpdate = int32(time.Now().Unix())
+	}
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
@@ -211,9 +212,9 @@ func checkDBUpdateTime(tableName string) bool {
 		table_name   string
 		last_updated int32
 	)
-	rows, err := db.Query("SELECT last_updated FROM update_times where table_name=?")
+	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name ='?'")
 	if err != nil {
-		log.Println(err)
+		log.Fatal("Query failed:\t", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -226,23 +227,25 @@ func checkDBUpdateTime(tableName string) bool {
 		log.Fatal(err)
 	}
 	if last_updated > mostRecentUpdate {
-		return true
-	} else {
 		return false
+	} else {
+		return true
 	}
 }
 
 //A crude way to find out if the working cache needs to be refreshed from the database.
 //Stores the current Unix time in update_times table on Cloud SQL */
 func updateTableTimes(tableName string) {
-	stmts, err := db.Prepare("UPDATE update_times SET last_updated=(?) WHERE table_name=(?)")
+	stmts, err := db.Prepare("UPDATE update_times SET last_updated=? WHERE table_name=?")
 	if err != nil {
-		log.Println(err)
+		log.Println("Prepare failed:\t", err)
 	}
 
 	_, err = stmts.Exec(int32(time.Now().Unix()), tableName)
 	if err != nil {
-		log.Fatal("Could not update time for ", tableName+":\t", err)
+		log.Println("Could not update time for", tableName+":\t", err)
+	} else {
+		log.Println("Update time for", tableName, "successfully updated!")
 	}
 }
 
@@ -377,6 +380,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 }
 
 // Write a genReply struct with the inputted Question slices
+// This can call readFromDb() now as a method, most of this is redunant.
 func writeResponse(user stackongo.User, c appengine.Context) genReply {
 	var data = webData{}
 	//Reading from database
@@ -447,14 +451,13 @@ func writeResponse(user stackongo.User, c appengine.Context) genReply {
 	}
 }
 
-// updating the caches based on input from the app
+// updating the caches based on input from the appi
+// Vanessa TODO: Can this be migrated to the readFromDb() method? -- Meredith
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
-	if true /* time on sql db is later than lastUpdatedTime */ {
-		// At the moment its just going to pull from db regardless at the moment, so at least data is up to date.
-
+	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime */ {
 		data = readFromDb()
-		log.Println("Data read from DB Successfully!")
+		mostRecentUpdate = int32(time.Now().Unix())
 	}
 
 	// required to collect post form data
@@ -566,6 +569,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				c.Errorf("Update query failed:\t%v", err.Error())
 			}
 		}
+		//Update the table on SQL keeping track of table modifications
+		updateTableTimes("questions")
 	}
 
 	/* old updating method
