@@ -140,47 +140,7 @@ func init() {
 	}
 
 	log.Println("New records added successfully!")
-	/*
-		//Reading from database
-		var (
-			url     string
-			title   string
-			id      int
-			updated int
-			state   string
-		)
-		rows, err := db.Query("select * from questions")
-		if err != nil {
-			log.Fatal("query failed:\t", err)
-		}
 
-		defer rows.Close()
-
-		for rows.Next() {
-			err := rows.Scan(&id, &title, &url, &updated, &state)
-			if err != nil {
-				log.Fatal(err)
-			}
-			currentQ := stackongo.Question{
-				Question_id: id,
-				Title:       title,
-				Link:        url,
-			}
-
-			//Switch on the state as read from the database to ensure question is added to correct cace
-			switch state {
-			case "unanswered":
-				data.unansweredCache = append(data.unansweredCache, currentQ)
-			case "answered":
-				data.answeredCache = append(data.answeredCache, currentQ)
-			case "pending":
-				data.pendingCache = append(data.pendingCache, currentQ)
-			case "updating":
-				data.updatingCache = append(data.updatingCache, currentQ)
-
-			}
-		}
-	*/
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
@@ -259,7 +219,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user)); err != nil {
+	if err := page.Execute(w, writeResponse(user, c)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
@@ -297,7 +257,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 	   		}
 	*/
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user)); err != nil {
+	if err := page.Execute(w, writeResponse(user, c)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
@@ -309,36 +269,37 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	page := template.Must(template.ParseFiles("public/template.html"))
 
 	if _, ok := users[userID]; !ok {
-		page.Execute(w, writeResponse(user))
+		page.Execute(w, writeResponse(user, c))
 		return
 	}
-	if err := page.Execute(w, writeResponse(user)); err != nil {
+	if err := page.Execute(w, writeResponse(user, c)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
 // Write a genReply struct with the inputted Question slices
-func writeResponse(user stackongo.User) genReply {
+func writeResponse(user stackongo.User, c appengine.Context) genReply {
 	var data = webData{}
 	//Reading from database
 	var (
-		url     string
-		title   string
-		id      int
-		updated int
-		state   string
+		url   string
+		title string
+		id    int
+		state string
 	)
 	rows, err := db.Query("select * from questions")
 	if err != nil {
 		log.Fatal("query failed:\t", err)
 	}
-
-	defer rows.Close()
+	defer func() {
+		c.Infof("Closing rows: WriteResponse")
+		rows.Close()
+	}()
 
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &updated, &state)
+		err := rows.Scan(&id, &title, &url, &state)
 		if err != nil {
-			log.Fatal(err)
+			c.Criticalf(err.Error())
 		}
 		currentQ := stackongo.Question{
 			Question_id: id,
@@ -414,7 +375,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		numQ  int
 	)
 	type rowData struct {
-		updated  int
 		state    string
 		question stackongo.Question
 	}
@@ -424,29 +384,36 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	if err != nil {
 		c.Errorf("query failed:\t%v", err)
 	}
+	defer func() {
+		c.Infof("closing rows: updating")
+		rows.Close()
+	}()
 
-	channel := make(chan rowData)
+	//	channel := make(chan rowData)
 
 	for rows.Next() {
 		numQ++
-		go func() {
-			row := rowData{}
-			err := rows.Scan(&id, &title, &url, &row.updated, &row.state)
-			if err != nil {
-				c.Errorf("rows.Scan: %v", err.Error())
+		//go func(rows *sql.Rows) {
+		row := rowData{}
+		err := rows.Scan(&id, &title, &url, &row.state)
+		if err != nil {
+			c.Errorf("rows.Scan: %v", err.Error())
+		}
+		question := stackongo.Question{
+			Question_id: id,
+			Title:       title,
+			Link:        url,
+		}
+		row.question = question
+		/*	channel <- row
+				}(rows)
 			}
-			question := stackongo.Question{
-				Question_id: id,
-				Title:       title,
-				Link:        url,
+			if err = rows.Err(); err != nil {
+				c.Errorf(err.Error())
 			}
-			row.question = question
-			channel <- row
-		}()
-	}
 
-	for i := 0; i < numQ; i++ {
-		row := <-channel
+			for i := 0; i < numQ; i++ {
+				row := <-channel*/
 		name := row.state + "_" + strconv.Itoa(id)
 		form_input := r.PostFormValue(name)
 		switch form_input {
