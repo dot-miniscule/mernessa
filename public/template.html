@@ -13,7 +13,7 @@
         <h4>Places API Tag Tracker for StackExchange </h4>
         <h5>Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5>
       </div>
-      <p id="welcomeSentence"> Welcome, <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}}</a></p>
+      <p id="welcomeSentence"> Welcome, <a href="/user?id={{$reply.User.User_id}}" style="color:white">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a></p>
       <!-- CONTENT TABS -->
       <div class="tab-panels">
         <ul class="tabs">
@@ -22,7 +22,7 @@
           <li rel="pending" class="navigation">Pending</li>
           <li rel="updating" class="navigation">Update</li>
         </ul>
-        <form name="change_state" method="POST">
+        <form name="change_state" id="stateForm" method="POST">
           {{range $cache := $reply.Caches}}
           <div id="{{$cache.CacheType}}" class="panel">
             <div id="info">
@@ -37,30 +37,32 @@
                     <th>Answered</th>
                     <th>Pending</th>
                     <th>Update</th>
-                    <th><a href="#" data-tooltip="tooltip" title="Click here to activate lock" ><img class="lockIcon" onclick="changeImage()" src="/images/lockSmall.png"></a>
                   </tr>
                 </thead>
                 <tbody>
-                  {{range $i, $question := $cache.Questions}}
-                  <tr>
-                    <td id="question">
-                      <a href={{$question.Link}}>{{$question.Title}}</a>
-                      <br>
-                      <div class="tagContainer">
-                        <ul>
-                        {{range $tag := $question.Tags}}  
-                          <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?q={{$tag}}">{{$tag}}</a></li>
+                  {{range $question := $cache.Questions}}
+                    <tr>
+                      <td id="question">
+                        <a href={{$question.Link}}>{{$question.Title}}</a>
+                        <br>
+                        <div class="tagContainer">
+                          <ul>
+                          {{range $tag := $question.Tags}}  
+                            <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?q={{$tag}}">{{$tag}}</a></li>
+                          {{end}}
+                          </ul>
+                        </div>
+                        {{if ne $cache.CacheType "unanswered"}}
+                          <a href="/user?id={{$reply.GetUserID $question.Question_id}}">{{$reply.GetUserName $question.Question_id}}</a>
                         {{end}}
-                        </ul>
-                      </div>
-                    
-                    </td>
-                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="unanswered" disabled="true"></td>
-                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="answered" disabled="true"></td>
-                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="pending" disabled="true"></td>
-                    <td><input type="radio" class="radios" name="{{$cache.CacheType}}_state{{$i}}" value="updating" disabled="true"></td>
-                  </tr>
-                {{end}}
+                      </td>
+                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>
+                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="answered"></td>
+                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="pending"></td>
+                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="updating"></td>
+                      <td style="display:none"><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="no_change" checked="checked"></td>
+                    </tr>
+                  {{end}}
                 </tbody>
               </table>
             </div> <!-- END TABLE CONTAINER -->
@@ -79,7 +81,7 @@
             <p>STEP Interns, 2015</p>
           </div>
           <div id="submitContainer"> 
-            <input type="submit" id=submitButton value="Submit">
+            <input type="submit" name="btnSubmit" id=submitButton value="Submit">
         </form> 
           </div>
         </div>
