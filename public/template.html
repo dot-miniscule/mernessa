@@ -11,7 +11,9 @@
     <div class="wrap">
       <div class="titleBar">
         <h4>Places API Tag Tracker for StackExchange </h4>
-        <h5>Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5>
+        {{if ne $reply.Query ""}}
+          <h5>Querying: {{$reply.Query}}</h5>
+        {{end}}
       </div>
       <p id="welcomeSentence"> Welcome,
         {{if eq $reply.User.Display_name "Guest"}}
@@ -59,7 +61,7 @@
                           </ul>
                         </div>
                         {{if ne $cache.CacheType "unanswered"}}
-                          <a href="/user?id={{$reply.GetUserID $question.Question_id}}">{{$reply.GetUserName $question.Question_id}}</a>
+                          <a href="/user?id={{$reply.GetUserIDByQn $question.Question_id}}">{{$reply.GetUserNameByQn $question.Question_id}}</a>
                         {{end}}
                       </td>
                       <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>
