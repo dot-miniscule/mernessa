@@ -152,10 +152,11 @@ func init() {
 	http.HandleFunc("/user", handler)
 }
 
-func readFromDb() webData {
+func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 	//Reading from database
 	log.Println("Refreshing database read")
 	tempData := webData{}
+	qns := map[int]stackongo.User{}
 	var (
 		url   string
 		title string
@@ -164,7 +165,11 @@ func readFromDb() webData {
 		owner int
 	)
 	//Select all questions in the database and read into a new data object
-	rows, err := db.Query("select * from questions")
+	query := "select * from questions"
+	for key, q := range queries {
+		query = query + " where " + key + "=" + q
+	}
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal("query failed:\t", err)
 	}
@@ -192,11 +197,11 @@ func readFromDb() webData {
 			tempData.pendingCache = append(tempData.pendingCache, currentQ)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, currentQ)
-
 		}
+		qns[id] = stackongo.User{User_id: owner}
 	}
 	mostRecentUpdate = int32(time.Now().Unix())
-	return tempData
+	return tempData, qns
 }
 
 /* Function to check if the DB has been updated since we last queried it
@@ -344,7 +349,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, c)); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
@@ -382,7 +387,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 	   		}
 	*/
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user, c)); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
@@ -394,24 +399,24 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	page := template.Must(template.ParseFiles("public/template.html"))
 
 	if _, ok := users[userID]; !ok {
-		page.Execute(w, writeResponse(user, c))
+		page.Execute(w, writeResponse(user, c, map[string]string{}))
 		return
 	}
-	if err := page.Execute(w, writeResponse(user, c)); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, map[string]string{"user": strconv.Itoa(userID)})); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redunant.
-func writeResponse(user stackongo.User, c appengine.Context) genReply {
+func writeResponse(user stackongo.User, c appengine.Context, queries map[string]string) genReply {
 	var data = webData{}
 	var qns = make(map[int]stackongo.User)
 	//Check if the database needs to be updated again based on the last refresh time.
-	if checkDBUpdateTime("questions") == true {
-		data = readFromDb()
-		mostRecentUpdate = int32(time.Now().Unix())
-	}
+	//if checkDBUpdateTime("questions") == true {
+	data, qns = readFromDb(queries)
+	mostRecentUpdate = int32(time.Now().Unix())
+	//}
 
 	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
@@ -446,9 +451,9 @@ func writeResponse(user stackongo.User, c appengine.Context) genReply {
 // updating the caches based on input from the appi
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
-	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime */ {
+	/*	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime  {
 		mostRecentUpdate = int32(time.Now().Unix())
-	}
+	}*/
 
 	// required to collect post form data
 	r.ParseForm()
@@ -549,11 +554,15 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		}
 
 		if newState != row.state {
-			stmts, err := db.Prepare("UPDATE questions SET state=? where question_id=?")
+			stmts, err := db.Prepare("UPDATE questions SET state=?,user=? where question_id=?")
 			if err != nil {
 				c.Errorf("%v", err.Error())
 			}
-			_, err = stmts.Exec(newState, row.question.Question_id)
+			id := 0
+			if newState != "unanswered" {
+				id = user.User_id
+			}
+			_, err = stmts.Exec(newState, id, row.question.Question_id)
 			if err != nil {
 				c.Errorf("Update query failed:\t%v", err.Error())
 			}
