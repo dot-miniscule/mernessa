@@ -271,8 +271,11 @@ func addUser(newUser stackongo.User) {
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	auth_url := backend.AuthURL()
 	header := w.Header()
+	log.Println(auth_url)
 	header.Add("Location", auth_url)
+	header.Add("Access-Control-Allow-Origin", "http://127.0.0.1:8080") //TODO: Replace with proper url
 	w.WriteHeader(302)
+	log.Println("Header: ", w.Header())
 }
 
 func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {
@@ -288,7 +291,6 @@ func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stacko
 			return guest
 		}
 		access_tokens, err := backend.ObtainAccessToken(code)
-		c.Infof("%v", access_tokens)
 		if err != nil {
 			c.Errorf(err.Error())
 			return guest
@@ -321,10 +323,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
-		if reflect.DeepEqual(user, guest) {
-			authHandler(w, r)
-		}
-		user = getUser(w, r, c)
 		err := updatingCache_User(r, c, user)
 		if err != nil {
 			c.Errorf(err.Error())

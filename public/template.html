@@ -86,8 +86,12 @@
             <p>Meredith Lane</p>
             <p>STEP Interns, 2015</p>
           </div>
-          <div id="submitContainer"> 
-            <input type="submit" name="btnSubmit" id=submitButton value="Submit">
+          <div id="submitContainer">
+            {{if ne $reply.User.Display_name "Guest"}}
+              <input type="submit" name="btnSubmit" id=submitButton value="Submit">
+            {{else}}
+              <input type="submit" name="btnSubmit" id=submitButton value="Submit" disabled>
+            {{end}}
         </form> 
           </div>
         </div>
