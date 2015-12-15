@@ -542,13 +542,13 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 
 			qns[row.question.Question_id] = user
 		}
-
+		//Update the database, setting the state and the new user/owner of that question.
 		if newState != row.state {
-			stmts, err := db.Prepare("UPDATE questions SET state=? where question_id=?")
+			stmts, err := db.Prepare("UPDATE questions SET state=?, user=? where question_id=?")
 			if err != nil {
 				c.Errorf("%v", err.Error())
 			}
-			_, err = stmts.Exec(newState, row.question.Question_id)
+			_, err = stmts.Exec(newState, user.User_id, row.question.Question_id)
 			if err != nil {
 				c.Errorf("Update query failed:\t%v", err.Error())
 			}
