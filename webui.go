@@ -161,10 +161,11 @@ func init() {
 	http.HandleFunc("/user", handler)
 }
 
-func readFromDb() webData {
+func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 	//Reading from database
 	log.Println("Refreshing database read")
 	tempData := webData{}
+	qns := map[int]stackongo.User{}
 	var (
 		url   string
 		title string
@@ -173,7 +174,11 @@ func readFromDb() webData {
 		owner int
 	)
 	//Select all questions in the database and read into a new data object
-	rows, err := db.Query("select * from questions")
+	query := "select * from questions"
+	for key, q := range queries {
+		query = query + " where " + key + "=" + q
+	}
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal("query failed:\t", err)
 	}
@@ -201,11 +206,11 @@ func readFromDb() webData {
 			tempData.pendingCache = append(tempData.pendingCache, currentQ)
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, currentQ)
-
 		}
+		qns[id] = stackongo.User{User_id: owner}
 	}
 	mostRecentUpdate = int32(time.Now().Unix())
-	return tempData
+	return tempData, qns
 }
 
 /* Function to check if the DB has been updated since we last queried it
@@ -268,8 +273,11 @@ func addUser(newUser stackongo.User) {
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	auth_url := backend.AuthURL()
 	header := w.Header()
+	log.Println(auth_url)
 	header.Add("Location", auth_url)
+	header.Add("Access-Control-Allow-Origin", "http://127.0.0.1:8080") //TODO: Replace with proper url
 	w.WriteHeader(302)
+	log.Println("Header: ", w.Header())
 }
 
 func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {
@@ -285,7 +293,6 @@ func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stacko
 			return guest
 		}
 		access_tokens, err := backend.ObtainAccessToken(code)
-		c.Infof("%v", access_tokens)
 		if err != nil {
 			c.Errorf(err.Error())
 			return guest
@@ -318,10 +325,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
-		if reflect.DeepEqual(user, guest) {
-			authHandler(w, r)
-		}
-		user = getUser(w, r, c)
 		err := updatingCache_User(r, c, user)
 		if err != nil {
 			c.Errorf(err.Error())
@@ -343,7 +346,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, c)); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
@@ -384,6 +387,10 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 			c.Criticalf("%v", err.Error())
 		}
 	*/
+	page := template.Must(template.ParseFiles("public/template.html"))
+	if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
 }
 
 // Handler to find all questions answered/being answered by the user in URL
@@ -393,21 +400,27 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	page := template.Must(template.ParseFiles("public/template.html"))
 
 	if _, ok := users[userID]; !ok {
-		page.Execute(w, writeResponse(user, c))
+		page.Execute(w, writeResponse(user, c, map[string]string{}))
 		return
 	}
-	if err := page.Execute(w, writeResponse(user, c)); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, map[string]string{"user": strconv.Itoa(userID)})); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redunant.
-func writeResponse(user stackongo.User, c appengine.Context) genReply {
+func writeResponse(user stackongo.User, c appengine.Context, queries map[string]string) genReply {
 	var data = webData{}
 	data = readFromDb()
 	var qns = make(map[int]stackongo.User)
 	//Check if the database needs to be updated again based on the last refresh time.
+	//if checkDBUpdateTime("questions") == true {
+	data, qns = readFromDb(queries)
+	mostRecentUpdate = int32(time.Now().Unix())
+	//}
+
+	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
 		Wrapper: pageData.wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
@@ -440,6 +453,9 @@ func writeResponse(user stackongo.User, c appengine.Context) genReply {
 // updating the caches based on input from the appi
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
+	/*	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime  {
+		mostRecentUpdate = int32(time.Now().Unix())
+	}*/
 
 	// required to collect post form data
 	r.ParseForm()
@@ -540,11 +556,15 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		}
 		//Update the database, setting the state and the new user/owner of that question.
 		if newState != row.state {
-			stmts, err := db.Prepare("UPDATE questions SET state=?, user=? where question_id=?")
+			stmts, err := db.Prepare("UPDATE questions SET state=?,user=? where question_id=?")
 			if err != nil {
 				c.Errorf("%v", err.Error())
 			}
-			_, err = stmts.Exec(newState, user.User_id, row.question.Question_id)
+			id := 0
+			if newState != "unanswered" {
+				id = user.User_id
+			}
+			_, err = stmts.Exec(newState, id, row.question.Question_id)
 			if err != nil {
 				c.Errorf("Update query failed:\t%v", err.Error())
 			}
