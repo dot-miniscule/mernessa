@@ -152,7 +152,7 @@ func init() {
 	http.HandleFunc("/user", handler)
 }
 
-func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
+func readFromDb(queries string) (webData, map[int]stackongo.User) {
 	//Reading from database
 	log.Println("Refreshing database read")
 	tempData := webData{}
@@ -169,8 +169,8 @@ func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 	)
 	//Select all questions in the database and read into a new data object
 	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id"
-	for key, q := range queries {
-		query = query + " where " + key + "=" + q
+	if queries != "" {
+		query = query + " WHERE state='unanswered' OR " + queries
 	}
 	rows, err := db.Query(query)
 	if err != nil {
@@ -358,7 +358,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, "")); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
@@ -396,7 +396,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 	   		}
 	*/
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, "")); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
@@ -407,14 +407,14 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 
-	if err := page.Execute(w, writeResponse(user, c, map[string]string{"user": userID})); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, "id="+userID)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redunant.
-func writeResponse(user stackongo.User, c appengine.Context, queries map[string]string) genReply {
+func writeResponse(user stackongo.User, c appengine.Context, queries string) genReply {
 	var data = webData{}
 	var qns = make(map[int]stackongo.User)
 	//Check if the database needs to be updated again based on the last refresh time.
