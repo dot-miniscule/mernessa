@@ -59,14 +59,13 @@ type webData struct {
 type userData struct {
 	user_info     stackongo.User       // SE user info
 	access_token  string               // Token to access info
-	answeredCache []stackongo.Question // Questions answered by user
+	answeredCache []stackongo.Question //  answered by user
 	pendingCache  []stackongo.Question // Questions being answered by user
 	updatingCache []stackongo.Question // Questions that are being updated
 }
 
 // Global variable with cache info
 var pageData = webData{}
-var data = webData{}
 
 // Map of users by user ids
 var users = make(map[int]*userData)
@@ -146,11 +145,7 @@ func init() {
 			}
 		}
 	}
-	//Check if the database needs to be updated again based on the last refresh time.
-	if checkDBUpdateTime("questions") == true {
-		data = readFromDb()
-		mostRecentUpdate = int32(time.Now().Unix())
-	}
+
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
@@ -166,6 +161,7 @@ func readFromDb() webData {
 		title string
 		id    int
 		state string
+		user  int
 	)
 	//Select all questions in the database and read into a new data object
 	rows, err := db.Query("select * from questions")
@@ -176,7 +172,7 @@ func readFromDb() webData {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state)
+		err := rows.Scan(&id, &title, &url, &state, &user)
 		currentQ := stackongo.Question{
 			Question_id: id,
 			Title:       title,
@@ -249,6 +245,32 @@ func updateTableTimes(tableName string) {
 	}
 }
 
+// Write user data into the database
+func addUser(newUser stackongo.User) {
+
+	stmts, err := db.Prepare("INSERT IGNORE INTO user (id, name, pic) VALUES (?, ?, ?)")
+	if err != nil {
+		log.Println("Prepare failed:\t", err)
+	}
+
+	res, err := stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image)
+	if err != nil {
+		log.Fatal("Insertion of new user failed:\t", err)
+	}
+
+	lastId, err := res.LastInsertId()
+	if err != nil {
+		log.Fatal("Response from insertion failed:\t", err)
+	}
+
+	rowCnt, err := res.RowsAffected()
+	if err != nil {
+		log.Fatal("Response from rows affected failed:\t", err)
+	}
+
+	log.Printf("ID = %d, affected rows = %d\n", lastId, rowCnt)
+}
+
 // Handler for authorizing user
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	auth_url := backend.AuthURL()
@@ -289,6 +311,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := backend.AuthenticatedUser(map[string]string{}, token.Value)
+	addUser(user)
 	if err != nil {
 		c.Errorf(err.Error())
 		errorHandler(w, r, 0, err.Error())
@@ -382,44 +405,11 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redunant.
 func writeResponse(user stackongo.User, c appengine.Context) genReply {
-	var data = webData{}
-	//Reading from database
-	var (
-		url   string
-		title string
-		id    int
-		state string
-	)
-	rows, err := db.Query("select * from questions")
-	if err != nil {
-		log.Fatal("query failed:\t", err)
-	}
-	defer func() {
-		c.Infof("Closing rows: WriteResponse")
-		rows.Close()
-	}()
-
-	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state)
-		if err != nil {
-			c.Criticalf(err.Error())
-		}
-		currentQ := stackongo.Question{
-			Question_id: id,
-			Title:       title,
-			Link:        url,
-		}
-		//Switch on the state as read from the database to ensure question is added to correct cace
-		switch state {
-		case "unanswered":
-			data.unansweredCache = append(data.unansweredCache, currentQ)
-		case "answered":
-			data.answeredCache = append(data.answeredCache, currentQ)
-		case "pending":
-			data.pendingCache = append(data.pendingCache, currentQ)
-		case "updating":
-			data.updatingCache = append(data.updatingCache, currentQ)
-		}
+	data := webData{}
+	//Check if the database needs to be updated again based on the last refresh time.
+	if checkDBUpdateTime("questions") == true {
+		data = readFromDb()
+		mostRecentUpdate = int32(time.Now().Unix())
 	}
 	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
@@ -452,13 +442,8 @@ func writeResponse(user stackongo.User, c appengine.Context) genReply {
 }
 
 // updating the caches based on input from the appi
-// Vanessa TODO: Can this be migrated to the readFromDb() method? -- Meredith
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
-	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime */ {
-		data = readFromDb()
-		mostRecentUpdate = int32(time.Now().Unix())
-	}
 
 	// required to collect post form data
 	r.ParseForm()
@@ -469,8 +454,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		users[user.User_id].init(user, "")
 	}
 
-	//tempData := webData{}
-
 	// Collect the submitted form info based on the name of the form
 	// Check each cache against the form data
 	// Read from db based on each question id (primary key) to retrieve and update the state
@@ -479,6 +462,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		title string
 		id    int
 		numQ  int
+		owner int
 	)
 	type rowData struct {
 		state    string
@@ -501,7 +485,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		numQ++
 		//go func(rows *sql.Rows) {
 		row := rowData{}
-		err := rows.Scan(&id, &title, &url, &row.state)
+		err := rows.Scan(&id, &title, &url, &row.state, &owner)
 		if err != nil {
 			c.Errorf("rows.Scan: %v", err.Error())
 		}
