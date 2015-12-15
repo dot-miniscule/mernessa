@@ -133,16 +133,7 @@ func init() {
 		//Use a secondary mapping table to store the relationship between tags and questions.
 		//TODO: Complete mapping of tags to questions
 		for _, tag := range item.Tags {
-			stmt, err = db.Prepare("INSERT IGNORE INTO tags(tag) VALUES (?)")
 
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			_, err = stmt.Exec(tag)
-			if err != nil {
-				log.Fatal("Insertion of tag \"", tag, "\" failed:", err)
-			}
 			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
 			if err != nil {
 				log.Println("question_tag insertion failed!:\t", err)
@@ -196,6 +187,20 @@ func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 			log.Fatal("query failed:\t", err)
 		}
 
+		var tagToAdd string
+		//Get tags for that question, based on the ID
+		tagRows, err := db.Query("SELECT tag from question_tag where question_id = ?", currentQ.Question_id)
+		if err != nil {
+			log.Fatal("Tag retrieval failed!\t", err)
+		}
+		defer tagRows.Close()
+		for tagRows.Next() {
+			err := tagRows.Scan(&tagToAdd)
+			if err != nil {
+				log.Fatal("Could not scan for tag!\t", err)
+			}
+			currentQ.Tags = append(currentQ.Tags, tagToAdd)
+		}
 		//Switch on the state as read from the database to ensure question is added to correct cace
 		switch state {
 		case "unanswered":
@@ -412,14 +417,12 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 // This can call readFromDb() now as a method, most of this is redunant.
 func writeResponse(user stackongo.User, c appengine.Context, queries map[string]string) genReply {
 	var data = webData{}
-	data = readFromDb()
 	var qns = make(map[int]stackongo.User)
 	//Check if the database needs to be updated again based on the last refresh time.
 	//if checkDBUpdateTime("questions") == true {
 	data, qns = readFromDb(queries)
 	mostRecentUpdate = int32(time.Now().Unix())
 	//}
-
 	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
 		Wrapper: pageData.wrapper, // The global wrapper
