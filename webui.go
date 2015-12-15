@@ -258,22 +258,10 @@ func addUser(newUser stackongo.User) {
 		log.Println("Prepare failed:\t", err)
 	}
 
-	res, err := stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image)
+	_, err = stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image)
 	if err != nil {
 		log.Fatal("Insertion of new user failed:\t", err)
 	}
-
-	lastId, err := res.LastInsertId()
-	if err != nil {
-		log.Fatal("Response from insertion failed:\t", err)
-	}
-
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		log.Fatal("Response from rows affected failed:\t", err)
-	}
-
-	log.Printf("ID = %d, affected rows = %d\n", lastId, rowCnt)
 }
 
 // Handler for authorizing user
@@ -364,38 +352,38 @@ func handler(w http.ResponseWriter, r *http.Request) {
 // Handler to find all questions with specific tags
 func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	/*
-	       // Collect query
-	   	tag := r.FormValue("q")
+		// Collect query
+		tag := r.FormValue("q")
+		data := readFromDb()
+		// Create and fill in a new webData struct
+		tempData := webData{}
 
-	   	// Create and fill in a new webData struct
-	   	tempData := webData{}
-
-	   		// range through the question caches golang stackongoand add if the question contains the tag
-	   		for _, question := range data.unansweredCache {
-	   			if contains(question.Tags, tag) {
-	   				tempData.unansweredCache = append(tempData.unansweredCache, question)
-	   			}
-	   		}
-	   		for _, question := range data.answeredCache {
-	   			if contains(question.Tags, tag) {
-	   				tempData.answeredCache = append(tempData.answeredCache, question)
-	   			}
-	   		}
-	   		for _, question := range data.pendingCache {
-	   			if contains(question.Tags, tag) {
-	   				tempData.pendingCache = append(tempData.pendingCache, question)
-	   			}
-	   		}
-	   		for _, question := range data.updatingCache {
-	   			if contains(question.Tags, tag) {
-	   				tempData.updatingCache = append(tempData.updatingCache, question)
-	   			}
-	   		}
+		// range through the question caches golang stackongoand add if the question contains the tag
+		for _, question := range data.unansweredCache {
+			if contains(question.Tags, tag) {
+				tempData.unansweredCache = append(tempData.unansweredCache, question)
+			}
+		}
+		for _, question := range data.answeredCache {
+			if contains(question.Tags, tag) {
+				tempData.answeredCache = append(tempData.answeredCache, question)
+			}
+		}
+		for _, question := range data.pendingCache {
+			if contains(question.Tags, tag) {
+				tempData.pendingCache = append(tempData.pendingCache, question)
+			}
+		}
+		for _, question := range data.updatingCache {
+			if contains(question.Tags, tag) {
+				tempData.updatingCache = append(tempData.updatingCache, question)
+			}
+		}
+		page := template.Must(template.ParseFiles("public/template.html"))
+		if err := page.Execute(w, writeResponse(user, c)); err != nil {
+			c.Criticalf("%v", err.Error())
+		}
 	*/
-	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user, c)); err != nil {
-		c.Criticalf("%v", err.Error())
-	}
 }
 
 // Handler to find all questions answered/being answered by the user in URL
@@ -417,14 +405,9 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 // This can call readFromDb() now as a method, most of this is redunant.
 func writeResponse(user stackongo.User, c appengine.Context) genReply {
 	var data = webData{}
+	data = readFromDb()
 	var qns = make(map[int]stackongo.User)
 	//Check if the database needs to be updated again based on the last refresh time.
-	if checkDBUpdateTime("questions") == true {
-		data = readFromDb()
-		mostRecentUpdate = int32(time.Now().Unix())
-	}
-
-	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
 		Wrapper: pageData.wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
@@ -457,9 +440,6 @@ func writeResponse(user stackongo.User, c appengine.Context) genReply {
 // updating the caches based on input from the appi
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
-	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime */ {
-		mostRecentUpdate = int32(time.Now().Unix())
-	}
 
 	// required to collect post form data
 	r.ParseForm()
