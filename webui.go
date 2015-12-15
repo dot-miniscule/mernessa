@@ -75,7 +75,7 @@ var qns = make(map[int]stackongo.User)
 
 // Standard guest user
 var guest = stackongo.User{
-	Display_name: "guest",
+	Display_name: "Guest",
 }
 
 // Pointer to database connection to communicate with Cloud SQL
@@ -170,7 +170,7 @@ func readFromDb() webData {
 		title string
 		id    int
 		state string
-		user  int
+		owner int
 	)
 	//Select all questions in the database and read into a new data object
 	rows, err := db.Query("select * from questions")
@@ -181,7 +181,7 @@ func readFromDb() webData {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &user)
+		err := rows.Scan(&id, &title, &url, &state, &owner)
 		currentQ := stackongo.Question{
 			Question_id: id,
 			Title:       title,
@@ -231,11 +231,7 @@ func checkDBUpdateTime(tableName string) bool {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if last_updated > mostRecentUpdate {
-		return false
-	} else {
-		return true
-	}
+	return last_updated > mostRecentUpdate
 }
 
 //A crude way to find out if the working cache needs to be refreshed from the database.
@@ -288,6 +284,39 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(302)
 }
 
+func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {
+	// Collect access token from browswer cookie
+	// If cookie does not exist, obtain token using code from URL and set as cookie
+	// If code does not exist, redirect to login page for authorization
+	cookie, err := r.Cookie("access_token")
+	var token string
+	if err != nil {
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			c.Infof("Returning Guest user")
+			return guest
+		}
+		access_tokens, err := backend.ObtainAccessToken(code)
+		c.Infof("%v", access_tokens)
+		if err != nil {
+			c.Errorf(err.Error())
+			return guest
+		}
+		c.Infof("Setting cookie: access_token")
+		token = access_tokens["access_token"]
+		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: token})
+	} else {
+		token = cookie.Value
+	}
+	user, err := backend.AuthenticatedUser(map[string]string{}, token)
+	addUser(user)
+	if err != nil {
+		c.Errorf(err.Error())
+		return guest
+	}
+	return user
+}
+
 // Handler for main information to be read and written from
 func handler(w http.ResponseWriter, r *http.Request) {
 	// Create a new appengine context for logging purposes
@@ -296,47 +325,20 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	backend.SetTransport(r)
 	_ = backend.NewSession(r)
 
-	// Collect access token from browswer cookie
-	// If cookie does not exist, obtain token using code from URL and set as cookie
-	// If code does not exist, redirect to login page for authorization
-	token, err := r.Cookie("access_token")
-	var access_tokens map[string]string
-	if err != nil {
-		code := r.URL.Query().Get("code")
-		if code != "" {
-			c.Infof("Getting new user code")
-			handler(w, r)
-			return
-		}
-		access_tokens, err = backend.ObtainAccessToken(code)
-		if err == nil {
-			c.Infof("Setting cookie: access_token")
-			http.SetCookie(w, &http.Cookie{Name: "access_token", Value: access_tokens["access_token"]})
-		} else {
-			c.Errorf(err.Error())
-			errorHandler(w, r, 0, err.Error())
-			return
-		}
-	}
-
-	user, err := backend.AuthenticatedUser(map[string]string{}, token.Value)
-	addUser(user)
-	if err != nil {
-		c.Errorf(err.Error())
-		errorHandler(w, r, 0, err.Error())
-		return
-	}
+	user := getUser(w, r, c)
 
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
-	if cookie != nil {
-		if cookie.Value == "true" {
-			err = updatingCache_User(r, c, user)
-			if err != nil {
-				c.Errorf(err.Error())
-			}
-			http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
+	if cookie != nil && cookie.Value == "true" {
+		if reflect.DeepEqual(user, guest) {
+			authHandler(w, r)
 		}
+		user = getUser(w, r, c)
+		err := updatingCache_User(r, c, user)
+		if err != nil {
+			c.Errorf(err.Error())
+		}
+		http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 	}
 
 	// Send to tag subpage
@@ -414,12 +416,14 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redunant.
 func writeResponse(user stackongo.User, c appengine.Context) genReply {
-	data := webData{}
+	var data = webData{}
+	var qns = make(map[int]stackongo.User)
 	//Check if the database needs to be updated again based on the last refresh time.
 	if checkDBUpdateTime("questions") == true {
 		data = readFromDb()
 		mostRecentUpdate = int32(time.Now().Unix())
 	}
+
 	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
 		Wrapper: pageData.wrapper, // The global wrapper
@@ -453,6 +457,9 @@ func writeResponse(user stackongo.User, c appengine.Context) genReply {
 // updating the caches based on input from the appi
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
+	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime */ {
+		mostRecentUpdate = int32(time.Now().Unix())
+	}
 
 	// required to collect post form data
 	r.ParseForm()
