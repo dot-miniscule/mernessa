@@ -134,15 +134,15 @@ func init() {
 		//Use a secondary mapping table to store the relationship between tags and questions.
 		//TODO: Complete mapping of tags to questions
 		for _, tag := range item.Tags {
-			stmt, err = db.Prepare("INSERT IGNORE INTO tags(tag) VALUES (?)")
 
+			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
 			if err != nil {
-				log.Fatal(err)
+				log.Println("question_tag insertion failed!:\t", err)
 			}
 
-			_, err = stmt.Exec(tag)
+			_, err = stmt.Exec(item.Question_id, tag)
 			if err != nil {
-				log.Fatal("Insertion of tag \"", tag, "\" failed:", err)
+				log.Println("Exec insertion for question_tag failed!:\t", err)
 			}
 		}
 	}
@@ -191,6 +191,20 @@ func readFromDb(queries string) (webData, map[int]stackongo.User) {
 			log.Fatal("query failed:\t", err)
 		}
 
+		var tagToAdd string
+		//Get tags for that question, based on the ID
+		tagRows, err := db.Query("SELECT tag from question_tag where question_id = ?", currentQ.Question_id)
+		if err != nil {
+			log.Fatal("Tag retrieval failed!\t", err)
+		}
+		defer tagRows.Close()
+		for tagRows.Next() {
+			err := tagRows.Scan(&tagToAdd)
+			if err != nil {
+				log.Fatal("Could not scan for tag!\t", err)
+			}
+			currentQ.Tags = append(currentQ.Tags, tagToAdd)
+		}
 		//Switch on the state as read from the database to ensure question is added to correct cace
 		switch state {
 		case "unanswered":
@@ -264,22 +278,10 @@ func addUser(newUser stackongo.User) {
 		log.Println("Prepare failed:\t", err)
 	}
 
-	res, err := stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image)
+	_, err = stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image)
 	if err != nil {
 		log.Fatal("Insertion of new user failed:\t", err)
 	}
-
-	lastId, err := res.LastInsertId()
-	if err != nil {
-		log.Fatal("Response from insertion failed:\t", err)
-	}
-
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		log.Fatal("Response from rows affected failed:\t", err)
-	}
-
-	log.Printf("ID = %d, affected rows = %d\n", lastId, rowCnt)
 }
 
 // Handler for authorizing user
@@ -457,7 +459,6 @@ func writeResponse(user stackongo.User, c appengine.Context, queries string, que
 	data, qns = readFromDb(queries)
 	mostRecentUpdate = int32(time.Now().Unix())
 	//}
-
 	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
 		Wrapper: pageData.wrapper, // The global wrapper
@@ -593,7 +594,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 
 			qns[row.question.Question_id] = user
 		}
-
+		//Update the database, setting the state and the new user/owner of that question.
 		if newState != row.state {
 			stmts, err := db.Prepare("UPDATE questions SET state=?,user=? where question_id=?")
 			if err != nil {
