@@ -143,6 +143,15 @@ func init() {
 			if err != nil {
 				log.Fatal("Insertion of tag \"", tag, "\" failed:", err)
 			}
+			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
+			if err != nil {
+				log.Println("question_tag insertion failed!:\t", err)
+			}
+
+			_, err = stmt.Exec(item.Question_id, tag)
+			if err != nil {
+				log.Println("Exec insertion for question_tag failed!:\t", err)
+			}
 		}
 	}
 
