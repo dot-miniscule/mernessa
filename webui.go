@@ -162,10 +162,13 @@ func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 		title string
 		id    int
 		state string
-		owner int
+		owner sql.NullInt64
+		name  sql.NullString
+		image sql.NullString
+		link  sql.NullString
 	)
 	//Select all questions in the database and read into a new data object
-	query := "select * from questions"
+	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id"
 	for key, q := range queries {
 		query = query + " where " + key + "=" + q
 	}
@@ -177,7 +180,7 @@ func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &owner)
+		err := rows.Scan(&id, &title, &url, &state, &owner, &owner, &name, &image, &link)
 		currentQ := stackongo.Question{
 			Question_id: id,
 			Title:       title,
@@ -212,7 +215,13 @@ func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 		case "updating":
 			tempData.updatingCache = append(tempData.updatingCache, currentQ)
 		}
-		qns[id] = stackongo.User{User_id: owner}
+		if owner.Valid {
+			qns[id] = stackongo.User{
+				User_id:       int(owner.Int64),
+				Display_name:  name.String,
+				Profile_image: name.String,
+			}
+		}
 	}
 	mostRecentUpdate = int32(time.Now().Unix())
 	return tempData, qns
@@ -400,15 +409,11 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 
 // Handler to find all questions answered/being answered by the user in URL
 func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	userID, _ := strconv.Atoi(r.FormValue("id"))
+	userID := r.FormValue("id")
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 
-	if _, ok := users[userID]; !ok {
-		page.Execute(w, writeResponse(user, c, map[string]string{}))
-		return
-	}
-	if err := page.Execute(w, writeResponse(user, c, map[string]string{"user": strconv.Itoa(userID)})); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, map[string]string{"user": userID})); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
