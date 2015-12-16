@@ -20,8 +20,8 @@
           <a href="/user?id={{$reply.User.User_id}}" style="color:white">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
         {{end}}
       </p>
-      <form action="/tag" method="post">
-        Search by tag: <input type="text" name="tagSearch">
+      <form action="/tag" method="get">
+        Search by tag: <input type="text" name="q">
         <input type="submit" value="Search">
       </form>
       <!-- CONTENT TABS -->
@@ -63,7 +63,7 @@
                           </ul>
                         </div>
                         {{if ne $cache.CacheType "unanswered"}}
-                          <a href="/user?id={{$reply.GetUserID $question.Question_id}}">{{$reply.GetUserName $question.Question_id}}</a>
+                        <p>Question owner: <a id="questionUser" href="/user?id={{$reply.GetUserID $question.Question_id}}">{{$reply.GetUserName $question.Question_id}}</a>
                         {{end}}
                       </td>
                       <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>
