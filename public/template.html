@@ -55,7 +55,7 @@
                   {{range $question := $cache.Questions}}
                     <tr>
                       <td id="question">
-                        <a href={{$question.Link}}>{{$question.Title}}</a>
+                        <a href={{$question.Link}} data-tooltip="tooltip" title="Click to view this question on StackOverflow">{{$question.Title}}</a>
                         <br>
                         <div class="tagContainer">
                           <ul>
@@ -65,7 +65,7 @@
                           </ul>
                         </div>
                         {{if ne $cache.CacheType "unanswered"}}
-                        <p>Question owner: <a id="questionUser" href="/user?id={{$reply.GetUserID $question.Question_id}}">{{$reply.GetUserName $question.Question_id}}</a>
+                        <p>Question owner: <a id="questionUser" href="/user?id={{$reply.GetUserIDByQn $question.Question_id}}">{{$reply.GetUserNameByQn $question.Question_id}}</a>
                         {{end}}
                       </td>
                       <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>

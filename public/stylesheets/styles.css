@@ -163,10 +163,14 @@ td:not(#question) {
 .tagContainer ul li {
   display:inline-block;
   padding:2px;
-  margin:2px;
   border-radius: 5px;
   border:solid #e6e6e6;
   background:#e6e6e6;
+}
+
+#question p a {
+  font-size=12px;
+  color:black;
 }
 
 /*--------- STICKY FOOTER -----------*/

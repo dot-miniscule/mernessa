@@ -120,10 +120,9 @@ func init() {
 		return
 	}
 	//Comment Out the next line to avoid ridiculous loading times while in development phase
-	//data.unansweredCache = pageData.wrapper.Items // At start, all questions are unanswered
 
 	//Iterate through each question returned, and add it to the database.
-	for _, item := range data.unansweredCache {
+	/*for _, item := range data.wrapper.Items {
 		//INSERT IGNORE ensures that the same question won't be added again
 		//This will probably need to change as we better develop the workflow from local to stack exchange.
 		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL) VALUES (?, ?, ?)")
@@ -151,7 +150,7 @@ func init() {
 				log.Println("Exec insertion for question_tag failed!:\t", err)
 			}
 		}
-	}
+	}*/
 
 	log.Println("Initial cache download")
 	refreshCache()
