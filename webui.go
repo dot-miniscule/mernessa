@@ -37,6 +37,7 @@ type genReply struct {
 	Caches  []cacheInfo            // Slice of the 4 caches (Unanswered, Answered, Pending, Updating)
 	User    stackongo.User         // Information on the current user
 	Qns     map[int]stackongo.User // Map of users by question ids
+	Query   string
 }
 
 // Info on the various caches
@@ -86,10 +87,10 @@ var db *sql.DB
 var mostRecentUpdate int32
 
 // Functions for template to recieve data from maps
-func (r genReply) GetUserID(id int) int {
+func (r genReply) GetUserIDByQn(id int) int {
 	return r.Qns[id].User_id
 }
-func (r genReply) GetUserName(id int) string {
+func (r genReply) GetUserNameByQn(id int) string {
 	return r.Qns[id].Display_name
 }
 
@@ -152,7 +153,7 @@ func init() {
 	http.HandleFunc("/user", handler)
 }
 
-func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
+func readFromDb(queries string) (webData, map[int]stackongo.User) {
 	//Reading from database
 	log.Println("Refreshing database read")
 	tempData := webData{}
@@ -168,9 +169,9 @@ func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 		link  sql.NullString
 	)
 	//Select all questions in the database and read into a new data object
-	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id LIMIT 10"
-	for key, q := range queries {
-		query = query + " where " + key + "=" + q
+	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id limit 10"
+	if queries != "" {
+		query = query + " WHERE state='unanswered' OR " + queries
 	}
 	rows, err := db.Query(query)
 	if err != nil {
@@ -348,7 +349,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send to tag subpage
-	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
+	if r.URL.Path == "/tag" && r.FormValue("tagSearch") != "" {
 		tagHandler(w, r, c, user)
 		return
 	}
@@ -361,7 +362,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
+	if err := page.Execute(w, writeResponse(user, c, "", "")); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
@@ -409,6 +410,73 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 			c.Criticalf("%v", err.Error())
 		}
 	*/
+
+	// Collect query
+	tag := r.FormValue("tagSearch")
+	/*
+		// Create and fill in a new webData struct
+		tempData := webData{}
+
+			// range through the question caches golang stackongoand add if the question contains the tag
+			for _, question := range data.unansweredCache {
+				if contains(question.Tags, tag) {
+					tempData.unansweredCache = append(tempData.unansweredCache, question)
+				}
+			}
+			for _, question := range data.answeredCache {
+				if contains(question.Tags, tag) {
+					tempData.answeredCache = append(tempData.answeredCache, question)
+				}
+			}
+			for _, question := range data.pendingCache {
+				if contains(question.Tags, tag) {
+					tempData.pendingCache = append(tempData.pendingCache, question)
+				}
+			}
+			for _, question := range data.updatingCache {
+				if contains(question.Tags, tag) {
+					tempData.updatingCache = append(tempData.updatingCache, question)
+				}
+			}
+	*/
+	page := template.Must(template.ParseFiles("public/template.html"))
+	if err := page.Execute(w, writeResponse(user, c, "", tag)); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
+}
+
+func readUserFromDb(id string) stackongo.User {
+	//Reading from database
+	log.Println("Refreshing database read")
+	var (
+		owner sql.NullInt64
+		name  sql.NullString
+		image sql.NullString
+		link  sql.NullString
+	)
+	//Select all questions in the database and read into a new data object
+	rows, err := db.Query("SELECT * FROM user WHERE id=" + id)
+	if err != nil {
+		log.Fatal("query failed:\t", err)
+	}
+
+	defer rows.Close()
+	//Iterate through each row and add to the correct cache
+	for rows.Next() {
+		err := rows.Scan(&owner, &name, &image, &link)
+		if err != nil {
+			log.Fatal("query failed:\t", err)
+		}
+
+		if owner.Valid {
+			return stackongo.User{
+				User_id:       int(owner.Int64),
+				Display_name:  name.String,
+				Profile_image: name.String,
+			}
+		}
+	}
+	return stackongo.User{}
 }
 
 // Handler to find all questions answered/being answered by the user in URL
@@ -416,15 +484,15 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	userID := r.FormValue("id")
 
 	page := template.Must(template.ParseFiles("public/template.html"))
-
-	if err := page.Execute(w, writeResponse(user, c, map[string]string{"user": userID})); err != nil {
+	query := readUserFromDb(userID)
+	if err := page.Execute(w, writeResponse(user, c, "id="+userID, query.Display_name)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redunant.
-func writeResponse(user stackongo.User, c appengine.Context, queries map[string]string) genReply {
+func writeResponse(user stackongo.User, c appengine.Context, queries string, query string) genReply {
 	var data = webData{}
 	var qns = make(map[int]stackongo.User)
 	//Check if the database needs to be updated again based on the last refresh time.
@@ -456,8 +524,9 @@ func writeResponse(user stackongo.User, c appengine.Context, queries map[string]
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
-		User: user, // Current user information
-		Qns:  qns,  // Map users by questions answered
+		User:  user, // Current user information
+		Qns:   qns,  // Map users by questions answered
+		Query: query,
 	}
 }
 

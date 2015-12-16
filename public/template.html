@@ -10,8 +10,10 @@
   <body>
     <div class="wrap">
       <div class="titleBar">
-        <h4>Places API Tag Tracker for StackExchange </h4>
-        <h5>Quota_remaining: {{$reply.Wrapper.Quota_remaining}}</h5>
+        <h4><a href="/"><img src="/images/home.svg" height="30"></a>Places API Tag Tracker for StackExchange</h4>
+        {{if ne $reply.Query ""}}
+          <h5>Querying: {{$reply.Query}}</h5>
+        {{end}}
       </div>
       <p id="welcomeSentence"> Welcome,
         {{if eq $reply.User.Display_name "Guest"}}
@@ -58,7 +60,7 @@
                         <div class="tagContainer">
                           <ul>
                           {{range $tag := $question.Tags}}  
-                            <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?q={{$tag}}">{{$tag}}</a></li>
+                            <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?tagSearch={{$tag}}">{{$tag}}</a></li>
                           {{end}}
                           </ul>
                         </div>
