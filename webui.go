@@ -168,7 +168,7 @@ func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 		link  sql.NullString
 	)
 	//Select all questions in the database and read into a new data object
-	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id"
+	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id LIMIT 10"
 	for key, q := range queries {
 		query = query + " where " + key + "=" + q
 	}
@@ -204,6 +204,7 @@ func readFromDb(queries map[string]string) (webData, map[int]stackongo.User) {
 			}
 			currentQ.Tags = append(currentQ.Tags, tagToAdd)
 		}
+
 		//Switch on the state as read from the database to ensure question is added to correct cace
 		switch state {
 		case "unanswered":
@@ -368,43 +369,46 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 // Handler to find all questions with specific tags
 func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	/*
-		// Collect query
-		tag := r.FormValue("q")
-		data := readFromDb()
-		// Create and fill in a new webData struct
+	/*	tag := r.FormValue("q")
+		log.Println("tagValue =", tag)
+		var (
+			id    int
+			title string
+			url   string
+			state string
+		)
+		rows, err := db.Query("SELECT questions.question_id, questions.question_title, questions.question_URL, questions.state FROM questions INNER JOIN question_tag ON questions.question_id = question_tag.question_id WHERE question_tag.tag = ?", tag)
+		if err != nil {
+			log.Println("Error retrieving questions based on tags.\t", err)
+		}
 		tempData := webData{}
+		defer rows.Close()
+		for rows.Next() {
+			err := rows.Scan(&id, &title, &url, &state)
+			if err != nil {
+				log.Println("Scanning of questiontag failed.\t", err)
+			}
+			currentQ := stackongo.Question{
+				Question_id: id,
+				Title:       title,
+				Link:        url,
+			}
+			if state == "updating" {
+				tempData.updatingCache = append(tempData.updatingCache, currentQ)
+			} else if state == "answered" {
+				tempData.answeredCache = append(tempData.answeredCache, currentQ)
+			} else if state == "pending" {
+				tempData.pendingCache = append(tempData.pendingCache, currentQ)
+			} else {
+				tempData.unansweredCache = append(tempData.unansweredCache, currentQ)
+			}
+		}
 
-		// range through the question caches golang stackongoand add if the question contains the tag
-		for _, question := range data.unansweredCache {
-			if contains(question.Tags, tag) {
-				tempData.unansweredCache = append(tempData.unansweredCache, question)
-			}
-		}
-		for _, question := range data.answeredCache {
-			if contains(question.Tags, tag) {
-				tempData.answeredCache = append(tempData.answeredCache, question)
-			}
-		}
-		for _, question := range data.pendingCache {
-			if contains(question.Tags, tag) {
-				tempData.pendingCache = append(tempData.pendingCache, question)
-			}
-		}
-		for _, question := range data.updatingCache {
-			if contains(question.Tags, tag) {
-				tempData.updatingCache = append(tempData.updatingCache, question)
-			}
-		}
 		page := template.Must(template.ParseFiles("public/template.html"))
-		if err := page.Execute(w, writeResponse(user, c)); err != nil {
+		if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
 			c.Criticalf("%v", err.Error())
 		}
 	*/
-	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
-		c.Criticalf("%v", err.Error())
-	}
 }
 
 // Handler to find all questions answered/being answered by the user in URL
@@ -428,7 +432,6 @@ func writeResponse(user stackongo.User, c appengine.Context, queries map[string]
 	data, qns = readFromDb(queries)
 	mostRecentUpdate = int32(time.Now().Unix())
 	//}
-	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
 		Wrapper: pageData.wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
@@ -490,7 +493,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	}
 	var newState string
 
-	rows, err := db.Query("select * from questions")
+	rows, err := db.Query("select * from questions limit 10")
 	if err != nil {
 		c.Errorf("query failed:\t%v", err)
 	}
