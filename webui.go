@@ -348,7 +348,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send to tag subpage
-	if r.URL.Path == "/tag" && r.FormValue("q") != "" {
+	if r.URL.Path == "/tag" && r.FormValue("tagSearch") != "" {
 		tagHandler(w, r, c, user)
 		return
 	}
@@ -371,7 +371,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 
 	// Collect query
-	tag := r.FormValue("q")
+	tag := r.FormValue("tagSearch")
 	/*
 		// Create and fill in a new webData struct
 		tempData := webData{}
