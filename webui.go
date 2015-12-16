@@ -14,8 +14,6 @@ import (
 	"log"
 	"net/http"
 	"reflect"
-	"sort"
-	"strconv"
 	"sync"
 	"time"
 
@@ -48,13 +46,14 @@ type cacheInfo struct {
 }
 
 type webData struct {
-	lastUpdateTime  int64                // Time the cache was last updated in Unix
-	wrapper         *stackongo.Questions // Request information
-	unansweredCache []stackongo.Question // Unanswered questions
-	answeredCache   []stackongo.Question // Answered questions
-	pendingCache    []stackongo.Question // Pending questions
-	updatingCache   []stackongo.Question // Updating questions
-	cacheLock       sync.Mutex           // For multithreading, will use to avoid updating cache and serving cache at the same time
+	lastUpdateTime  int64                  // Time the cache was last updated in Unix
+	wrapper         *stackongo.Questions   // Request information
+	unansweredCache []stackongo.Question   // Unanswered questions
+	answeredCache   []stackongo.Question   // Answered questions
+	pendingCache    []stackongo.Question   // Pending questions
+	updatingCache   []stackongo.Question   // Updating questions
+	qns             map[int]stackongo.User // Map of users by question ids
+	cacheLock       sync.Mutex             // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
 type userData struct {
@@ -65,14 +64,21 @@ type userData struct {
 	updatingCache []stackongo.Question // Questions that are being updated
 }
 
+func newWebData() webData {
+	return webData{
+		unansweredCache: []stackongo.Question{},
+		answeredCache:   []stackongo.Question{},
+		pendingCache:    []stackongo.Question{},
+		updatingCache:   []stackongo.Question{},
+		qns:             make(map[int]stackongo.User),
+	}
+}
+
 // Global variable with cache info
-var pageData = webData{}
+var data = newWebData()
 
 // Map of users by user ids
 var users = make(map[int]*userData)
-
-// Map relating question ids to users
-var qns = make(map[int]stackongo.User)
 
 // Standard guest user
 var guest = stackongo.User{
@@ -108,16 +114,16 @@ func init() {
 	db = backend.SqlInit()
 
 	//Read questions from Stack wrapper
-	pageData.wrapper = new(stackongo.Questions) // Create a new wrapper
-	if err := json.Unmarshal(input, pageData.wrapper); err != nil {
+	data.wrapper = new(stackongo.Questions) // Create a new wrapper
+	if err := json.Unmarshal(input, data.wrapper); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 	//Comment Out the next line to avoid ridiculous loading times while in development phase
-	//pageData.unansweredCache = pageData.wrapper.Items // At start, all questions are unanswered
+	//data.unansweredCache = pageData.wrapper.Items // At start, all questions are unanswered
 
 	//Iterate through each question returned, and add it to the database.
-	for _, item := range pageData.unansweredCache {
+	for _, item := range data.unansweredCache {
 		//INSERT IGNORE ensures that the same question won't be added again
 		//This will probably need to change as we better develop the workflow from local to stack exchange.
 		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL) VALUES (?, ?, ?)")
@@ -147,142 +153,13 @@ func init() {
 		}
 	}
 
+	log.Println("Initial cache download")
+	refreshCache()
+
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
 	http.HandleFunc("/user", handler)
-}
-
-func readFromDb(queries string) (webData, map[int]stackongo.User) {
-	//Reading from database
-	log.Println("Refreshing database read")
-	tempData := webData{}
-	qns := map[int]stackongo.User{}
-	var (
-		url   string
-		title string
-		id    int
-		state string
-		owner sql.NullInt64
-		name  sql.NullString
-		image sql.NullString
-		link  sql.NullString
-	)
-	//Select all questions in the database and read into a new data object
-	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id limit 10"
-	if queries != "" {
-		query = query + " WHERE state='unanswered' OR " + queries
-	}
-	rows, err := db.Query(query)
-	if err != nil {
-		log.Fatal("query failed:\t", err)
-	}
-
-	defer rows.Close()
-	//Iterate through each row and add to the correct cache
-	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &owner, &owner, &name, &image, &link)
-		currentQ := stackongo.Question{
-			Question_id: id,
-			Title:       title,
-			Link:        url,
-		}
-		if err != nil {
-			log.Fatal("query failed:\t", err)
-		}
-
-		var tagToAdd string
-		//Get tags for that question, based on the ID
-		tagRows, err := db.Query("SELECT tag from question_tag where question_id = ?", currentQ.Question_id)
-		if err != nil {
-			log.Fatal("Tag retrieval failed!\t", err)
-		}
-		defer tagRows.Close()
-		for tagRows.Next() {
-			err := tagRows.Scan(&tagToAdd)
-			if err != nil {
-				log.Fatal("Could not scan for tag!\t", err)
-			}
-			currentQ.Tags = append(currentQ.Tags, tagToAdd)
-		}
-
-		//Switch on the state as read from the database to ensure question is added to correct cace
-		switch state {
-		case "unanswered":
-			tempData.unansweredCache = append(tempData.unansweredCache, currentQ)
-		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, currentQ)
-		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, currentQ)
-		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, currentQ)
-		}
-		if owner.Valid {
-			qns[id] = stackongo.User{
-				User_id:       int(owner.Int64),
-				Display_name:  name.String,
-				Profile_image: name.String,
-			}
-		}
-	}
-	mostRecentUpdate = int32(time.Now().Unix())
-	return tempData, qns
-}
-
-/* Function to check if the DB has been updated since we last queried it
-Returns true if our cache needs to be refreshed
-False if is all g */
-func checkDBUpdateTime(tableName string) bool {
-	var (
-		id           int
-		table_name   string
-		last_updated int32
-	)
-	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name ='?'")
-	if err != nil {
-		log.Fatal("Query failed:\t", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&id, &table_name, &last_updated)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-	return last_updated > mostRecentUpdate
-}
-
-//A crude way to find out if the working cache needs to be refreshed from the database.
-//Stores the current Unix time in update_times table on Cloud SQL */
-func updateTableTimes(tableName string) {
-	stmts, err := db.Prepare("UPDATE update_times SET last_updated=? WHERE table_name=?")
-	if err != nil {
-		log.Println("Prepare failed:\t", err)
-	}
-
-	_, err = stmts.Exec(int32(time.Now().Unix()), tableName)
-	if err != nil {
-		log.Println("Could not update time for", tableName+":\t", err)
-	} else {
-		log.Println("Update time for", tableName, "successfully updated!")
-	}
-}
-
-// Write user data into the database
-func addUser(newUser stackongo.User) {
-
-	stmts, err := db.Prepare("INSERT IGNORE INTO user (id, name, pic) VALUES (?, ?, ?)")
-	if err != nil {
-		log.Println("Prepare failed:\t", err)
-	}
-
-	_, err = stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image)
-	if err != nil {
-		log.Fatal("Insertion of new user failed:\t", err)
-	}
 }
 
 // Handler for authorizing user
@@ -291,41 +168,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	header := w.Header()
 	log.Println(auth_url)
 	header.Add("Location", auth_url)
-	header.Add("Access-Control-Allow-Origin", "http://127.0.0.1:8080") //TODO: Replace with proper url
 	w.WriteHeader(302)
 	log.Println("Header: ", w.Header())
-}
-
-func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {
-	// Collect access token from browswer cookie
-	// If cookie does not exist, obtain token using code from URL and set as cookie
-	// If code does not exist, redirect to login page for authorization
-	cookie, err := r.Cookie("access_token")
-	var token string
-	if err != nil {
-		code := r.URL.Query().Get("code")
-		if code == "" {
-			c.Infof("Returning Guest user")
-			return guest
-		}
-		access_tokens, err := backend.ObtainAccessToken(code)
-		if err != nil {
-			c.Errorf(err.Error())
-			return guest
-		}
-		c.Infof("Setting cookie: access_token")
-		token = access_tokens["access_token"]
-		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: token})
-	} else {
-		token = cookie.Value
-	}
-	user, err := backend.AuthenticatedUser(map[string]string{}, token)
-	addUser(user)
-	if err != nil {
-		c.Errorf(err.Error())
-		return guest
-	}
-	return user
 }
 
 // Handler for main information to be read and written from
@@ -362,7 +206,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, c, "", "")); err != nil {
+	if err := page.Execute(w, writeResponse(user, data, c, "")); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
@@ -413,70 +257,38 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 
 	// Collect query
 	tag := r.FormValue("tagSearch")
-	/*
-		// Create and fill in a new webData struct
-		tempData := webData{}
 
-			// range through the question caches golang stackongoand add if the question contains the tag
-			for _, question := range data.unansweredCache {
-				if contains(question.Tags, tag) {
-					tempData.unansweredCache = append(tempData.unansweredCache, question)
-				}
-			}
-			for _, question := range data.answeredCache {
-				if contains(question.Tags, tag) {
-					tempData.answeredCache = append(tempData.answeredCache, question)
-				}
-			}
-			for _, question := range data.pendingCache {
-				if contains(question.Tags, tag) {
-					tempData.pendingCache = append(tempData.pendingCache, question)
-				}
-			}
-			for _, question := range data.updatingCache {
-				if contains(question.Tags, tag) {
-					tempData.updatingCache = append(tempData.updatingCache, question)
-				}
-			}
-	*/
+	// Create and fill in a new webData struct
+	tempData := webData{}
+
+	data.cacheLock.Lock()
+	// range through the question caches golang stackongoand add if the question contains the tag
+	for _, question := range data.unansweredCache {
+		if contains(question.Tags, tag) {
+			tempData.unansweredCache = append(tempData.unansweredCache, question)
+		}
+	}
+	for _, question := range data.answeredCache {
+		if contains(question.Tags, tag) {
+			tempData.answeredCache = append(tempData.answeredCache, question)
+		}
+	}
+	for _, question := range data.pendingCache {
+		if contains(question.Tags, tag) {
+			tempData.pendingCache = append(tempData.pendingCache, question)
+		}
+	}
+	for _, question := range data.updatingCache {
+		if contains(question.Tags, tag) {
+			tempData.updatingCache = append(tempData.updatingCache, question)
+		}
+	}
+	data.cacheLock.Unlock()
+
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user, c, "", tag)); err != nil {
+	if err := page.Execute(w, writeResponse(user, tempData, c, tag)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
-}
-
-func readUserFromDb(id string) stackongo.User {
-	//Reading from database
-	log.Println("Refreshing database read")
-	var (
-		owner sql.NullInt64
-		name  sql.NullString
-		image sql.NullString
-		link  sql.NullString
-	)
-	//Select all questions in the database and read into a new data object
-	rows, err := db.Query("SELECT * FROM user WHERE id=" + id)
-	if err != nil {
-		log.Fatal("query failed:\t", err)
-	}
-
-	defer rows.Close()
-	//Iterate through each row and add to the correct cache
-	for rows.Next() {
-		err := rows.Scan(&owner, &name, &image, &link)
-		if err != nil {
-			log.Fatal("query failed:\t", err)
-		}
-
-		if owner.Valid {
-			return stackongo.User{
-				User_id:       int(owner.Int64),
-				Display_name:  name.String,
-				Profile_image: name.String,
-			}
-		}
-	}
-	return stackongo.User{}
 }
 
 // Handler to find all questions answered/being answered by the user in URL
@@ -484,238 +296,85 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	userID := r.FormValue("id")
 
 	page := template.Must(template.ParseFiles("public/template.html"))
+
 	query := readUserFromDb(userID)
-	if err := page.Execute(w, writeResponse(user, c, "id="+userID, query.Display_name)); err != nil {
+
+	data.cacheLock.Lock()
+	tempData := data
+	data.cacheLock.Unlock()
+
+	if err := page.Execute(w, writeResponse(user, tempData, c, query.Display_name)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
+func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {
+	// Collect access token from browswer cookie
+	// If cookie does not exist, obtain token using code from URL and set as cookie
+	// If code does not exist, redirect to login page for authorization
+	cookie, err := r.Cookie("access_token")
+	var token string
+	if err != nil {
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			c.Infof("Returning Guest user")
+			return guest
+		}
+		access_tokens, err := backend.ObtainAccessToken(code)
+		if err != nil {
+			c.Errorf(err.Error())
+			return guest
+		}
+		c.Infof("Setting cookie: access_token")
+		token = access_tokens["access_token"]
+		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: token})
+	} else {
+		token = cookie.Value
+	}
+	user, err := backend.AuthenticatedUser(map[string]string{}, token)
+	addUser(user)
+	if err != nil {
+		c.Errorf(err.Error())
+		return guest
+	}
+	return user
+}
+
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redunant.
-func writeResponse(user stackongo.User, c appengine.Context, queries string, query string) genReply {
-	var data = webData{}
-	var qns = make(map[int]stackongo.User)
+func writeResponse(user stackongo.User, writeData webData, c appengine.Context, query string) genReply {
 	//Check if the database needs to be updated again based on the last refresh time.
 	//if checkDBUpdateTime("questions") == true {
-	data, qns = readFromDb(queries)
 	mostRecentUpdate = int32(time.Now().Unix())
 	//}
 	return genReply{
-		Wrapper: pageData.wrapper, // The global wrapper
+		Wrapper: writeData.wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
 			cacheInfo{
 				CacheType: "unanswered",
-				Questions: data.unansweredCache,
+				Questions: writeData.unansweredCache,
 				Info:      "These are questions that have not yet been answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "answered",
-				Questions: data.answeredCache,
+				Questions: writeData.answeredCache,
 				Info:      "These are questions that have been answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "pending",
-				Questions: data.pendingCache,
+				Questions: writeData.pendingCache,
 				Info:      "These are questions that are being answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "updating",
-				Questions: data.updatingCache,
+				Questions: writeData.updatingCache,
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
-		User:  user, // Current user information
-		Qns:   qns,  // Map users by questions answered
+		User:  user,          // Current user information
+		Qns:   writeData.qns, // Map users by questions answered
 		Query: query,
 	}
-}
-
-// updating the caches based on input from the appi
-func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
-	c.Infof("updating cache")
-	/*	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime  {
-		mostRecentUpdate = int32(time.Now().Unix())
-	}*/
-
-	// required to collect post form data
-	r.ParseForm()
-
-	// If the user is not in the database, add a new entry
-	if _, ok := users[user.User_id]; !ok {
-		users[user.User_id] = &userData{}
-		users[user.User_id].init(user, "")
-	}
-
-	// Collect the submitted form info based on the name of the form
-	// Check each cache against the form data
-	// Read from db based on each question id (primary key) to retrieve and update the state
-	var (
-		url   string
-		title string
-		id    int
-		numQ  int
-		owner int
-	)
-	type rowData struct {
-		state    string
-		question stackongo.Question
-	}
-	var newState string
-
-	rows, err := db.Query("select * from questions limit 10")
-	if err != nil {
-		c.Errorf("query failed:\t%v", err)
-	}
-	defer func() {
-		c.Infof("closing rows: updating")
-		rows.Close()
-	}()
-
-	//	channel := make(chan rowData)
-
-	for rows.Next() {
-		numQ++
-		//go func(rows *sql.Rows) {
-		row := rowData{}
-		err := rows.Scan(&id, &title, &url, &row.state, &owner)
-		if err != nil {
-			c.Errorf("rows.Scan: %v", err.Error())
-		}
-		question := stackongo.Question{
-			Question_id: id,
-			Title:       title,
-			Link:        url,
-		}
-		row.question = question
-		/*	channel <- row
-				}(rows)
-			}
-			if err = rows.Err(); err != nil {
-				c.Errorf(err.Error())
-			}
-
-			for i := 0; i < numQ; i++ {
-				row := <-channel*/
-		name := row.state + "_" + strconv.Itoa(id)
-		form_input := r.PostFormValue(name)
-		switch form_input {
-		case "unanswered":
-			newState = "unanswered"
-		case "answered":
-			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, row.question)
-			newState = "answered"
-		case "pending":
-			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, row.question)
-			newState = "pending"
-		case "updating":
-			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, row.question)
-			newState = "updating"
-		case "no_change":
-			newState = row.state
-		}
-
-		// If the question is now unanswered, delete question from map
-		if form_input == "unanswered" {
-			qns[row.question.Question_id] = stackongo.User{}
-			delete(qns, row.question.Question_id)
-
-			// Else remove question from original editor's cache and map user to question
-		} else if form_input != "no_change" {
-
-			editor := qns[row.question.Question_id]
-			if editor.User_id != 0 {
-				for i, q := range users[editor.User_id].answeredCache {
-					if row.question.Question_id == q.Question_id {
-						users[editor.User_id].answeredCache = append(users[editor.User_id].answeredCache[:i], users[editor.User_id].answeredCache[i+1:]...)
-						break
-					}
-				}
-			}
-
-			qns[row.question.Question_id] = user
-		}
-		//Update the database, setting the state and the new user/owner of that question.
-		if newState != row.state {
-			stmts, err := db.Prepare("UPDATE questions SET state=?,user=? where question_id=?")
-			if err != nil {
-				c.Errorf("%v", err.Error())
-			}
-			id := 0
-			if newState != "unanswered" {
-				id = user.User_id
-			}
-			_, err = stmts.Exec(newState, id, row.question.Question_id)
-			if err != nil {
-				c.Errorf("Update query failed:\t%v", err.Error())
-			}
-		}
-	}
-	//Update the table on SQL keeping track of table modifications
-	updateTableTimes("questions")
-
-	/* old updating method
-	for _, question := range data.answeredCache {
-		newState = "answered"
-		name := "answered_" + strconv.Itoa(question.Question_id)
-		form_input := r.PostFormValue(name)
-		switch form_input {
-		case "unanswered":
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
-			newState = "unanswered"
-		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, question)
-			users[user.User_id].answeredCache = append(users[user.User_id].answeredCache, question)
-			newState = "answered"
-		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, question)
-			users[user.User_id].pendingCache = append(users[user.User_id].pendingCache, question)
-			newState = "pending"
-		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, question)
-			users[user.User_id].updatingCache = append(users[user.User_id].updatingCache, question)
-			newState = "updating"
-		case "no_change":
-			tempData.answeredCache = append(tempData.answeredCache, question)
-		}
-
-		// If the question is now unanswered, delete question from map
-		if form_input == "unanswered" {
-			qns[question.Question_id] = stackongo.User{}
-			delete(qns, question.Question_id)
-
-			// Else remove question from original editor's cache and map user to question
-		} else if form_input != "no_change" {
-
-			editor := qns[question.Question_id]
-			for i, q := range users[editor.User_id].answeredCache {
-				if question.Question_id == q.Question_id {
-					users[editor.User_id].answeredCache = append(users[editor.User_id].answeredCache[:i], users[editor.User_id].answeredCache[i+1:]...)
-					break
-				}
-			}
-
-			qns[question.Question_id] = user
-		}
-
-		if newState != "answered" {
-			stmts, err := db.Prepare("UPDATE questions SET state=? where question_id=?")
-			if err != nil {
-				log.Println(err)
-			}
-			_, err = stmts.Exec(newState, question.Question_id)
-			if err != nil {
-				log.Println("Update query failed:\t", err)
-			}
-		}
-	}
-	*/
-
-	// sort user caches by creation date
-	sort.Stable(byCreationDate(users[user.User_id].answeredCache))
-	sort.Stable(byCreationDate(users[user.User_id].pendingCache))
-	sort.Stable(byCreationDate(users[user.User_id].updatingCache))
-
-	return nil
 }
 
 // Handler for errors
