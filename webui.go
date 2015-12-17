@@ -74,6 +74,8 @@ func newWebData() webData {
 	}
 }
 
+const timeout = 1 * time.Minute
+
 // Global variable with cache info
 var data = newWebData()
 
@@ -122,7 +124,7 @@ func init() {
 	//Comment Out the next line to avoid ridiculous loading times while in development phase
 
 	//Iterate through each question returned, and add it to the database.
-	/*for _, item := range data.wrapper.Items {
+	for _, item := range data.unansweredCache {
 		//INSERT IGNORE ensures that the same question won't be added again
 		//This will probably need to change as we better develop the workflow from local to stack exchange.
 		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL) VALUES (?, ?, ?)")
@@ -150,10 +152,17 @@ func init() {
 				log.Println("Exec insertion for question_tag failed!:\t", err)
 			}
 		}
-	}*/
-
+	}
 	log.Println("Initial cache download")
 	refreshCache()
+
+	go func() {
+		for _ = range time.NewTicker(timeout).C {
+			log.Println("Refreshing cache")
+			refreshCache()
+			log.Println("Cache refreshed")
+		}
+	}()
 
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
@@ -165,10 +174,8 @@ func init() {
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	auth_url := backend.AuthURL()
 	header := w.Header()
-	log.Println(auth_url)
 	header.Add("Location", auth_url)
 	w.WriteHeader(302)
-	log.Println("Header: ", w.Header())
 }
 
 // Handler for main information to be read and written from
