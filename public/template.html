@@ -45,10 +45,18 @@
                 <thead>
                   <tr>
                     <th id="qHead">Question</th>
-                    <th>Unanswered</th>
-                    <th>Answered</th>
-                    <th>Pending</th>
-                    <th>Update</th>
+                    {{if ne $cache.CacheType "unanswered"}}
+                      <th>Unanswered</th>
+                    {{end}}
+                    {{if ne $cache.CacheType "answered"}}
+                      <th>Answered</th>
+                    {{end}}
+                    {{if ne $cache.CacheType "pending"}}
+                      <th>Pending</th>
+                    {{end}}
+                    {{if ne $cache.CacheType "updating"}}
+                      <th>Update</th>
+                    {{end}}
                   </tr>
                 </thead>
                 <tbody>
@@ -68,11 +76,19 @@
                           <a href="/user?id={{$reply.GetUserIDByQn $question.Question_id}}">{{$reply.GetUserNameByQn $question.Question_id}}</a>
                         {{end}}
                       </td>
-                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>
-                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="answered"></td>
-                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="pending"></td>
-                      <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="updating"></td>
-                      <td style="display:none"><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="no_change" checked="checked"></td>
+                      {{if ne $cache.CacheType "unanswered"}}
+                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>
+                      {{end}}
+                      {{if ne $cache.CacheType "answered"}}
+                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="answered"></td>
+                      {{end}}
+                      {{if ne $cache.CacheType "pending"}}
+                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="pending"></td>
+                      {{end}}
+                      {{if ne $cache.CacheType "updating"}}
+                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="updating"></td>
+                      {{end}}
+                      <td style="display:none"><input type="radio" class="radios no_change_radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="no_change" checked="checked"></td>
                     </tr>
                   {{end}}
                 </tbody>
@@ -93,6 +109,7 @@
             <p>STEP Interns, 2015</p>
           </div>
           <div id="submitContainer">
+            <input type="button" name="clear" id=clearButton value="Clear">
             {{if ne $reply.User.Display_name "Guest"}}
               <input type="submit" name="btnSubmit" id=submitButton value="Submit">
             {{else}}

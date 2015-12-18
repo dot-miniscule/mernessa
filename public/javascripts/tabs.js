@@ -27,16 +27,23 @@ $(function() {
   });
 });
 
+//---------- CLEAR SELECTION BUTTON -------------- //
+$(function() {
+  $('#clearButton').on('click', function() {
+    $('.no_change_radios').prop('checked', true);
+  });
+});
+
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
 $(function() {
   $('#stateForm').submit(function() {
-    document.getElementById("submitButton").value = "Submitting";
-    document.getElementById("submitButton").disabled = true;
-    document.cookie = "submitting=true";
+    document.getElementById('submitButton').prop('Value', 'Submitting');
+    document.getElementById('submitButton').prop('disabled', true);
+    document.cookie = 'submitting=true';
 
     // Intercept form submission and redirect back to the original page
-    $.post( "/", $( "#stateForm" ).serialize()).done(function( data ) {
-      window.location = window.location.href.split("#")[0];
+    $.post( '/', $('#stateForm').serialize()).done(function( data ) {
+      window.location = window.location.href.split('#')[0];
     });
     return false;
   });
