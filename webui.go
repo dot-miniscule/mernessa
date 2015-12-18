@@ -46,14 +46,14 @@ type cacheInfo struct {
 }
 
 type webData struct {
-	lastUpdateTime  int64                  // Time the cache was last updated in Unix
-	wrapper         *stackongo.Questions   // Request information
-	unansweredCache []stackongo.Question   // Unanswered questions
-	answeredCache   []stackongo.Question   // Answered questions
-	pendingCache    []stackongo.Question   // Pending questions
-	updatingCache   []stackongo.Question   // Updating questions
-	qns             map[int]stackongo.User // Map of users by question ids
-	cacheLock       sync.Mutex             // For multithreading, will use to avoid updating cache and serving cache at the same time
+	LastUpdateTime  int64                  // Time the cache was last updated in Unix
+	Wrapper         *stackongo.Questions   // Request information
+	UnansweredCache []stackongo.Question   // Unanswered questions
+	AnsweredCache   []stackongo.Question   // Answered questions
+	PendingCache    []stackongo.Question   // Pending questions
+	UpdatingCache   []stackongo.Question   // Updating questions
+	Qns             map[int]stackongo.User // Map of users by question ids
+	CacheLock       sync.Mutex             // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
 type userData struct {
@@ -66,11 +66,11 @@ type userData struct {
 
 func newWebData() webData {
 	return webData{
-		unansweredCache: []stackongo.Question{},
-		answeredCache:   []stackongo.Question{},
-		pendingCache:    []stackongo.Question{},
-		updatingCache:   []stackongo.Question{},
-		qns:             make(map[int]stackongo.User),
+		UnansweredCache: []stackongo.Question{},
+		AnsweredCache:   []stackongo.Question{},
+		PendingCache:    []stackongo.Question{},
+		UpdatingCache:   []stackongo.Question{},
+		Qns:             make(map[int]stackongo.User),
 	}
 }
 
@@ -116,17 +116,17 @@ func init() {
 	db = backend.SqlInit()
 
 	//Read questions from Stack wrapper
-	data.wrapper = new(stackongo.Questions) // Create a new wrapper
-	if err := json.Unmarshal(input, data.wrapper); err != nil {
+	data.Wrapper = new(stackongo.Questions) // Create a new wrapper
+	if err := json.Unmarshal(input, data.Wrapper); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 	//Comment Out the next line to avoid ridiculous loading times while in development phase
-	//data.unansweredCache = pageData.wrapper.Items // At start, all questions are unanswered
+	//data.UnansweredCache = pageData.Wrapper.Items // At start, all questions are unanswered
 
 	/*
 		//Iterate through each question returned, and add it to the database.
-		for _, item := range data.unansweredCache {
+		for _, item := range data.UnansweredCache {
 			//INSERT IGNORE ensures that the same question won't be added again
 			//This will probably need to change as we better develop the workflow from local to stack exchange.
 			stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL) VALUES (?, ?, ?)")
@@ -161,7 +161,7 @@ func init() {
 
 	go func() {
 		for _ = range time.NewTicker(timeout).C {
-			log.Println("Refreshing cache")
+			log.Println("Cache refreshing")
 			refreshCache()
 			log.Println("Cache refreshed")
 		}
@@ -175,6 +175,7 @@ func init() {
 
 // Handler for authorizing user
 func authHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Redirecting to SO login")
 	auth_url := backend.AuthURL()
 	header := w.Header()
 	header.Add("Location", auth_url)
@@ -194,6 +195,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
+
 		err := updatingCache_User(r, c, user)
 		if err != nil {
 			c.Errorf(err.Error())
@@ -230,29 +232,29 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 	// Create and fill in a new webData struct
 	tempData := webData{}
 
-	data.cacheLock.Lock()
+	data.CacheLock.Lock()
 	// range through the question caches golang stackongoand add if the question contains the tag
-	for _, question := range data.unansweredCache {
+	for _, question := range data.UnansweredCache {
 		if contains(question.Tags, tag) {
-			tempData.unansweredCache = append(tempData.unansweredCache, question)
+			tempData.UnansweredCache = append(tempData.UnansweredCache, question)
 		}
 	}
-	for _, question := range data.answeredCache {
+	for _, question := range data.AnsweredCache {
 		if contains(question.Tags, tag) {
-			tempData.answeredCache = append(tempData.answeredCache, question)
+			tempData.AnsweredCache = append(tempData.AnsweredCache, question)
 		}
 	}
-	for _, question := range data.pendingCache {
+	for _, question := range data.PendingCache {
 		if contains(question.Tags, tag) {
-			tempData.pendingCache = append(tempData.pendingCache, question)
+			tempData.PendingCache = append(tempData.PendingCache, question)
 		}
 	}
-	for _, question := range data.updatingCache {
+	for _, question := range data.UpdatingCache {
 		if contains(question.Tags, tag) {
-			tempData.updatingCache = append(tempData.updatingCache, question)
+			tempData.UpdatingCache = append(tempData.UpdatingCache, question)
 		}
 	}
-	data.cacheLock.Unlock()
+	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	if err := page.Execute(w, writeResponse(user, tempData, c, tag)); err != nil {
@@ -268,9 +270,9 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 
 	query := readUserFromDb(userID)
 
-	data.cacheLock.Lock()
+	data.CacheLock.Lock()
 	tempData := data
-	data.cacheLock.Unlock()
+	data.CacheLock.Unlock()
 
 	if err := page.Execute(w, writeResponse(user, tempData, c, query.Display_name)); err != nil {
 		c.Criticalf("%v", err.Error())
@@ -318,31 +320,31 @@ func writeResponse(user stackongo.User, writeData webData, c appengine.Context, 
 	//}
 	mostRecentUpdate = int32(time.Now().Unix())
 	return genReply{
-		Wrapper: writeData.wrapper, // The global wrapper
+		Wrapper: writeData.Wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
 			cacheInfo{
 				CacheType: "unanswered",
-				Questions: writeData.unansweredCache,
+				Questions: writeData.UnansweredCache,
 				Info:      "These are questions that have not yet been answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "answered",
-				Questions: writeData.answeredCache,
+				Questions: writeData.AnsweredCache,
 				Info:      "These are questions that have been answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "pending",
-				Questions: writeData.pendingCache,
+				Questions: writeData.PendingCache,
 				Info:      "These are questions that are being answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "updating",
-				Questions: writeData.updatingCache,
+				Questions: writeData.UpdatingCache,
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
 		User:  user,          // Current user information
-		Qns:   writeData.qns, // Map users by questions answered
+		Qns:   writeData.Qns, // Map users by questions answered
 		Query: query,
 	}
 }

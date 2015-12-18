@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"reflect"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"appengine"
@@ -15,13 +18,13 @@ import (
 func refreshCache() {
 	tempData := readFromDb("")
 
-	data.cacheLock.Lock()
-	data.unansweredCache = tempData.unansweredCache
-	data.answeredCache = tempData.answeredCache
-	data.pendingCache = tempData.pendingCache
-	data.updatingCache = tempData.updatingCache
-	data.qns = tempData.qns
-	data.cacheLock.Unlock()
+	data.CacheLock.Lock()
+	data.UnansweredCache = tempData.UnansweredCache
+	data.AnsweredCache = tempData.AnsweredCache
+	data.PendingCache = tempData.PendingCache
+	data.UpdatingCache = tempData.UpdatingCache
+	data.Qns = tempData.Qns
+	data.CacheLock.Unlock()
 }
 
 func readFromDb(queries string) webData {
@@ -78,16 +81,16 @@ func readFromDb(queries string) webData {
 		//Switch on the state as read from the database to ensure question is added to correct cace
 		switch state {
 		case "unanswered":
-			tempData.unansweredCache = append(tempData.unansweredCache, currentQ)
+			tempData.UnansweredCache = append(tempData.UnansweredCache, currentQ)
 		case "answered":
-			tempData.answeredCache = append(tempData.answeredCache, currentQ)
+			tempData.AnsweredCache = append(tempData.AnsweredCache, currentQ)
 		case "pending":
-			tempData.pendingCache = append(tempData.pendingCache, currentQ)
+			tempData.PendingCache = append(tempData.PendingCache, currentQ)
 		case "updating":
-			tempData.updatingCache = append(tempData.updatingCache, currentQ)
+			tempData.UpdatingCache = append(tempData.UpdatingCache, currentQ)
 		}
 		if owner.Valid {
-			tempData.qns[id] = stackongo.User{
+			tempData.Qns[id] = stackongo.User{
 				User_id:       int(owner.Int64),
 				Display_name:  name.String,
 				Profile_image: name.String,
@@ -198,95 +201,149 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	// required to collect post form data
 	r.ParseForm()
 
-	// If the user is not in the database, add a new entry
-	if _, ok := users[user.User_id]; !ok {
-		users[user.User_id] = &userData{}
-		users[user.User_id].init(user, "")
-	}
-
 	// Collect the submitted form info based on the name of the form
 	// Check each cache against the form data
-	// Read from db based on each question id (primary key) to retrieve and update the state
-	var (
-		url   string
-		title string
-		id    int
-		numQ  int
-		owner int
-	)
-	type rowData struct {
-		state    string
-		question stackongo.Question
-	}
-	var newState string
 
-	rows, err := db.Query("select * from questions")
+	// Create a copy of Data as a reflect.Value
+	dataCopy := reflect.ValueOf(data)
+	// Updated data
+	newData := newWebData()
+	// Question IDs of questions that have been updated
+	// Maps IDs to new states
+	changedQns := map[int]string{}
+
+	// Range through the fields of the data copy
+	for i := 0; i < dataCopy.NumField(); i++ {
+		field := dataCopy.Field(i)
+		if field.Type().String() == "[]stackongo.Question" {
+
+			// Get the prefix of the form names
+			cacheType := strings.ToLower(strings.TrimSuffix(dataCopy.Type().Field(i).Name, "Cache")) + "_"
+
+			// Range through the array of the caches
+			for j := 0; j < field.Len(); j++ {
+
+				// Collect the question from the slice, changing it to the correct type
+				question := field.Index(j).Interface().(stackongo.Question)
+				var newState string
+
+				// Get the full form names
+				name := cacheType + strconv.Itoa(question.Question_id)
+				// Collect form from Request
+				form_input := r.PostFormValue(name)
+
+				// Add the question to the appropriate cache, updating the state
+				switch form_input {
+				case "unanswered":
+					newData.UnansweredCache = append(newData.UnansweredCache, question)
+					newState = "unanswered"
+				case "answered":
+					newData.AnsweredCache = append(newData.AnsweredCache, question)
+					newState = "answered"
+				case "pending":
+					newData.PendingCache = append(newData.PendingCache, question)
+					newState = "pending"
+				case "updating":
+					newData.UpdatingCache = append(newData.UpdatingCache, question)
+					newState = "updating"
+				case "no_change":
+					// If there has been no change, add the question back into the cache it was originally in
+					newState = strings.Split(name, "_")[0]
+					switch newState {
+					case "unanswered":
+						newData.UnansweredCache = append(newData.UnansweredCache, question)
+					case "answered":
+						newData.AnsweredCache = append(newData.AnsweredCache, question)
+					case "pending":
+						newData.PendingCache = append(newData.PendingCache, question)
+					case "updating":
+						newData.UpdatingCache = append(newData.UpdatingCache, question)
+					}
+				}
+
+				// Update any info on the updated question
+				if form_input != "" && form_input != "no_change" {
+					changedQns[question.Question_id] = newState
+					if form_input != "unanswered" {
+						data.Qns[question.Question_id] = user
+					}
+				}
+			}
+		}
+	}
+
+	sort.Sort(byCreationDate(newData.UnansweredCache))
+	sort.Sort(byCreationDate(newData.AnsweredCache))
+	sort.Sort(byCreationDate(newData.PendingCache))
+	sort.Sort(byCreationDate(newData.UpdatingCache))
+
+	data.CacheLock.Lock()
+	data.UnansweredCache = newData.UnansweredCache
+	data.AnsweredCache = newData.AnsweredCache
+	data.PendingCache = newData.PendingCache
+	data.UpdatingCache = newData.UpdatingCache
+	data.CacheLock.Unlock()
+
+	//Update the table on SQL keeping track of table modifications
+	updateTableTimes("questions")
+
+	// Update the database
+	go func(qns map[int]string, userId int) {
+		updateDb(qns, userId)
+	}(changedQns, user.User_id)
+	return nil
+}
+
+// Fucntion to update the questions in qns in the database
+func updateDb(qns map[int]string, userId int) {
+	log.Println("Updating database")
+
+	if len(qns) == 0 {
+		return
+	}
+
+	query := "SELECT question_id, state, user FROM questions WHERE "
+	// Add questions to update to the query
+	for id, _ := range qns {
+		query += "question_id=" + strconv.Itoa(id) + " OR "
+	}
+	query = strings.TrimSuffix(query, " OR ")
+
+	// Pull the required questions from the database
+	rows, err := db.Query(query)
 	if err != nil {
-		c.Errorf("query failed:\t%v", err)
+		log.Printf("query failed:\t%v", err)
 	}
 	defer func() {
-		c.Infof("closing rows: updating")
+		log.Println("closing rows: updating")
 		rows.Close()
 	}()
 
-	//	channel := make(chan rowData)
+	var (
+		id    int
+		owner int
+		state string
+	)
 
 	for rows.Next() {
-		numQ++
-		//go func(rows *sql.Rows) {
-		row := rowData{}
-		err := rows.Scan(&id, &title, &url, &row.state, &owner)
+		err := rows.Scan(&id, &state, &owner)
 		if err != nil {
-			c.Errorf("rows.Scan: %v", err.Error())
-		}
-		question := stackongo.Question{
-			Question_id: id,
-			Title:       title,
-			Link:        url,
-		}
-		row.question = question
-		/*	channel <- row
-				}(rows)
-			}
-			if err = rows.Err(); err != nil {
-				c.Errorf(err.Error())
-			}
-
-			for i := 0; i < numQ; i++ {
-				row := <-channel*/
-		name := row.state + "_" + strconv.Itoa(id)
-		form_input := r.PostFormValue(name)
-		switch form_input {
-		case "unanswered":
-			newState = "unanswered"
-		case "answered":
-			newState = "answered"
-		case "pending":
-			newState = "pending"
-		case "updating":
-			newState = "updating"
-		case "no_change":
-			newState = row.state
+			log.Printf("rows.Scan: %v", err.Error())
 		}
 
 		//Update the database, setting the state and the new user/owner of that question.
-		if newState != row.state {
-			stmts, err := db.Prepare("UPDATE questions SET state=?,user=? where question_id=?")
-			if err != nil {
-				c.Errorf("%v", err.Error())
-			}
-			id := 0
-			if newState != "unanswered" {
-				id = user.User_id
-			}
-			_, err = stmts.Exec(newState, id, row.question.Question_id)
-			if err != nil {
-				c.Errorf("Update query failed:\t%v", err.Error())
-			}
+		stmts, err := db.Prepare("UPDATE questions SET state=?,user=? where question_id=?")
+		if err != nil {
+			log.Printf("%v", err.Error())
+		}
+		if qns[id] == "unanswered" {
+			userId = 0
+		}
+
+		_, err = stmts.Exec(qns[id], userId, id)
+		if err != nil {
+			log.Printf("Update query failed:\t%v", err.Error())
 		}
 	}
-	//Update the table on SQL keeping track of table modifications
-	updateTableTimes("questions")
-	refreshCache()
-	return nil
+	log.Println("Database updated")
 }
