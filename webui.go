@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -254,6 +255,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 			tempData.UpdatingCache = append(tempData.UpdatingCache, question)
 		}
 	}
+	tempData.Qns = data.Qns
 	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
@@ -269,11 +271,31 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	page := template.Must(template.ParseFiles("public/template.html"))
 
 	query := readUserFromDb(userID)
+	userID_int, _ := strconv.Atoi(userID)
+
+	// Create and fill in a new webData struct
+	tempData := webData{}
 
 	data.CacheLock.Lock()
-	tempData := data
+	// range through the question caches golang stackongo and add if the question contains the tag
+	tempData.UnansweredCache = data.UnansweredCache
+	for _, question := range data.AnsweredCache {
+		if data.Qns[question.Question_id].User_id == userID_int {
+			tempData.AnsweredCache = append(tempData.AnsweredCache, question)
+		}
+	}
+	for _, question := range data.PendingCache {
+		if data.Qns[question.Question_id].User_id == userID_int {
+			tempData.PendingCache = append(tempData.PendingCache, question)
+		}
+	}
+	for _, question := range data.UpdatingCache {
+		if data.Qns[question.Question_id].User_id == userID_int {
+			tempData.UpdatingCache = append(tempData.UpdatingCache, question)
+		}
+	}
+	tempData.Qns = data.Qns
 	data.CacheLock.Unlock()
-
 	if err := page.Execute(w, writeResponse(user, tempData, c, query.Display_name)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}

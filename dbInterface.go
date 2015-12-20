@@ -194,9 +194,9 @@ func addUser(newUser stackongo.User) {
 // updating the caches based on input from the appi
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
-	/*	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime  {
+	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime */ {
 		mostRecentUpdate = int32(time.Now().Unix())
-	}*/
+	}
 
 	// required to collect post form data
 	r.ParseForm()
