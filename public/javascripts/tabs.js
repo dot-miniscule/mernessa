@@ -37,8 +37,8 @@ $(function() {
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
 $(function() {
   $('#stateForm').submit(function() {
-    document.getElementById('submitButton').prop('Value', 'Submitting');
-    document.getElementById('submitButton').prop('disabled', true);
+    $('#submitButton').prop('value', 'Submitting');
+    $('#submitButton').prop('disabled', true);
     document.cookie = 'submitting=true';
 
     // Intercept form submission and redirect back to the original page
@@ -48,30 +48,6 @@ $(function() {
     return false;
   });
 });
-
-//--------- LOCK/UNLOCK RADIO BUTTON ---------//
-//Nested for loop.
-//Super gross.
-//TO BE FIXED AT A LATER DATE
-//FOR NOW IT WORKS
-function changeImage() {
-  var image = document.getElementsByClassName('lockIcon');
-  var radios = document.getElementsByClassName('radios');
-
-  for(var j=0; j<image.length; j++) {
-    if(image[j].src.match("unlock")) {
-      image[j].src = "/images/lockSmall.png";
-      for(var i=0; i<radios.length; i++) {
-        radios[i].disabled = true;
-      }
-    } else {
-      image[j].src = "/images/unlockSmall.png" ;
-      for(var i=0; i<radios.length; i++) {
-        radios[i].disabled = false;
-      }
-    }
-  }
-}
 
 //-------- SETTING COOKIES -------//
 $(document).ready(function() {
