@@ -121,25 +121,21 @@ func init() {
 		fmt.Println(err.Error())
 		return
 	}
-	//Comment Out the next line to avoid ridiculous loading times while in development phase
-
-	//Iterate through each question returned, and add it to the database.
-	for _, item := range data.unansweredCache {
+	/*//Iterate through each question returned, and add it to the database.
+	for _, item := range data.wrapper.Items {
 		//INSERT IGNORE ensures that the same question won't be added again
 		//This will probably need to change as we better develop the workflow from local to stack exchange.
-		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL) VALUES (?, ?, ?)")
+		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, state) VALUES (?, ?, ?, ?, ?)")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		_, err = stmt.Exec(item.Question_id, item.Title, item.Link)
+		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, item.Body, "unanswered")
 		if err != nil {
 			log.Fatal("Insertion failed of question failed:\t", err)
 		}
-
 		//Need to add the tags in to the database as well, and ensure that they are joined to the questions
 		//Use a secondary mapping table to store the relationship between tags and questions.
-		//TODO: Complete mapping of tags to questions
 		for _, tag := range item.Tags {
 
 			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
@@ -152,18 +148,18 @@ func init() {
 				log.Println("Exec insertion for question_tag failed!:\t", err)
 			}
 		}
-	}
+	}*/
 	log.Println("Initial cache download")
 	refreshCache()
-
-	go func() {
-		for _ = range time.NewTicker(timeout).C {
-			log.Println("Refreshing cache")
-			refreshCache()
-			log.Println("Cache refreshed")
-		}
-	}()
-
+	/*
+		go func() {
+			for _ = range time.NewTicker(timeout).C {
+				log.Println("Refreshing cache")
+				refreshCache()
+				log.Println("Cache refreshed")
+			}
+		}()
+	*/
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)

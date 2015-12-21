@@ -6,6 +6,7 @@ html {
 }
 
 body {
+  background-color:#f0f3f5;
   padding:0;
   margin:0;
 }
@@ -22,31 +23,53 @@ a:hover {
   width:980px;
   font-family:'Roboto', sans-serif;
   font-size:15px;
-  background:radial-gradient(at 40% 40%, #4a98d3, #00598f);
-  min-height:100%;
-  position:relative;
-  width:980px;
-  margin:0;
-  padding:0;
+  /*background:radial-gradient(at 40% 40%, #4a98d3, #00598f);*/
+  margin:0 auto;
 }
 
+#userDiv {
+  background-color:#fff;
+  padding:5px;
+  text-align:right;
+  color:#c6c6c6;
+}
+
+#userDiv a {
+  color:#c6c6c6;
+}
 
 .titleBar {
   padding-top:0.25em;
   font-size:xx-large ;
   color: #333;
   text-align: center;
-  background: #BDBDBD;
+  margin-left:40px;
+  margin-right:40px;
 }
 
 #welcomeSentence {
-  font-weight:bold;
-  color:#fff;
-  padding:2px;
+  padding:5px;
   margin:2px;
+  color:#cccccc;
+  font-size:12px;
+}
+
+#profilePic {
+  height:20px;
+  width:20px;
+  padding:5px;
+}
+
+/*-------- TAG SEARCH ----------- */
+#tagSearch {
+  padding:20px; 
 }
 
 /*------------- TABS ------------- */
+
+.tab-panels {
+}
+
 .tab-panels ul {
   margin:0;
   padding:0;
@@ -59,9 +82,11 @@ a:hover {
   list-style-type:none;
   display:inline-block;
   background:#666;
-  width:23%;
+  width:23.5%;
   margin:0px 0px 0px 0px;
-  padding:3px ;
+  padding:3px;
+  margin-right:-5px;
+  border:none;
   border-radius:10px 10px 0 0;
   color:#c9c9c9;
   font-weight:200;
@@ -71,12 +96,12 @@ a:hover {
 
 .tab-panels ul li:not(.tag):hover {
   color:#fff;
-  background:#666;
+  background:#cccccc;
 }
 
 .tab-panels ul li.active {
   color:#000;
-  background:#c9c9c9;
+  background:#fff;
 }
 
 /*----------- PANELS/CONTENT ----------*/ 
@@ -84,16 +109,17 @@ a:hover {
 .tab-panels {
 }
 
+
 .tab-panels .panel {
   display:none;
-  background:#c9c9c9;
+  background:#fff;
   padding:30px ;
 }
 
 .tab-panels .panel.active {
   overflow:scroll;
   display:block;
-  height: 75%; 
+  height:50%;
 }
 
 /*---------- WEBKIT SCROLLBAR ---------*/
@@ -104,7 +130,7 @@ a:hover {
 
 ::-webkit-scrollbar-thumb {
   -webkit-border-radius:10px;
-  background:#fff;
+  background:#cccccc;
   border-radius: 50px;
 }
 
@@ -130,7 +156,6 @@ table {
 }
 
 th {
-  padding:1em;
 }
 
 tbody {
@@ -147,6 +172,21 @@ tbody {
 
 td:not(#question) {
   text-align: center;
+}
+
+/*--- RADIOS ---*/
+
+
+
+.radios {
+  
+}
+
+/*--- BODY SNIPPET ---*/
+.bodySnippet {
+  background-color:#fefee6;
+  font-size:12px;
+  word-wrap:break-word;
 }
 
 /*--- TAGS --- */
@@ -176,7 +216,7 @@ td:not(#question) {
 /*--------- STICKY FOOTER -----------*/
 
 .stickyFooter {
-  width:100%;
+  width:inherit;
   background-attachment:scroll;
   background-position:0% 0%;
   position:fixed;
@@ -184,11 +224,12 @@ td:not(#question) {
   left:0pt;
   height:50px;
   background:#fff;
-  border:solid black ;
+  border-top:#e6e6e6 5px;
+  box-shadow: 0px 10px 5px #888;
 }
 
 .footerContents {
-  width:100%;
+  width:inherit%;
   margin:auto;
   position:relative;
   background:#fff;
@@ -217,7 +258,6 @@ td:not(#question) {
 #submitContainer {
   float:right ;
   display:inline-block;
-  width:80%;
   overflow:hidden;
   height:100%;
 }
@@ -229,7 +269,7 @@ td:not(#question) {
   margin: 10px 10px 10px 10px;
   float:right;
   border-style:solid;
-  border-radius:10px;
+  border-radius:5px;
   border-color:#c6c6c6;
 }
 </style>

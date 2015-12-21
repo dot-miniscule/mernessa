@@ -33,6 +33,7 @@ func readFromDb(queries string) webData {
 		title string
 		id    int
 		state string
+		body  string
 		owner sql.NullInt64
 		name  sql.NullString
 		image sql.NullString
@@ -51,11 +52,12 @@ func readFromDb(queries string) webData {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &owner, &owner, &name, &image, &link)
+		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &owner, &name, &image, &link)
 		currentQ := stackongo.Question{
 			Question_id: id,
 			Title:       title,
 			Link:        url,
+			Body:        body,
 		}
 		if err != nil {
 			log.Fatal("query failed:\t", err)
