@@ -71,8 +71,10 @@
                       <td id="question">
                         <a href={{$question.Link}}>{{$question.Title}}</a>
                         <br>
-                        <div class="bodySnippet">
-                          <p>{{$question.Body}}</p>
+                        <div class="bodySnippet" id="{{$question.Question_id}}_body">
+                          <script>
+                            $('#{{$question.Question_id}}_body').html({{$question.Body}});
+                          </script>
                         </div><!--END OF BODY SNIPPER-->
                         <div class="tagContainer">
                           <ul>
