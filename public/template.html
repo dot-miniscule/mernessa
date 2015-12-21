@@ -40,64 +40,86 @@
           <li rel="pending" class="navigation">Pending</li>
           <li rel="updating" class="navigation">Update</li>
         </ul>
-        <div class="content">
-          <form name="change_state" id="stateForm" method="POST">
-              {{range $cache := $reply.Caches}}
-              <div id="{{$cache.CacheType}}" class="panel">
-                <div id="info">
-                  <p>{{$cache.Info}}</p>
-                </div>
-                <div class="tableContainer">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th id="qHead">Question</th>
-                        <th>Unanswered</th>
-                        <th>Answered</th>
-                        <th>Pending</th>
-                        <th>Update</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {{range $question := $cache.Questions}}
-                      <tr>
-                        <td id="question">
-                          <a href={{$question.Link}} data-tooltip="tooltip" title="Click to view this question on StackOverflow">{{$question.Title}}</a>
-                          <br>
-                          <div class="bodySnippet">
-                            <p>{{$question.Body}}</p>
-                          </div><!-- END SNIPPET-->
-                          <div class="tagContainer">
-                            <ul>
-                              {{range $tag := $question.Tags}}  
-                              <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?tagSearch={{$tag}}">{{$tag}}</a></li>
-                              {{end}}
-                            </ul>
-                          <div>
-                          {{if ne $cache.CacheType "unanswered"}}
-                          <p>Question owner: <a id="questionUser" href="/user?id={{$reply.GetUserIDByQn $question.Question_id}}">{{$reply.GetUserNameByQn $question.Question_id}}</a>
+        <form name="change_state" id="stateForm" method="POST">
+          {{range $cache := $reply.Caches}}
+          <div id="{{$cache.CacheType}}" class="panel">
+            <div id="info">
+                <p>{{$cache.Info}}</p>
+            </div>
+            <div class="tableContainer">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="qHead">Question</th>
+                    {{if ne $cache.CacheType "unanswered"}}
+                      <th>Unanswered</th>
+                    {{end}}
+                    {{if ne $cache.CacheType "answered"}}
+                      <th>Answered</th>
+                    {{end}}
+                    {{if ne $cache.CacheType "pending"}}
+                      <th>Pending</th>
+                    {{end}}
+                    {{if ne $cache.CacheType "updating"}}
+                      <th>Update</th>
+                    {{end}}
+                  </tr>
+                </thead>
+                <tbody>
+                  {{range $question := $cache.Questions}}
+                    <tr>
+                      <td id="question">
+                        <a href={{$question.Link}}>{{$question.Title}}</a>
+                        <br>
+                        <div class="bodySnippet">
+                          <p>{{$question.Body}}</p>
+                        </div><!--END OF BODY SNIPPER-->
+                        <div class="tagContainer">
+                          <ul>
+                          {{range $tag := $question.Tags}}  
+                            <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?tagSearch={{$tag}}">{{$tag}}</a></li>
                           {{end}}
-                        </td>
+                          </ul>
+                        </div>
+                        {{if ne $cache.CacheType "unanswered"}}
+                          <a href="/user?id={{$reply.GetUserIDByQn $question.Question_id}}">{{$reply.GetUserNameByQn $question.Question_id}}</a>
+                        {{end}}
+                      </td>
+                      {{if ne $cache.CacheType "unanswered"}}
                         <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>
-                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="answered"></td>
-                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="pending"></td>
-                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="updating"></td>
-                        <td style="display:none"><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="no_change" checked="checked"></td>
-                      </tr>
                       {{end}}
-                    </tbody>
-                  </table>
-                </div> <!-- END TABLE CONTAINER -->
-              </div> <!-- END PANEL -->
-              {{end}}
+                      {{if ne $cache.CacheType "answered"}}
+                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="answered"></td>
+                      {{end}}
+                      {{if ne $cache.CacheType "pending"}}
+                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="pending"></td>
+                      {{end}}
+                      {{if ne $cache.CacheType "updating"}}
+                        <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="updating"></td>
+                      {{end}}
+                      <td style="display:none"><input type="radio" class="radios no_change_radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="no_change" checked="checked"></td>
+                    </tr>
+                  {{end}}
+                </tbody>
+              </table>
+            </div> <!-- END TABLE CONTAINER -->
+          </div> <!-- END PANEL -->
+          {{end}}
           <script>
             $("#unanswered").addClass("active");
           </script>
-        </div><!-- END CONTENT DIV -->
-        <div class="stickyFooter">
-          <div class="footerContents">
-            <div id="submitContainer">
-              {{if ne $reply.User.Display_name "Guest"}}
+      </div>
+      <!--END TABS-->
+      <div class="stickyFooter">
+        <div class="footerContents">
+          <div id="authorNames">
+            <p>Vanessa Gregoriou</p>
+            <p>Meredith Lane</p>
+            <p>STEP Interns, 2015</p>
+          </div>
+          <div id="submitContainer">
+            <input type="button" name="clear" id=clearButton value="Clear">
+            {{if ne $reply.User.Display_name "Guest"}}
               <input type="submit" name="btnSubmit" id=submitButton value="Submit">
               {{else}}
               <input type="submit" name="btnSubmit" id=submitButton value="Submit" disabled>
