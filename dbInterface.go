@@ -32,15 +32,16 @@ func readFromDb(queries string) webData {
 	log.Println("Refreshing database read")
 	tempData := newWebData()
 	var (
-		url   string
-		title string
-		id    int
-		state string
-		body  string
-		owner sql.NullInt64
-		name  sql.NullString
-		image sql.NullString
-		link  sql.NullString
+		url           string
+		title         string
+		id            int
+		state         string
+		body          string
+		owner         sql.NullInt64
+		name          sql.NullString
+		image         sql.NullString
+		link          sql.NullString
+		creation_time int
 	)
 	//Select all questions in the database and read into a new data object
 	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id"
@@ -55,7 +56,7 @@ func readFromDb(queries string) webData {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &owner, &name, &image, &link)
+		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &owner, &name, &image, &link, &creation_time)
 		currentQ := stackongo.Question{
 			Question_id: id,
 			Title:       title,

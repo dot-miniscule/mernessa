@@ -27,6 +27,16 @@ a:hover {
   margin:0 auto;
 }
 
+.innerWrap {
+  float:left;
+  width:100%;
+}
+
+.content {
+  width:100%;
+  height:70%;
+}
+
 #userDiv {
   background-color:#fff;
   padding:5px;
@@ -65,15 +75,29 @@ a:hover {
   padding:20px; 
 }
 
+/*-------- SIDE BAR ----------- */
+.sidebar {
+  height:100%;
+  box-sizing:border-box;
+  background-color:purple;
+  display:block;
+  float:left;
+  width:20%;
+  border-right:solid 15px #f0f3f5;
+  border-radius: 10px 10px 0 0;
+}
+
 /*------------- TABS ------------- */
 
 .tab-panels {
+  display:block;
+  float:left;
+  width:80%;
 }
 
 .tab-panels ul {
   margin:0;
   padding:0;
-  width:100%;
 }
 
 /*------------ LINKS -------------*/ 
@@ -82,10 +106,11 @@ a:hover {
   list-style-type:none;
   display:inline-block;
   background:#666;
-  width:23.5%;
+  width:25%;
+  box-sizing:border-box;
   margin:0px 0px 0px 0px;
   padding:3px;
-  margin-right:-5px;
+  margin-right:-4px;
   border:none;
   border-radius:10px 10px 0 0;
   color:#c9c9c9;
@@ -106,25 +131,23 @@ a:hover {
 
 /*----------- PANELS/CONTENT ----------*/ 
 
-.tab-panels {
-}
-
-
 .tab-panels .panel {
   display:none;
   background:#fff;
-  padding:30px ;
 }
 
 .tab-panels .panel.active {
   overflow:scroll;
   display:block;
-  height:50%;
+  padding:10px;
+  box-sizing:border-box;
+  height:90%;
 }
+
 
 /*---------- WEBKIT SCROLLBAR ---------*/
 ::-webkit-scrollbar {
-  width: 5px;
+  width: 10px;
   height:2px;
 }
 
@@ -143,31 +166,46 @@ a:hover {
 }
 
 /*---------- TABLE CONTENT ------------*/
-table {
-  border-spacing: 0.5em;
-  background:#fff;
+#stateForm {
+  box-sizing:border-box;
   width:100%;
-  border-style:solid ;
+}
+
+.tableContainer {
+  width:100%;
+}
+
+table {
+  table-layout:fixed;
+  word-wrap:break-word;
 }
 
 #qHead {
   text-align:left;
-  padding:1em;
 }
 
 th {
+  border-bottom: solid thin #c6c6c6;
 }
 
-tbody {
-  border: thin solid black ;
+th:not(#qHead) {
+  padding:10px;
 }
+
+td {
+  padding-top:20px;
+  padding-bottom:20px;
+  border-bottom:thin dashed #c6c6c6;
+}
+
+
 
 .lockIcon {
   cursor:pointer;
 }
 
 #question {
-  padding: 1em;
+  word-wrap:break-word;
 }
 
 td:not(#question) {
@@ -187,6 +225,7 @@ td:not(#question) {
   background-color:#fefee6;
   font-size:12px;
   word-wrap:break-word;
+  margin:15 0 15 0;
 }
 
 /*--- TAGS --- */
@@ -202,7 +241,7 @@ td:not(#question) {
 
 .tagContainer ul li {
   display:inline-block;
-  padding:2px;
+  padding:2px 2px;
   border-radius: 5px;
   border:solid #e6e6e6;
   background:#e6e6e6;
@@ -216,42 +255,17 @@ td:not(#question) {
 /*--------- STICKY FOOTER -----------*/
 
 .stickyFooter {
-  width:inherit;
-  background-attachment:scroll;
-  background-position:0% 0%;
-  position:fixed;
-  bottom:0pt;
-  left:0pt;
+  width:100%;
   height:50px;
   background:#fff;
-  border-top:#e6e6e6 5px;
-  box-shadow: 0px 10px 5px #888;
+  border:none;
+  display:block;
 }
 
 .footerContents {
-  width:inherit%;
-  margin:auto;
-  position:relative;
+  width:inherit;
   background:#fff;
 }
-
-#authorNames {
-  margin:0px;
-  padding:0px;
-  font-size:12px;
-  float:left;
-  overflow:hidden;
-  display:inline-block;
-  width:20%;
-  line-height:10%;
-  height:100%;
-}
-
-#authorNames p {
-  margin-left:0.5em;
-  text-align:center;
-}
-
 
 /*---------- SUBMIT BUTTON -----------*/
 
