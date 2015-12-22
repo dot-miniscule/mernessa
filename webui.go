@@ -6,7 +6,6 @@ package webui
 
 import (
 	"backend"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -32,11 +31,12 @@ func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].C
 
 // Reply to send to template
 type genReply struct {
-	Wrapper *stackongo.Questions   // Information about the query
-	Caches  []cacheInfo            // Slice of the 4 caches (Unanswered, Answered, Pending, Updating)
-	User    stackongo.User         // Information on the current user
-	Qns     map[int]stackongo.User // Map of users by question ids
-	Query   string
+	Wrapper    *stackongo.Questions   // Information about the query
+	Caches     []cacheInfo            // Slice of the 4 caches (Unanswered, Answered, Pending, Updating)
+	User       stackongo.User         // Information on the current user
+	Qns        map[int]stackongo.User // Map of users by question ids
+	UpdateTime int32
+	Query      string
 }
 
 // Info on the various caches
@@ -47,7 +47,6 @@ type cacheInfo struct {
 }
 
 type webData struct {
-	LastUpdateTime  int64                  // Time the cache was last updated in Unix
 	Wrapper         *stackongo.Questions   // Request information
 	UnansweredCache []stackongo.Question   // Unanswered questions
 	AnsweredCache   []stackongo.Question   // Answered questions
@@ -89,7 +88,7 @@ var guest = stackongo.User{
 }
 
 // Pointer to database connection to communicate with Cloud SQL
-var db *sql.DB
+var db = backend.SqlInit()
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
@@ -102,6 +101,9 @@ func (r genReply) GetUserIDByQn(id int) int {
 func (r genReply) GetUserNameByQn(id int) string {
 	return r.Qns[id].Display_name
 }
+func (r genReply) CheckUpdateTime() bool {
+	return checkDBUpdateTime("questions", r.UpdateTime)
+}
 
 //The app engine will run its own main function and imports this code as a package
 //So no main needs to be defined
@@ -113,8 +115,6 @@ func init() {
 		fmt.Println(err.Error())
 		return
 	}
-	//Initalize db
-	db = backend.SqlInit()
 
 	//Read questions from Stack wrapper
 	data.Wrapper = new(stackongo.Questions) // Create a new wrapper
@@ -122,19 +122,23 @@ func init() {
 		fmt.Println(err.Error())
 		return
 	}
-	//Comment Out the next line to avoid ridiculous loading times while in development phase
-	//data.UnansweredCache = pageData.Wrapper.Items // At start, all questions are unanswered
+	/*//Comment Out the next line to avoid ridiculous loading times while in development phase
+	data.UnansweredCache = data.Wrapper.Items // At start, all questions are unanswered
 
-	/*
-		//Iterate through each question returned, and add it to the database.
-		for _, item := range data.UnansweredCache {
-			//INSERT IGNORE ensures that the same question won't be added again
-			//This will probably need to change as we better develop the workflow from local to stack exchange.
-			stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL) VALUES (?, ?, ?)")
-			if err != nil {
-				log.Fatal(err)
-			}
+	//Iterate through each question returned, and add it to the database.
+	for _, item := range data.UnansweredCache {
+		//INSERT IGNORE ensures that the same question won't be added again
+		//This will probably need to change as we better develop the workflow from local to stack exchange.
+		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date) VALUES (?, ?, ?, ?, ?)")
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, item.Body, item.Creation_date)
+		if err != nil {
+			log.Println("Exec insertion for question failed!:\t", err)
+		}
 
+		for _, tag := range item.Tags {
 			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
 			if err != nil {
 				log.Println("question_tag insertion failed!:\t", err)
@@ -145,18 +149,20 @@ func init() {
 				log.Println("Exec insertion for question_tag failed!:\t", err)
 			}
 		}
-	}*/
+	}
+	*/
 	log.Println("Initial cache download")
 	refreshCache()
-	/*
-		go func() {
-			for _ = range time.NewTicker(timeout).C {
-				log.Println("Refreshing cache")
-				refreshCache()
-				log.Println("Cache refreshed")
-			}
-		}()
-	*/
+
+	count := 1
+	go func(count int) {
+		for _ = range time.NewTicker(timeout).C {
+			log.Printf("Refreshing cache %v", count)
+			refreshCache()
+			count++
+		}
+	}(count)
+
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
@@ -185,12 +191,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
-
-		err := updatingCache_User(r, c, user)
-		if err != nil {
-			c.Errorf(err.Error())
+		if checkDBUpdateTime("questions", mostRecentUpdate) {
+			// Prompt user to double check for updates
+		} else {
+			err := updatingCache_User(r, c, user)
+			if err != nil {
+				c.Errorf(err.Error())
+			}
+			http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 		}
-		http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 	}
 
 	// Send to tag subpage
@@ -215,47 +224,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 // Handler to find all questions with specific tags
 func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	/*	tag := r.FormValue("q")
-		log.Println("tagValue =", tag)
-		var (
-			id    int
-			title string
-			url   string
-			state string
-		)
-		rows, err := db.Query("SELECT questions.question_id, questions.question_title, questions.question_URL, questions.state FROM questions INNER JOIN question_tag ON questions.question_id = question_tag.question_id WHERE question_tag.tag = ?", tag)
-		if err != nil {
-			log.Println("Error retrieving questions based on tags.\t", err)
-		}
-		tempData := webData{}
-		defer rows.Close()
-		for rows.Next() {
-			err := rows.Scan(&id, &title, &url, &state)
-			if err != nil {
-				log.Println("Scanning of questiontag failed.\t", err)
-			}
-			currentQ := stackongo.Question{
-				Question_id: id,
-				Title:       title,
-				Link:        url,
-			}
-			if state == "updating" {
-				tempData.updatingCache = append(tempData.updatingCache, currentQ)
-			} else if state == "answered" {
-				tempData.answeredCache = append(tempData.answeredCache, currentQ)
-			} else if state == "pending" {
-				tempData.pendingCache = append(tempData.pendingCache, currentQ)
-			} else {
-				tempData.unansweredCache = append(tempData.unansweredCache, currentQ)
-			}
-		}
-
-		page := template.Must(template.ParseFiles("public/template.html"))
-		if err := page.Execute(w, writeResponse(user, c, map[string]string{})); err != nil {
-			c.Criticalf("%v", err.Error())
-		}
-	*/
-
 	// Collect query
 	tag := r.FormValue("tagSearch")
 
@@ -325,6 +293,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	}
 	tempData.Qns = data.Qns
 	data.CacheLock.Unlock()
+
 	if err := page.Execute(w, writeResponse(user, tempData, c, query.Display_name)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
@@ -365,10 +334,6 @@ func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stacko
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redunant.
 func writeResponse(user stackongo.User, writeData webData, c appengine.Context, query string) genReply {
-	//Check if the database needs to be updated again based on the last refresh time.
-	//if checkDBUpdateTime("questions") == true {
-	mostRecentUpdate = int32(time.Now().Unix())
-	//}
 	return genReply{
 		Wrapper: writeData.Wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
@@ -393,9 +358,10 @@ func writeResponse(user stackongo.User, writeData webData, c appengine.Context, 
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
-		User:  user,          // Current user information
-		Qns:   writeData.Qns, // Map users by questions answered
-		Query: query,
+		User:       user,          // Current user information
+		Qns:        writeData.Qns, // Map users by questions answered
+		UpdateTime: mostRecentUpdate,
+		Query:      query,
 	}
 }
 
