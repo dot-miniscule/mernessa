@@ -32,15 +32,16 @@ func readFromDb(queries string) webData {
 	log.Println("Refreshing database read")
 	tempData := newWebData()
 	var (
-		url   string
-		title string
-		id    int
-		state string
-		body  string
-		owner sql.NullInt64
-		name  sql.NullString
-		image sql.NullString
-		link  sql.NullString
+		url           string
+		title         string
+		id            int
+		state         string
+		body          string
+		creation_date int
+		owner         sql.NullInt64
+		name          sql.NullString
+		image         sql.NullString
+		link          sql.NullString
 	)
 	//Select all questions in the database and read into a new data object
 	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id"
@@ -55,12 +56,13 @@ func readFromDb(queries string) webData {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &owner, &name, &image, &link)
+		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &owner, &name, &image, &link)
 		currentQ := stackongo.Question{
-			Question_id: id,
-			Title:       title,
-			Link:        url,
-			Body:        body,
+			Question_id:   id,
+			Title:         title,
+			Link:          url,
+			Body:          body,
+			Creation_date: int64(creation_date),
 		}
 		if err != nil {
 			log.Fatal("query failed:\t", err)
@@ -99,6 +101,12 @@ func readFromDb(queries string) webData {
 			}
 		}
 	}
+
+	sort.Sort(byCreationDate(tempData.UnansweredCache))
+	sort.Sort(byCreationDate(tempData.AnsweredCache))
+	sort.Sort(byCreationDate(tempData.PendingCache))
+	sort.Sort(byCreationDate(tempData.UpdatingCache))
+
 	mostRecentUpdate = int32(time.Now().Unix())
 	return tempData
 }
@@ -106,19 +114,17 @@ func readFromDb(queries string) webData {
 /* Function to check if the DB has been updated since we last queried it
 Returns true if our cache needs to be refreshed
 False if is all g */
-func checkDBUpdateTime(tableName string) bool {
+func checkDBUpdateTime(tableName string, lastUpdate int32) bool {
 	var (
-		id           int
-		table_name   string
 		last_updated int32
 	)
-	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name ='?'")
+	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'")
 	if err != nil {
 		log.Fatal("Query failed:\t", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&id, &table_name, &last_updated)
+		err := rows.Scan(&last_updated)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -126,7 +132,8 @@ func checkDBUpdateTime(tableName string) bool {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return last_updated > mostRecentUpdate
+	log.Printf("return %v > %v: %v", last_updated, lastUpdate, last_updated > lastUpdate)
+	return last_updated > lastUpdate
 }
 
 func readUserFromDb(id string) stackongo.User {
@@ -171,12 +178,14 @@ func updateTableTimes(tableName string) {
 		log.Println("Prepare failed:\t", err)
 	}
 
-	_, err = stmts.Exec(int32(time.Now().Unix()), tableName)
+	timeNow := int32(time.Now().Unix())
+	_, err = stmts.Exec(timeNow, tableName)
 	if err != nil {
 		log.Println("Could not update time for", tableName+":\t", err)
 	} else {
-		log.Println("Update time for", tableName, "successfully updated!")
+		log.Printf("Update time for %v successfully updated to %v!", tableName, timeNow)
 	}
+	mostRecentUpdate = timeNow
 }
 
 // Write user data into the database
@@ -196,9 +205,6 @@ func addUser(newUser stackongo.User) {
 // updating the caches based on input from the appi
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
-	if checkDBUpdateTime("questions") /* time on sql db is later than lastUpdatedTime */ {
-		mostRecentUpdate = int32(time.Now().Unix())
-	}
 
 	// required to collect post form data
 	r.ParseForm()
@@ -238,17 +244,13 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				switch form_input {
 				case "unanswered":
 					newData.UnansweredCache = append(newData.UnansweredCache, question)
-					newState = "unanswered"
 				case "answered":
 					newData.AnsweredCache = append(newData.AnsweredCache, question)
-					newState = "answered"
 				case "pending":
 					newData.PendingCache = append(newData.PendingCache, question)
-					newState = "pending"
 				case "updating":
 					newData.UpdatingCache = append(newData.UpdatingCache, question)
-					newState = "updating"
-				case "no_change":
+				default:
 					// If there has been no change, add the question back into the cache it was originally in
 					newState = strings.Split(name, "_")[0]
 					switch newState {
@@ -264,8 +266,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				}
 
 				// Update any info on the updated question
-				if form_input != "" && form_input != "no_change" {
-					changedQns[question.Question_id] = newState
+				if form_input != "" {
+					changedQns[question.Question_id] = form_input
 					if form_input != "unanswered" {
 						data.Qns[question.Question_id] = user
 					}
@@ -285,9 +287,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	data.PendingCache = newData.PendingCache
 	data.UpdatingCache = newData.UpdatingCache
 	data.CacheLock.Unlock()
-
-	//Update the table on SQL keeping track of table modifications
-	updateTableTimes("questions")
 
 	// Update the database
 	go func(qns map[int]string, userId int) {
@@ -347,5 +346,8 @@ func updateDb(qns map[int]string, userId int) {
 			log.Printf("Update query failed:\t%v", err.Error())
 		}
 	}
+
+	//Update the table on SQL keeping track of table modifications
+	updateTableTimes("questions")
 	log.Println("Database updated")
 }
