@@ -192,16 +192,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
-		if checkDBUpdateTime("questions", mostRecentUpdate) {
-			// Prompt user to double check for updates
-			//           page = template.
-		} else {
-			err := updatingCache_User(r, c, user)
-			if err != nil {
-				c.Errorf(err.Error())
-			}
-			http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
+		err := updatingCache_User(r, c, user)
+		if err != nil {
+			c.Errorf(err.Error())
 		}
+		http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 	}
 
 	// Send to tag subpage
