@@ -167,6 +167,8 @@ func init() {
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
 	http.HandleFunc("/user", handler)
+	http.HandleFunc("/viewTags", handler)
+	http.HandleFunc("/viewUsers", handler)
 }
 
 // Handler for authorizing user
@@ -208,6 +210,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Send to user subpage
 	if r.URL.Path == "/user" {
 		userHandler(w, r, c, user)
+		return
+	}
+
+	//Send to viewTags page
+	if r.URL.Path == "/viewTags" {
+		viewTagsHandler(w, r, c, user)
+		return
+	}
+
+	//Send to viewUsers page
+	if r.URL.Path == "/viewUsers" {
+		viewUsersHandler(w, r, c, user)
 		return
 	}
 
@@ -293,6 +307,19 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	if err := page.Execute(w, writeResponse(user, tempData, c, query.Display_name)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
+}
+
+func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+	page := template.Must(template.ParseFiles("/public/viewTags.html"))
+	tempData := webData{}
+	if err := page.Execute(w, writeResponse(user, tempData, c, "thing")); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
+
+}
+
+func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+
 }
 
 func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {
