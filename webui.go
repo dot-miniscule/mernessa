@@ -188,11 +188,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	user := getUser(w, r, c)
 
+	page := template.Must(template.ParseFiles("public/template.html"))
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
 		if checkDBUpdateTime("questions", mostRecentUpdate) {
 			// Prompt user to double check for updates
+			//           page = template.
 		} else {
 			err := updatingCache_User(r, c, user)
 			if err != nil {
@@ -214,7 +216,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
 	if err := page.Execute(w, writeResponse(user, data, c, "")); err != nil {
 		c.Criticalf("%v", err.Error())
