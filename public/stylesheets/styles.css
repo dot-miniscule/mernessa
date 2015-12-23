@@ -34,7 +34,12 @@ a:hover {
 
 .content {
   width:100%;
-  height:70%;
+  height:800px;
+}
+
+.content.tagPage {
+  background:#fff;
+  padding:10px;
 }
 
 #userDiv {
@@ -79,20 +84,25 @@ a:hover {
 .sidebar {
   height:100%;
   box-sizing:border-box;
-  background-color:purple;
+  background-color:#fff;
   display:block;
   float:left;
-  width:20%;
-  border-right:solid 15px #f0f3f5;
-  border-radius: 10px 10px 0 0;
+  width:200px;
+  border-radius: 10px 0px 0 0;
+  margin-right:15px;
+  font-size:13px;
+}
+
+.sidebar p {
+  padding-left:10px;
 }
 
 /*------------- TABS ------------- */
 
 .tab-panels {
-  display:block;
   float:left;
-  width:80%;
+  width:765px;
+  height:100%;
 }
 
 .tab-panels ul {
@@ -138,10 +148,10 @@ a:hover {
 
 .tab-panels .panel.active {
   overflow:scroll;
-  display:block;
+  height:704px;
   padding:10px;
+  display:block;
   box-sizing:border-box;
-  height:90%;
 }
 
 
@@ -247,6 +257,20 @@ td:not(#question) {
   background:#e6e6e6;
 }
 
+.tagContainer.viewTags li {
+  cursor:pointer;
+}
+
+.tagContainer.viewTags li.selected {
+  background:#ffffcc;
+  border-color:#ffffcc;
+}
+
+.tagContainer.viewTags li.deselected {
+  background:#e6e6e6;
+}
+
+
 #question p a {
   font-size=12px;
   color:black;
@@ -260,6 +284,7 @@ td:not(#question) {
   background:#fff;
   border:none;
   display:block;
+  float:bottom;
 }
 
 .footerContents {

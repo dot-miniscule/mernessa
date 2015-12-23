@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>Places API Query Tracker</title>
+    <title>Stack Tracker</title>
     <link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script type="text/javascript" src="/javascripts/tabs.js"></script>
@@ -21,30 +21,25 @@
         </div> <!-- END USER BAR DIV -->
 
         <div class="titleBar">
-          <h4><a href="/"><img src="/images/home.svg" height="30"></a>Places API Tag Tracker for StackExchange</h4>
+          <h4><a href="/"><img src="/images/home.svg" height="30"></a>Stack<b>Tracker</b></h4>
          {{if ne $reply.Query ""}}
             <h5>Querying: {{$reply.Query}}</h5>
           {{end}}
-        </div>
+        </div><!-- END TITLE DIV -->
         <div id="tagSearchBar">
           <form action="/tag" method="get">
             Search by tag: <input type="text" name="tagSearch">
             <input type="submit" value="Search">
           </form>
-        </div>
+        </div> <!-- END TAG SEARCH DIV -->
         <div class="content">
           <div class="sidebar">
-            <ul class="tagNav">
-                <li>tag1</li>
-                <li>tag2</li>
-                <li>tag3</li>
+              <p> Search questions by...</p>
+              <ul id="tagUser">
+                <li><a href="/viewTags">Tags</li>     
+                <li><a href="/viewUsers">Users</li>
               </ul>
-              <ul class="userNav">
-                <li>user1</li>
-                <li>user2</li>
-                <li>user3</li>
-              </ul>
-            </div> <!-- END SIDEBAR-->
+          </div> 
           <div class="tab-panels">
             <ul class="tabs">
               <li rel="unanswered" class="navigation active">Unanswered</li>
