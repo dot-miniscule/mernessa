@@ -64,6 +64,11 @@ type userData struct {
 	updatingCache []stackongo.Question // Questions that are being updated
 }
 
+type tagData struct {
+	Tag 	string		//The actual tag, hyphenated string
+	Count 	int 		//The number of questions with that tag in the db
+}
+
 func newWebData() webData {
 	return webData{
 		UnansweredCache: []stackongo.Question{},
@@ -313,10 +318,14 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	}
 }
 
+//This is the main tags page
+//Should display a list of tags that are logged in the database
+//User can either click on a tag to view any questions containing that tag or search by a specific tag
 func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	page := template.Must(template.ParseFiles("/public/viewTags.html"))
-	tempData := webData{}
-	if err := page.Execute(w, writeResponse(user, tempData, c, "thing")); err != nil {
+
+	page := template.Must(template.ParseFiles("public/viewTags.html"))
+	query := readTagsFromDb()
+	if err := page.Execute(w, query); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 

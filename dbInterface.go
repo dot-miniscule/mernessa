@@ -111,6 +111,37 @@ func readFromDb(queries string) webData {
 	return tempData
 }
 
+
+//Function called when the /viewTags request is made
+//Retrieves all tags (which should be unique) and the number of questions saved in the db with that tag
+func readTagsFromDb() []tagData {
+	log.Println("Retrieving tags from db")
+	
+	var tempData []tagData
+
+	var (
+		tag 	string
+		count 	int
+	)
+
+	rows, err := db.Query("SELECT * FROM tags")
+	if err != nil {
+		log.Println("Tag query failed, ln 127:", err)
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&tag, &count)
+		if err != nil {
+			log.Println("Scan failed, ln 134:", err)
+		}
+		currentTag := tagData{tag, count}
+		tempData = append(tempData, currentTag)
+	}
+
+	return tempData
+}
+
 /* Function to check if the DB has been updated since we last queried it
 Returns true if our cache needs to be refreshed
 False if is all g */
