@@ -38,6 +38,13 @@ $(function() {
 });
 
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
+function submitForm(dbChanged) {
+  if (dbChanged) {
+    return confirm('Database has been updated. Do you wish to continue submit?')
+  }
+  return true;
+}
+
 $(function() {
   $('#stateForm').submit(function() {
     $('#submitButton').prop('value', 'Submitting');

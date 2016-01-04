@@ -163,7 +163,6 @@ func checkDBUpdateTime(tableName string, lastUpdate int32) bool {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("return %v > %v: %v", last_updated, lastUpdate, last_updated > lastUpdate)
 	return last_updated > lastUpdate
 }
 

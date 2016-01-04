@@ -195,18 +195,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	user := getUser(w, r, c)
 
+	page := template.Must(template.ParseFiles("public/template.html"))
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
-		if checkDBUpdateTime("questions", mostRecentUpdate) {
-			// Prompt user to double check for updates
-		} else {
-			err := updatingCache_User(r, c, user)
-			if err != nil {
-				c.Errorf(err.Error())
-			}
-			http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
+		err := updatingCache_User(r, c, user)
+		if err != nil {
+			c.Errorf(err.Error())
 		}
+		http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 	}
 
 	// Send to tag subpage
@@ -226,14 +223,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		viewTagsHandler(w, r, c, user)
 		return
 	}
-	
+
 	//Send to viewUsers page
 	if r.URL.Path == "/viewUsers" {
 		viewUsersHandler(w, r, c, user)
 		return
 	}
 
-	page := template.Must(template.ParseFiles("public/template.html"))
 	// WriteResponse creates a new response with the various caches
 	if err := page.Execute(w, writeResponse(user, data, c, "")); err != nil {
 		c.Criticalf("%v", err.Error())
