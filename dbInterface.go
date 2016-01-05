@@ -184,7 +184,6 @@ func updateTableTimes(tableName string) {
 	} else {
 		log.Printf("Update time for %v successfully updated to %v!", tableName, timeNow)
 	}
-	mostRecentUpdate = timeNow
 }
 
 // Write user data into the database
@@ -265,7 +264,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				}
 
 				// Update any info on the updated question
-				if form_input != "" {
+				if form_input != "" && form_input != "no_change" {
 					changedQns[question.Question_id] = form_input
 					if form_input != "unanswered" {
 						data.Qns[question.Question_id] = user
@@ -289,6 +288,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 
 	// Update the database
 	go func(qns map[int]string, userId int) {
+		mostRecentUpdate = int32(time.Now().Unix())
 		updateDb(qns, userId)
 	}(changedQns, user.User_id)
 	return nil

@@ -38,11 +38,14 @@ $(function() {
 });
 
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
-function submitForm(dbChanged) {
-  if (dbChanged) {
-    return confirm('Database has been updated. Do you wish to continue submit?')
-  }
-  return true;
+function checkDB(updateTime) {
+  $.post('/dbUpdated?time='+updateTime, function( dbChanged ) {
+    console.log(dbChanged);
+    if (dbChanged == 'true') {
+        if (!confirm('Database has been updated. Do you wish to continue submit?')) { return }
+    }
+    $('#stateForm').submit();
+  });
 }
 
 $(function() {

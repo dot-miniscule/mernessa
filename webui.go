@@ -101,8 +101,8 @@ func (r genReply) GetUserIDByQn(id int) int {
 func (r genReply) GetUserNameByQn(id int) string {
 	return r.Qns[id].Display_name
 }
-func (r genReply) CheckUpdateTime() bool {
-	return checkDBUpdateTime("questions", r.UpdateTime)
+func (r genReply) CacheUpdated() bool {
+	return mostRecentUpdate > r.UpdateTime
 }
 
 //The app engine will run its own main function and imports this code as a package
@@ -156,10 +156,12 @@ func init() {
 
 	count := 1
 	go func(count int) {
-		for _ = range time.NewTicker(timeout).C {
-			log.Printf("Refreshing cache %v", count)
-			refreshCache()
-			count++
+		for {
+			if checkDBUpdateTime("questions", mostRecentUpdate) {
+				log.Printf("Refreshing cache %v", count)
+				refreshCache()
+				count++
+			}
 		}
 	}(count)
 
@@ -169,6 +171,7 @@ func init() {
 	http.HandleFunc("/user", handler)
 	http.HandleFunc("/viewTags", handler)
 	http.HandleFunc("/viewUsers", handler)
+	http.HandleFunc("/dbUpdated", updateHandler)
 }
 
 // Handler for authorizing user
@@ -178,6 +181,16 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	header := w.Header()
 	header.Add("Location", auth_url)
 	w.WriteHeader(302)
+}
+
+func updateHandler(w http.ResponseWriter, r *http.Request) {
+
+	time, _ := strconv.Atoi(r.FormValue("time"))
+	page, _ := template.New("updatePage").Parse("{{$.CacheUpdated}}")
+	// WriteResponse creates a new response with the various caches
+	if err := page.Execute(w, genReply{UpdateTime: int32(time)}); err != nil {
+		log.Printf("%v", err.Error())
+	}
 }
 
 // Handler for main information to be read and written from

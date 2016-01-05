@@ -21,7 +21,7 @@
         </div> <!-- END USER BAR DIV -->
         <div class="titleBar">
           <h4><a href="/"><img src="/images/home.svg" height="30"></a>Stack<b>Tracker</b></h4>
-         {{if ne $reply.Query ""}}
+          {{if ne $reply.Query ""}}
             <h5>Querying: {{$reply.Query}}</h5>
           {{end}}
         </div><!-- END TITLE DIV -->
@@ -35,8 +35,8 @@
           <div class="sidebar">
               <p> Search questions by...</p>
               <ul id="tagUser">
-                <li><a href="/viewTags">Tags</li>     
-                <li><a href="/viewUsers">Users</li>
+                <li><a href="/viewTags">Tags</a></li>
+                <li><a href="/viewUsers">Users</a></li>
               </ul>
           </div> 
           <div class="tab-panels">
@@ -116,19 +116,19 @@
               <script>
                 $("#unanswered").addClass("active");
               </script>
-            </form>
             <div class="stickyFooter">
               <div class="footerContents">
                 <div id="submitContainer">
-                  <input type="button" name="clear" id=clearButton value="Clear">
+                  <input type="button" name="clear" id="clearButton" value="Clear">
                   {{if ne $reply.User.Display_name "Guest"}}
-                    <input type="submit" name="btnSubmit" id=submitButton value="Submit">
-                    {{else}}
-                    <input type="submit" name="btnSubmit" id=submitButton value="Submit" disabled>
-                    {{end}}
+                    <input type="button" name="btnSubmit" id="submitButton" value="Submit" onclick="return checkDB({{$reply.UpdateTime}});">
+                  {{else}}
+                    <input type="button" name="btnSubmit" id="submitButton" value="Submit" disabled>
+                  {{end}}
                 </div> <!-- END SUBMIT CONTAINER -->
               </div><!--END FOOTER CONTENTS-->
             </div><!-- END FOOTER -->
+            </form>
           </div><!--END TAB-PANELS-->
         </div> <!--END CONTENT-->
       </div> <!-- END INNER WRAPPER -->
