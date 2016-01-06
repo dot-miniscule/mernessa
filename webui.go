@@ -7,10 +7,7 @@ package webui
 import (
 	"backend"
 	"database/sql"
-	"encoding/json"
-	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"reflect"
@@ -110,19 +107,6 @@ func (r genReply) CacheUpdated() bool {
 //So no main needs to be defined
 //All routes go in to init
 func init() {
-	// TODO(gregoriou): Comment out when ready to request from stackoverflow
-	input, err := ioutil.ReadFile("3-12_dataset.json") // Read from most recent file
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	//Read questions from Stack wrapper
-	data.Wrapper = new(stackongo.Questions) // Create a new wrapper
-	if err := json.Unmarshal(input, data.Wrapper); err != nil {
-		fmt.Println(err.Error())
-		return
-	}
 
 	// Initialising stackongo session
 	backend.NewSession()
