@@ -4,7 +4,9 @@ package backend
 
 import (
 	"dataCollect"
+	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"google.golang.org/appengine"
@@ -15,26 +17,19 @@ import (
 
 var (
 	tags    = []string{"google-places-api"}
-	appInfo = struct {
-		client_id     string
-		redirect_uri  string
-		client_secret string
-		key           string
-		options       map[string]string
-		filters       string
-	}{
-		client_id:     "6029",
-		redirect_uri:  "http://127.0.0.1:8080/home",
-		client_secret: "ymefu0zw2TIULhSTM03qyg((",
-		key:           "nHI22oWrBEsUN8kHe4ARsQ((",
+	appInfo = dataCollect.AppDetails{
+		Client_id:     "6029",
+		Redirect_uri:  "http://127.0.0.1:8080/home",
+		Client_secret: "ymefu0zw2TIULhSTM03qyg((",
+		Key:           "nHI22oWrBEsUN8kHe4ARsQ((",
 
-		filters: "!846.hCHXJtBDPB1pe-0GnXRad1cyWBkz(ithJ4-ztkzynXtQgKxaGE4ry3jiLpLNWv5",
+		Filters: "!846.hCHXJtBDPB1pe-0GnXRad1cyWBkz(ithJ4-ztkzynXtQgKxaGE4ry3jiLpLNWv5",
 		// Filters include:
 		//	- Wrapper: backoff, error_id, error_message, error_name,
 		//             has_more, items, quota_remaining
 		//	- Question: body, creation_date, link, question_id, title
 
-		options: map[string]string{
+		Options: map[string]string{
 			"scope": "write_access, no_expiry",
 		},
 	}
@@ -47,58 +42,70 @@ func SetTransport(r *http.Request) {
 	stackongo.SetTransport(ut)
 }
 
-func NewSession(r *http.Request) *stackongo.Session {
-	c := appengine.NewContext(r)
-	ut := &urlfetch.Transport{Context: c}
-	stackongo.SetTransport(ut)
-
+func NewSession() {
 	session = stackongo.NewSession("stackoverflow")
-	return session
 }
 
-func RefreshCache(r *http.Request) (*stackongo.Questions, error) {
+func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, error) {
 	// Set starting variable parameters
-	page := 1
-	toDate := time.Now()
-
 	// Adding parameters to request
 	params := make(stackongo.Params)
-	params.Page(page)
 	params.Pagesize(100)
+	params.Fromdate(fromDate)
 	params.Todate(toDate)
 	params.Sort("creation")
 	params.Add("accepted", false)
 	params.AddVectorized("tagged", tags)
 
-	return dataCollect.Collect(r, params)
+	questions := new(stackongo.Questions)
+	questions.Has_more = true
+	page := 0
+
+	for questions.Has_more && appInfo.Quota_remaining > 0 {
+		page++
+		params.Page(page)
+
+		nextPage, err := dataCollect.Collect(session, appInfo, params)
+		if err != nil {
+			return nil, errors.New("Error collecting questions\t" + err.Error())
+		}
+
+		appInfo.Quota_remaining = nextPage.Quota_remaining
+		if nextPage.Error_id != 0 {
+			return nil, errors.New("Request error:\t" + questions.Error_name + ": " + questions.Error_message)
+		}
+		nextPage.Items = append(questions.Items, nextPage.Items...)
+		questions = nextPage
+	}
+	return questions, nil
 }
 
 func NewSearch(r *http.Request, params stackongo.Params) (*stackongo.Questions, error) {
-	return dataCollect.Collect(r, params)
+	return dataCollect.Collect(session, appInfo, params)
 }
 
 func AuthURL() string {
-	return stackongo.AuthURL(appInfo.client_id, appInfo.redirect_uri, appInfo.options)
+	return stackongo.AuthURL(appInfo.Client_id, appInfo.Redirect_uri, appInfo.Options)
 }
 
 func ObtainAccessToken(code string) (map[string]string, error) {
-	return stackongo.ObtainAccessToken(appInfo.client_id, appInfo.client_secret, code, appInfo.redirect_uri)
+	return stackongo.ObtainAccessToken(appInfo.Client_id, appInfo.Client_secret, code, appInfo.Redirect_uri)
 }
 
 func AuthenticatedUser(params map[string]string, access_token string) (stackongo.User, error) {
-	return session.AuthenticatedUser(params, map[string]string{"key": appInfo.key, "access_token": access_token})
+	return session.AuthenticatedUser(params, map[string]string{"key": appInfo.Key, "access_token": access_token})
 }
 
 func GetUser(user_id int, params map[string]string) (stackongo.User, error) {
-	params["key"] = appInfo.key
+	params["key"] = appInfo.Key
 	users, err := session.GetUsers([]int{user_id}, params)
 	if err != nil {
 		return stackongo.User{}, err
 	}
-	if len(users.Items) > 0 {
-		return users.Items[0], nil
+	if len(users.Items) == 0 {
+		return stackongo.User{}, errors.New("User " + strconv.Itoa(user_id) + " not found")
 	}
-	return stackongo.User{}, err
+	return users.Items[0], nil
 }
 
 // for collecting datasets

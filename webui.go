@@ -6,6 +6,7 @@ package webui
 
 import (
 	"backend"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -65,14 +66,14 @@ type userData struct {
 }
 
 type tagData struct {
-	Tag 	string		//The actual tag, hyphenated string
-	Count 	int 		//The number of questions with that tag in the db
+	Tag   string //The actual tag, hyphenated string
+	Count int    //The number of questions with that tag in the db
 }
 
 type userInfo struct {
-	ID 	int
+	ID   int
 	Name string
-	Pic string
+	Pic  string
 	Link string
 }
 
@@ -113,8 +114,8 @@ func (r genReply) GetUserIDByQn(id int) int {
 func (r genReply) GetUserNameByQn(id int) string {
 	return r.Qns[id].Display_name
 }
-func (r genReply) CheckUpdateTime() bool {
-	return checkDBUpdateTime("questions", r.UpdateTime)
+func (r genReply) CacheUpdated() bool {
+	return mostRecentUpdate > r.UpdateTime
 }
 
 //The app engine will run its own main function and imports this code as a package
@@ -134,46 +135,44 @@ func init() {
 		fmt.Println(err.Error())
 		return
 	}
-	/*//Comment Out the next line to avoid ridiculous loading times while in development phase
-	data.UnansweredCache = data.Wrapper.Items // At start, all questions are unanswered
 
-	//Iterate through each question returned, and add it to the database.
-	for _, item := range data.UnansweredCache {
-		//INSERT IGNORE ensures that the same question won't be added again
-		//This will probably need to change as we better develop the workflow from local to stack exchange.
-		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date) VALUES (?, ?, ?, ?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
-		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, item.Body, item.Creation_date)
-		if err != nil {
-			log.Println("Exec insertion for question failed!:\t", err)
-		}
+	// Initialising stackongo session
+	backend.NewSession()
 
-		for _, tag := range item.Tags {
-			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
+	day := 24 * time.Hour
+	week := 7 * day
+	toDate := time.Now()
+	fromDate := toDate.Add(-1*week + day)
+
+	go func(fromDate time.Time, toDate time.Time, db *sql.DB) {
+		for i := 0; i < 0; i++ {
+			reply, err := backend.GetNewQns(fromDate, toDate)
 			if err != nil {
-				log.Println("question_tag insertion failed!:\t", err)
+				log.Printf("Error getting new questions: %v", err.Error())
+				continue
 			}
-
-			_, err = stmt.Exec(item.Question_id, tag)
-			if err != nil {
-				log.Println("Exec insertion for question_tag failed!:\t", err)
+			if err = backend.AddQuestions(db, reply); err != nil {
+				log.Printf("Error updating database: %v", err.Error())
+				continue
 			}
+			toDate = fromDate.Add(-1 * day)
+			fromDate = toDate.Add(-1*week + day)
 		}
-	}
-	*/
+	}(fromDate, toDate, db)
+
 	log.Println("Initial cache download")
-	// refreshCache()
+	refreshCache()
 
-	// count := 1
-	// go func(count int) {
-	// 	for _ = range time.NewTicker(timeout).C {
-	// 		log.Printf("Refreshing cache %v", count)
-	// 		refreshCache()
-	// 		count++
-	// 	}
-	// }(count)
+	count := 1
+	go func(count int) {
+		for {
+			if checkDBUpdateTime("questions", mostRecentUpdate) {
+				log.Printf("Refreshing cache %v", count)
+				refreshCache()
+				count++
+			}
+		}
+	}(count)
 
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
@@ -182,6 +181,7 @@ func init() {
 	http.HandleFunc("/viewTags", handler)
 	http.HandleFunc("/viewUsers", handler)
 	http.HandleFunc("/userPage", handler)
+	http.HandleFunc("/dbUpdated", updateHandler)
 }
 
 // Handler for authorizing user
@@ -193,13 +193,23 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(302)
 }
 
+func updateHandler(w http.ResponseWriter, r *http.Request) {
+
+	time, _ := strconv.Atoi(r.FormValue("time"))
+	page, _ := template.New("updatePage").Parse("{{$.CacheUpdated}}")
+	// WriteResponse creates a new response with the various caches
+	if err := page.Execute(w, genReply{UpdateTime: int32(time)}); err != nil {
+		log.Printf("%v", err.Error())
+	}
+}
+
 // Handler for main information to be read and written from
 func handler(w http.ResponseWriter, r *http.Request) {
 	// Create a new appengine context for logging purposes
 	c := appengine.NewContext(r)
 
 	backend.SetTransport(r)
-	_ = backend.NewSession(r)
+	backend.NewSession()
 
 	user := getUser(w, r, c)
 

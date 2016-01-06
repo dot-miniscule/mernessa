@@ -38,11 +38,14 @@ $(function() {
 });
 
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
-function submitForm(dbChanged) {
-  if (dbChanged) {
-    return confirm('Database has been updated. Do you wish to continue submit?')
-  }
-  return true;
+function checkDB(updateTime) {
+  $.post('/dbUpdated?time='+updateTime, function( dbChanged ) {
+    console.log(dbChanged);
+    if (dbChanged == 'true') {
+        if (!confirm('Database has been updated. Do you wish to continue submit?')) { return }
+    }
+    $('#stateForm').submit();
+  });
 }
 
 $(function() {
@@ -81,7 +84,7 @@ function setCookies() {
 //This array is used to generate search parameters for the page
 
 //Function to select tags based on user input
-//Reload main page, displaying questions with only that tag. 
+//Reload main page, displaying questions with only that tag.
 
 
 // var tagsToSearchFor = [];
@@ -95,7 +98,7 @@ function setCookies() {
 //       if(index > -1) {
 //         tagsToSearchFor.splice(index, 1)
 //       }
-//     } 
+//     }
 //     else {
 //       $(this).removeClass("deselected").addClass("selected");
 //       //Add to the array

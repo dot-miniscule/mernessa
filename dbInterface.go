@@ -111,17 +111,15 @@ func readFromDb(queries string) webData {
 	return tempData
 }
 
-
 //Function called when the /viewTags request is made
 //Retrieves all tags (which should be unique) and the number of questions saved in the db with that tag
 func readTagsFromDb() []tagData {
 	log.Println("Retrieving tags from db")
-	
 	var tempData []tagData
 
 	var (
-		tag 	sql.NullString
-		count 	sql.NullInt64
+		tag   sql.NullString
+		count sql.NullInt64
 	)
 
 	rows, err := db.Query("SELECT * FROM tags")
@@ -152,10 +150,10 @@ func readUsersFromDb() []userInfo {
 	var tempData []userInfo
 
 	var (
-		id 		sql.NullInt64
-		name 	sql.NullString
-		pic 	sql.NullString
-		link 	sql.NullString
+		id   sql.NullInt64
+		name sql.NullString
+		pic  sql.NullString
+		link sql.NullString
 	)
 
 	rows, err := db.Query("SELECT * FROM user")
@@ -184,6 +182,7 @@ func getUserQnsFromDb(userId string) []userInfo {
 
 	return tempData
 }
+
 /* Function to check if the DB has been updated since we last queried it
 Returns true if our cache needs to be refreshed
 False if is all g */
@@ -257,7 +256,6 @@ func updateTableTimes(tableName string) {
 	} else {
 		log.Printf("Update time for %v successfully updated to %v!", tableName, timeNow)
 	}
-	mostRecentUpdate = timeNow
 }
 
 // Write user data into the database
@@ -338,7 +336,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				}
 
 				// Update any info on the updated question
-				if form_input != "" {
+				if form_input != "" && form_input != "no_change" {
 					changedQns[question.Question_id] = form_input
 					if form_input != "unanswered" {
 						data.Qns[question.Question_id] = user
@@ -362,6 +360,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 
 	// Update the database
 	go func(qns map[int]string, userId int) {
+		mostRecentUpdate = int32(time.Now().Unix())
 		updateDb(qns, userId)
 	}(changedQns, user.User_id)
 	return nil
