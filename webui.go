@@ -6,6 +6,7 @@ package webui
 
 import (
 	"backend"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -122,35 +123,31 @@ func init() {
 		fmt.Println(err.Error())
 		return
 	}
-	/*//Comment Out the next line to avoid ridiculous loading times while in development phase
-	data.UnansweredCache = data.Wrapper.Items // At start, all questions are unanswered
 
-	//Iterate through each question returned, and add it to the database.
-	for _, item := range data.UnansweredCache {
-		//INSERT IGNORE ensures that the same question won't be added again
-		//This will probably need to change as we better develop the workflow from local to stack exchange.
-		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date) VALUES (?, ?, ?, ?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
-		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, item.Body, item.Creation_date)
-		if err != nil {
-			log.Println("Exec insertion for question failed!:\t", err)
-		}
+	// Initialising stackongo session
+	backend.NewSession()
 
-		for _, tag := range item.Tags {
-			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
+	day := 24 * time.Hour
+	week := 7 * day
+	toDate := time.Now()
+	fromDate := toDate.Add(-1*week + day)
+
+	go func(fromDate time.Time, toDate time.Time, db *sql.DB) {
+		for i := 0; i < 0; i++ {
+			reply, err := backend.GetNewQns(fromDate, toDate)
 			if err != nil {
-				log.Println("question_tag insertion failed!:\t", err)
+				log.Printf("Error getting new questions: %v", err.Error())
+				continue
 			}
-
-			_, err = stmt.Exec(item.Question_id, tag)
-			if err != nil {
-				log.Println("Exec insertion for question_tag failed!:\t", err)
+			if err = backend.AddQuestions(db, reply); err != nil {
+				log.Printf("Error updating database: %v", err.Error())
+				continue
 			}
+			toDate = fromDate.Add(-1 * day)
+			fromDate = toDate.Add(-1*week + day)
 		}
-	}
-	*/
+	}(fromDate, toDate, db)
+
 	log.Println("Initial cache download")
 	refreshCache()
 
@@ -199,7 +196,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 
 	backend.SetTransport(r)
-	_ = backend.NewSession(r)
+	backend.NewSession()
 
 	user := getUser(w, r, c)
 

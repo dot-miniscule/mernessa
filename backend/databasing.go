@@ -5,6 +5,7 @@ import (
 	"log"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
 type databaseInfo struct {
@@ -53,4 +54,34 @@ func SqlInit() *sql.DB {
 
 	//Return the db pointer for use elsewhere, as it has now been successfully created
 	return db
+}
+
+func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
+	for _, item := range newQns.Items {
+		//INSERT IGNORE ensures that the same question won't be added again
+		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date) VALUES (?, ?, ?, ?, ?)")
+		if err != nil {
+			return err
+		}
+		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, item.Body, item.Creation_date)
+		if err != nil {
+			log.Println("Exec insertion for question failed!:\t", err)
+			continue
+		}
+
+		for _, tag := range item.Tags {
+			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
+			if err != nil {
+				log.Println("question_tag insertion failed!:\t", err)
+				continue
+			}
+
+			_, err = stmt.Exec(item.Question_id, tag)
+			if err != nil {
+				log.Println("Exec insertion for question_tag failed!:\t", err)
+				continue
+			}
+		}
+	}
+	return nil
 }
