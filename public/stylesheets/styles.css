@@ -35,11 +35,13 @@ a:hover {
 .content {
   width:100%;
   height:800px;
+  padding-top:10px;
 }
 
 .content.tagPage {
   background:#fff;
   padding:10px;
+  overflow:scroll;
 }
 
 #userDiv {
@@ -53,8 +55,19 @@ a:hover {
   color:#c6c6c6;
 }
 
+#userSentence {
+  width:25%;
+}
+
+#title {
+  font-size:xx-large;
+  color:black;
+  margin-left:0;
+  text-align:left;
+  width:25%
+}
+
 .titleBar {
-  padding-top:0.25em;
   font-size:xx-large ;
   color: #333;
   text-align: center;
@@ -144,12 +157,13 @@ a:hover {
 .tab-panels .panel {
   display:none;
   background:#fff;
+  height:100%;
 }
 
 .tab-panels .panel.active {
   overflow-y:scroll;
   overflow-x:hidden;
-  height:704px;
+  height:717px;
   padding:10px;
   display:block;
   box-sizing:border-box;
@@ -181,8 +195,6 @@ a:hover {
   box-sizing:border-box;
   width:100%;
 }
-
-
 
 table {
   word-wrap:break-word;
@@ -303,4 +315,13 @@ td:not(#question) {
   border-radius:5px;
   border-color:#c6c6c6;
 }
+
+/* ------- VIEW TAGS PAGE ------- */
+
+#tag-browser {
+  margin:0;
+  padding:0;
+  position:relative;
+}
+
 </style>

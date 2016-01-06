@@ -57,7 +57,7 @@ type webData struct {
 }
 
 type userData struct {
-	user_info     stackongo.User       // SE user info
+	User_info     stackongo.User       // SE user info
 	access_token  string               // Token to access info
 	answeredCache []stackongo.Question //  answered by user
 	pendingCache  []stackongo.Question // Questions being answered by user
@@ -67,6 +67,13 @@ type userData struct {
 type tagData struct {
 	Tag 	string		//The actual tag, hyphenated string
 	Count 	int 		//The number of questions with that tag in the db
+}
+
+type userInfo struct {
+	ID 	int
+	Name string
+	Pic string
+	Link string
 }
 
 func newWebData() webData {
@@ -157,16 +164,16 @@ func init() {
 	}
 	*/
 	log.Println("Initial cache download")
-	refreshCache()
+	// refreshCache()
 
-	count := 1
-	go func(count int) {
-		for _ = range time.NewTicker(timeout).C {
-			log.Printf("Refreshing cache %v", count)
-			refreshCache()
-			count++
-		}
-	}(count)
+	// count := 1
+	// go func(count int) {
+	// 	for _ = range time.NewTicker(timeout).C {
+	// 		log.Printf("Refreshing cache %v", count)
+	// 		refreshCache()
+	// 		count++
+	// 	}
+	// }(count)
 
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
@@ -174,6 +181,7 @@ func init() {
 	http.HandleFunc("/user", handler)
 	http.HandleFunc("/viewTags", handler)
 	http.HandleFunc("/viewUsers", handler)
+	http.HandleFunc("/userPage", handler)
 }
 
 // Handler for authorizing user
@@ -230,11 +238,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == "/userPage" {
+		userPageHandler(w, r, c, user)
+		return
+	}
+
 	// WriteResponse creates a new response with the various caches
 	if err := page.Execute(w, writeResponse(user, data, c, "")); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
-
 }
 
 // Handler to find all questions with specific tags
@@ -318,17 +330,49 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 //Should display a list of tags that are logged in the database
 //User can either click on a tag to view any questions containing that tag or search by a specific tag
 func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-
 	page := template.Must(template.ParseFiles("public/viewTags.html"))
+	//Read all tags and their counts from the db, and execute the page
 	query := readTagsFromDb()
-	if err := page.Execute(w, query); err != nil {
+	//Format array of tags into another array, to be easier formatted on the page into a table
+	//An array of tagData arrays of size 4
+	var tagArray [][]tagData
+	var tempTagArray []tagData
+	i := 0
+	for _, t := range query {
+		tempTagArray = append(tempTagArray, t)
+		i++
+		if i == 4 {
+			tagArray = append(tagArray, tempTagArray)
+			i = 0
+			//clear the temp array.
+			tempTagArray = nil
+		}
+	}
+	tagArray = append(tagArray, tempTagArray)
+	if err := page.Execute(w, tagArray); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
 }
 
 func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+	page := template.Must(template.ParseFiles("public/viewUsers.html"))
+	query := readUsersFromDb()
+	//uname, _ := strconv.Atoi(r.FormValue("username"))
+	//query := users
+	log.Println(len(users))
+	if err := page.Execute(w, query); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
+}
 
+func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+	page := template.Must(template.ParseFiles("public/userPage.html"))
+	currentUser, _ := strconv.Atoi(r.FormValue("userId"))
+	query := users[currentUser]
+	if err := page.Execute(w, query); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
 }
 
 func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {
@@ -422,7 +466,7 @@ func contains(slice []string, toFind string) bool {
 
 // Initializes userData struct
 func (user userData) init(u stackongo.User, token string) {
-	user.user_info = u
+	user.User_info = u
 	user.access_token = token
 	user.answeredCache = []stackongo.Question{}
 	user.pendingCache = []stackongo.Question{}

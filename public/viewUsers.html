@@ -1,0 +1,42 @@
+<!doctype html>
+
+<html>
+	<head>
+		<title>StackTracker - View Users</title>
+		<link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript" src="/javascripts/tabs.js"></script>
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+	</head>
+	{{$reply := .}}
+	<body>
+
+		<div class="wrap">
+			<div class="innerWrap">
+
+				<div id="userDiv">
+          			<p id="welcomeSentence"> Welcome, Guest. 
+            		<a href="/login">Login</a> </p>
+        		</div> <!-- END USER BAR DIV -->
+
+        		<div class="titleBar">
+        			<h4><a href="/"><img src="images/home.svg" height=30></a>StackTracker</h4>
+        		</div><!-- END TITLE BAR -->
+		        <div class="content tagPage">
+		        	Browse users...
+		        	<div class="tagContainer viewTags">
+
+		        		<table id="tag-browser">
+
+				        	<ul id="selectTags">
+				        		{{range $user := $reply}}
+				        			<a href='/userPage?userId={{$user.ID}}'><li>{{$user.Name}}</li></a>
+				        		{{end}}
+				        	</ul><!-- END TAG LIST -->
+				        </table><!--END TABLE-->
+			        </div><!-- END TAG CONTAINER -->
+		        </div><!-- END CONTENT -->
+			</div><!-- END INNER WRAP -->
+		</div><!--END WRAP-->
+	</body>
+</html>

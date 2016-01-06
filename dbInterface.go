@@ -120,8 +120,8 @@ func readTagsFromDb() []tagData {
 	var tempData []tagData
 
 	var (
-		tag 	string
-		count 	int
+		tag 	sql.NullString
+		count 	sql.NullInt64
 	)
 
 	rows, err := db.Query("SELECT * FROM tags")
@@ -135,13 +135,55 @@ func readTagsFromDb() []tagData {
 		if err != nil {
 			log.Println("Scan failed, ln 134:", err)
 		}
-		currentTag := tagData{tag, count}
+		currentTag := tagData{tag.String, int(count.Int64)}
 		tempData = append(tempData, currentTag)
 	}
 
 	return tempData
 }
 
+//Function to read all user data from the database when a /viewUsers request is made
+//Retrieves all users data
+
+func readUsersFromDb() []userInfo {
+
+	log.Println("Retrieving users from db")
+
+	var tempData []userInfo
+
+	var (
+		id 		sql.NullInt64
+		name 	sql.NullString
+		pic 	sql.NullString
+		link 	sql.NullString
+	)
+
+	rows, err := db.Query("SELECT * FROM user")
+	if err != nil {
+		log.Println("User query failed, ln 163:", err)
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&id, &name, &pic, &link)
+		if err != nil {
+			log.Println("User scan failed, ln 170:", err)
+		}
+
+		currentUser := userInfo{int(id.Int64), name.String, pic.String, link.String}
+		tempData = append(tempData, currentUser)
+	}
+
+	return tempData
+
+}
+
+//Function to retrieve list of questions relating to particular user when a /userPage?xxx is made
+func getUserQnsFromDb(userId string) []userInfo {
+	var tempData []userInfo
+
+	return tempData
+}
 /* Function to check if the DB has been updated since we last queried it
 Returns true if our cache needs to be refreshed
 False if is all g */

@@ -1,3 +1,5 @@
+<!doctype html>
+
 <html>
 	<head>
 		<title>StackTracker - View Tags</title>
@@ -21,22 +23,32 @@
         			<h4><a href="/"><img src="images/home.svg" height=30></a>StackTracker</h4>
         		</div><!-- END TITLE BAR -->
 		        <div class="content tagPage">
-		        	Select Tags to filter questions...
-		        	<div class="tagContainer viewTags">
-
-		        		<table id="tag-browser">
-
-				        	<ul id="selectTags">
-				        		{{range $tag := $reply}}
-				        			<a href='/tag?{{$tag.Tag}}'><li>{{$tag.Tag}}</a></li>
-				        		{{end}}
-				        	</ul><!-- END TAG LIST -->
-				        </table><!--END TABLE-->
-			        </div><!-- END TAG CONTAINER -->
+		        	<div id="tagSearchBar">
+          				<form action="/tag" method="get">
+			            Search by tag: <input type="text" name="tagSearch">
+			            <input type="submit" value="Search">
+			          </form>
+			        </div> <!-- END TAG SEARCH DIV -->
+		        	Or select Tags to filter questions...
+	        		<table id="tag-browser">
+	        			<tbody>
+							{{range $tagArray := $reply}}
+		        				<tr>
+		        					{{range $tag := $tagArray}}
+		        					<td>
+		        						<div class="tagContainer viewTags">
+						        			<ul id="selectTags">
+						        					<a href='/tag?tagSearch={{$tag.Tag}}'><li>{{$tag.Tag}}</a></li>
+						        			</ul><!-- END TAG LIST -->
+						        		</div><!-- END TAG CONTAINER -->
+					        		</td>
+					        		{{end}}
+					        	</tr>
+					        {{end}}
+			        	</tbody><!-- END TABLE BODY -->
+			        </table><!--END TABLE-->
 		        </div><!-- END CONTENT -->
-
 			</div><!-- END INNER WRAP -->
-
 		</div><!--END WRAP-->
 	</body>
 </html>

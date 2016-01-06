@@ -23,7 +23,7 @@ $(function() {
     function showNextPanel() {
       $('.panel.active').removeClass('active');
 
-      $('#'+panelToShow).slideDown(400, function() {
+      $('#'+panelToShow).slideDown(1000, function() {
         $(this).addClass('active');
       });
     }
