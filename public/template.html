@@ -13,23 +13,16 @@
     <div class="wrap">
       <div class="innerWrap">
         <div id="userDiv">
-          <div id="title">
-            <h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height="50"></a>Stack<b>Tracker</b></h4>
-          </div>
-          <div id="userSentence">
-            <p id="welcomeSentence"> Welcome,
-            {{if eq $reply.User.Display_name "Guest"}}
-              Guest <a href="/login">Login</a>
-            {{else}}
-             <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img id="profilePic" src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
-          {{end}}
-            </p>
-          </div>
-        </div> <!-- END USER BAR DIV -->
-        <div class="titleBar">
-         {{if ne $reply.Query ""}}
-            <h5>Querying: {{$reply.Query}}</h5>
-          {{end}}
+                <p id="welcomeSentence"> Welcome, Guest. 
+                <a href="/login">Login</a> </p>
+            </div> <!-- END USER BAR DIV -->
+
+            <div class="titleBar">
+              <h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
+              {{if ne $reply.Query ""}}
+                <h5>Querying: {{$reply.Query}}</h5>
+              {{end}}
+            </div><!-- END TITLE BAR -->
         </div><!-- END TITLE DIV -->
         <div class="content">
           <div class="sidebar">

@@ -20,21 +20,14 @@
         		</div> <!-- END USER BAR DIV -->
 
         		<div class="titleBar">
-        			<h4><a href="/"><img src="images/home.svg" height=30></a>StackTracker</h4>
+        			<h4><a href="/"><img src="images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
         		</div><!-- END TITLE BAR -->
-		        <div class="content tagPage">
+		        <div class="content userPage">
 		        	Browse users...
-		        	<div class="tagContainer viewTags">
 
-		        		<table id="tag-browser">
-
-				        	<ul id="selectTags">
-				        		{{range $user := $reply}}
-				        			<a href='/userPage?userId={{$user.ID}}'><li>{{$user.Name}}</li></a>
-				        		{{end}}
-				        	</ul><!-- END TAG LIST -->
-				        </table><!--END TABLE-->
-			        </div><!-- END TAG CONTAINER -->
+			    	{{range $user := $reply}}
+			        <a href='/userPage?userId={{$user.ID}}'><li>{{$user.Name}}</li></a>
+			        {{end}}
 		        </div><!-- END CONTENT -->
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->

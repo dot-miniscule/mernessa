@@ -38,7 +38,7 @@ a:hover {
   padding-top:10px;
 }
 
-.content.tagPage {
+.content.tagPage, .content.userPage {
   background:#fff;
   padding:10px;
   overflow:scroll;
@@ -49,10 +49,17 @@ a:hover {
   padding:5px;
   text-align:right;
   color:#c6c6c6;
+  margin:0px;
 }
 
 #userDiv a {
   color:#c6c6c6;
+}
+
+.userProfile {
+  background:#fff;
+  height:100%;
+  overflow:hidden;
 }
 
 #userSentence {
@@ -71,8 +78,10 @@ a:hover {
   font-size:xx-large ;
   color: #333;
   text-align: center;
-  margin-left:40px;
-  margin-right:40px;
+  background:#fff;
+  border-bottom:#f0f3f5 15px solid;
+  margin-top:0px;
+  overflow:hidden;
 }
 
 #welcomeSentence {
@@ -288,7 +297,7 @@ td:not(#question) {
   background:#fff;
   border:none;
   display:block;
-  float:bottom;
+  float:bottom
 }
 
 .footerContents {

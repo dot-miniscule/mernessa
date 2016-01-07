@@ -1,0 +1,29 @@
+
+.userProfile {
+	padding:20px;
+}
+
+.profilePicture-large {
+	float:right;
+	width:200px;
+	height:200px;
+	float:right;
+	border-radius:5px;
+	border:thin solid #c2c2c2;
+	text-align:center;
+	background: linear-gradient(to bottom,  #c6c6c6 0%,#c6c6c6, 50%,#f6f6f6 50%,#f6f6f6 100%);
+	margin:20px;
+}
+
+.centerer {
+	display:inline-block;
+	height:100%;
+	vertical-align:middle;
+}
+
+.centered {
+	display:inline-block;
+	vertical-align:middle;
+	width:150px;
+	height:150px;
+}
