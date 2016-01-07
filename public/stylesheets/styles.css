@@ -35,11 +35,13 @@ a:hover {
 .content {
   width:100%;
   height:800px;
+  padding-top:10px;
 }
 
 .content.tagPage {
   background:#fff;
   padding:10px;
+  overflow:scroll;
 }
 
 #userDiv {
@@ -53,8 +55,19 @@ a:hover {
   color:#c6c6c6;
 }
 
+#userSentence {
+  width:25%;
+}
+
+#title {
+  font-size:xx-large;
+  color:black;
+  margin-left:0;
+  text-align:left;
+  width:25%
+}
+
 .titleBar {
-  padding-top:0.25em;
   font-size:xx-large ;
   color: #333;
   text-align: center;
@@ -144,11 +157,13 @@ a:hover {
 .tab-panels .panel {
   display:none;
   background:#fff;
+  height:100%;
 }
 
 .tab-panels .panel.active {
-  overflow:scroll;
-  height:704px;
+  overflow-y:scroll;
+  overflow-x:hidden;
+  height:717px;
   padding:10px;
   display:block;
   box-sizing:border-box;
@@ -181,13 +196,9 @@ a:hover {
   width:100%;
 }
 
-.tableContainer {
-  width:100%;
-}
-
 table {
-  table-layout:fixed;
   word-wrap:break-word;
+  width:100%;
 }
 
 #qHead {
@@ -208,34 +219,26 @@ td {
   border-bottom:thin dashed #c6c6c6;
 }
 
-
-
 .lockIcon {
   cursor:pointer;
 }
 
 #question {
   word-wrap:break-word;
+  width:100;
 }
-
 td:not(#question) {
   text-align: center;
 }
 
 /*--- RADIOS ---*/
 
-
-
-.radios {
-  
-}
-
 /*--- BODY SNIPPET ---*/
 .bodySnippet {
   background-color:#fefee6;
   font-size:12px;
   word-wrap:break-word;
-  margin:15 0 15 0;
+  margin-right:none;
 }
 
 /*--- TAGS --- */
@@ -250,8 +253,9 @@ td:not(#question) {
 }
 
 .tagContainer ul li {
+  margin:2px;
   display:inline-block;
-  padding:2px 2px;
+  padding:2px 2px 2px 2px;
   border-radius: 5px;
   border:solid #e6e6e6;
   background:#e6e6e6;
@@ -272,7 +276,7 @@ td:not(#question) {
 
 
 #question p a {
-  font-size=12px;
+  font-size:12px;
   color:black;
 }
 
@@ -311,4 +315,13 @@ td:not(#question) {
   border-radius:5px;
   border-color:#c6c6c6;
 }
+
+/* ------- VIEW TAGS PAGE ------- */
+
+#tag-browser {
+  margin:0;
+  padding:0;
+  position:relative;
+}
+
 </style>

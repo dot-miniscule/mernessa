@@ -1,3 +1,5 @@
+<!doctype html>
+
 <html>
   <head>
     <title>Stack Tracker</title>
@@ -11,29 +13,27 @@
     <div class="wrap">
       <div class="innerWrap">
         <div id="userDiv">
-          <p id="welcomeSentence"> Welcome, 
-          {{if eq $reply.User.Display_name "Guest"}}
-            {{$reply.User.Display_name}} <a href="/login">Login</a>
-          {{else}}
-           <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img id="profilePic" src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
-        {{end}}
-          </p>
+          <div id="title">
+            <h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height="50"></a>Stack<b>Tracker</b></h4>
+          </div>
+          <div id="userSentence">
+            <p id="welcomeSentence"> Welcome,
+            {{if eq $reply.User.Display_name "Guest"}}
+              Guest <a href="/login">Login</a>
+            {{else}}
+             <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img id="profilePic" src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+          {{end}}
+            </p>
+          </div>
         </div> <!-- END USER BAR DIV -->
         <div class="titleBar">
-          <h4><a href="/"><img src="/images/home.svg" height="30"></a>Stack<b>Tracker</b></h4>
-          {{if ne $reply.Query ""}}
+         {{if ne $reply.Query ""}}
             <h5>Querying: {{$reply.Query}}</h5>
           {{end}}
         </div><!-- END TITLE DIV -->
-        <div id="tagSearchBar">
-          <form action="/tag" method="get">
-            Search by tag: <input type="text" name="tagSearch">
-            <input type="submit" value="Search">
-          </form>
-        </div> <!-- END TAG SEARCH DIV -->
         <div class="content">
           <div class="sidebar">
-              <p> Search questions by...</p>
+              <p> View...</p>
               <ul id="tagUser">
                 <li><a href="/viewTags">Tags</a></li>
                 <li><a href="/viewUsers">Users</a></li>
@@ -75,7 +75,7 @@
                       {{range $question := $cache.Questions}}
                         <tr>
                           <td id="question">
-                            <a href={{$question.Link}}>{{$question.Title}}</a>
+                            <a href={{$question.Link}} target="_blank">{{$question.Title}}</a>
                             <br>
                             <div class="bodySnippet" id="{{$question.Question_id}}_body">
                               <script>

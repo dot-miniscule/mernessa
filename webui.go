@@ -59,6 +59,18 @@ type userData struct {
 	Caches       map[string][]stackongo.Question // questions modified by user sorted into cacheTypes
 }
 
+type tagData struct {
+	Tag   string //The actual tag, hyphenated string
+	Count int    //The number of questions with that tag in the db
+}
+
+type userInfo struct {
+	ID   int
+	Name string
+	Pic  string
+	Link string
+}
+
 func newWebData() webData {
 	return webData{
 		Caches: map[string][]stackongo.Question{
@@ -158,6 +170,7 @@ func init() {
 	http.HandleFunc("/user", handler)
 	http.HandleFunc("/viewTags", handler)
 	http.HandleFunc("/viewUsers", handler)
+	http.HandleFunc("/userPage", handler)
 	http.HandleFunc("/dbUpdated", updateHandler)
 }
 
@@ -225,11 +238,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == "/userPage" {
+		userPageHandler(w, r, c, user)
+		return
+	}
+
 	page := template.Must(template.ParseFiles("public/template.html"))
+	// WriteResponse creates a new response with the various caches
 	if err := page.Execute(w, writeResponse(user, data, c, "")); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
-
 }
 
 // Handler to find all questions with specific tags
@@ -283,17 +301,53 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	}
 }
 
+//This is the main tags page
+//Should display a list of tags that are logged in the database
+//User can either click on a tag to view any questions containing that tag or search by a specific tag
 func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	page := template.Must(template.ParseFiles("/public/viewTags.html"))
-	tempData := newWebData()
-	if err := page.Execute(w, writeResponse(user, tempData, c, "thing")); err != nil {
+	//Read all tags and their counts from the db, and execute the page
+	query := readTagsFromDb()
+	//Format array of tags into another array, to be easier formatted on the page into a table
+	//An array of tagData arrays of size 4
+	var tagArray [][]tagData
+	var tempTagArray []tagData
+	i := 0
+	for _, t := range query {
+		tempTagArray = append(tempTagArray, t)
+		i++
+		if i == 4 {
+			tagArray = append(tagArray, tempTagArray)
+			i = 0
+			//clear the temp array.
+			tempTagArray = nil
+		}
+	}
+	tagArray = append(tagArray, tempTagArray)
+	page := template.Must(template.ParseFiles("public/viewTags.html"))
+	if err := page.Execute(w, tagArray); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
 }
 
 func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+	page := template.Must(template.ParseFiles("public/viewUsers.html"))
+	query := readUsersFromDb()
+	//uname, _ := strconv.Atoi(r.FormValue("username"))
+	//query := users
+	log.Println(len(data.Users))
+	if err := page.Execute(w, query); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
+}
 
+func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+	page := template.Must(template.ParseFiles("public/userPage.html"))
+	currentUser, _ := strconv.Atoi(r.FormValue("userId"))
+	query := data.Users[currentUser]
+	if err := page.Execute(w, query); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
 }
 
 func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {

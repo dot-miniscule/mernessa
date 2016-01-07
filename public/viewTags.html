@@ -1,54 +1,54 @@
+<!doctype html>
+
 <html>
 	<head>
 		<title>StackTracker - View Tags</title>
-		<link rel="stylesheet" type="text/css" href="../mernessa/public/stylesheets/styles.css">
+		<link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-    <script type="text/javascript" src="../mernessa/public/javascripts/tabs.js"></script>
+    <script type="text/javascript" src="/javascripts/tabs.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
 	</head>
-
+	{{$reply := .}}
 	<body>
 
 		<div class="wrap">
 			<div class="innerWrap">
 
 				<div id="userDiv">
-          <p id="welcomeSentence"> Welcome, Guest
-            <a href="/login">Login</a>
-           <!--<a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img id="profilePic" src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>-->
-          </p>
-        </div> <!-- END USER BAR DIV -->
+          			<p id="welcomeSentence"> Welcome, Guest. 
+            		<a href="/login">Login</a> </p>
+        		</div> <!-- END USER BAR DIV -->
 
-        <div class="titleBar">
-        	<h4><a href="/"><img src="../mernessa/public/images/home.svg" height=30></a>StackTracker</h4>
-        </div><!-- END TITLE BAR -->
-
-        <div class="content tagPage">
-        	Select Tags to filter questions...
-        	<div class="tagContainer viewTags">
-	        	<ul id="selectTags">
-	        		<li>javascript</li>
-	        		<li>android</li>
-	        		<li>deprecated</li>
-	        		<li>google-api</li>
-	        		<li>google-maps</li>
-	        		<li>web</li>
-	        		<li>java</li>
-	        		<li>addeventlistener</li>
-	        		<li>autocomplete</li>
-
-	        	</ul><!-- END TAG LIST -->
-	        </div><!-- END TAG CONTAINER -->
-					<div id="selectedTags">
-						
-					</div><!-- END SELECTED TAGS -->	       
-        </div><!-- END CONTENT -->
-      	<div id="submitContainer">
-      		<input type="submit" class="viewTags" name="btnSubmit" id="submitButton" value="Search">
-      	</div><!-- END SUBMIT BUTTON -->
-
+        		<div class="titleBar">
+        			<h4><a href="/"><img src="images/home.svg" height=30></a>StackTracker</h4>
+        		</div><!-- END TITLE BAR -->
+		        <div class="content tagPage">
+		        	<div id="tagSearchBar">
+          				<form action="/tag" method="get">
+			            Search by tag: <input type="text" name="tagSearch">
+			            <input type="submit" value="Search">
+			          </form>
+			        </div> <!-- END TAG SEARCH DIV -->
+		        	Or select Tags to filter questions...
+	        		<table id="tag-browser">
+	        			<tbody>
+							{{range $tagArray := $reply}}
+		        				<tr>
+		        					{{range $tag := $tagArray}}
+		        					<td>
+		        						<div class="tagContainer viewTags">
+						        			<ul id="selectTags">
+						        					<a href='/tag?tagSearch={{$tag.Tag}}'><li>{{$tag.Tag}}</a></li>
+						        			</ul><!-- END TAG LIST -->
+						        		</div><!-- END TAG CONTAINER -->
+					        		</td>
+					        		{{end}}
+					        	</tr>
+					        {{end}}
+			        	</tbody><!-- END TABLE BODY -->
+			        </table><!--END TABLE-->
+		        </div><!-- END CONTENT -->
 			</div><!-- END INNER WRAP -->
-
 		</div><!--END WRAP-->
 	</body>
 </html>

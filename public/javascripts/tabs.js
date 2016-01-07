@@ -23,7 +23,7 @@ $(function() {
     function showNextPanel() {
       $('.panel.active').removeClass('active');
 
-      $('#'+panelToShow).slideDown(400, function() {
+      $('#'+panelToShow).slideDown(1000, function() {
         $(this).addClass('active');
       });
     }
@@ -82,39 +82,44 @@ function setCookies() {
 //------- VIEW TAGS TAG SELECTION ------//
 //Function selects/deselects tags based on user input, and adds them to an array
 //This array is used to generate search parameters for the page
-var tagsToSearchFor = [];
 
-$(function() {
-  $('ul#selectTags li').click(function(e) {
-    if($(this).hasClass("selected")) {
-      $(this).removeClass("selected").addClass("deselected");
-      //Remove from the array
-      var index = tagsToSearchFor.indexOf($(this).html())
-      if(index > -1) {
-        tagsToSearchFor.splice(index, 1)
-      }
-    } 
-    else {
-      $(this).removeClass("deselected").addClass("selected");
-      //Add to the array
-      tagsToSearchFor.push($(this).html())
-    }
+//Function to select tags based on user input
+//Reload main page, displaying questions with only that tag.
 
-    var html=' ';
-    for (var i=0; i<tagsToSearchFor.length; i++) {
-      html += tagsToSearchFor[i];
-      if(tagsToSearchFor.length>1 && i<tagsToSearchFor.length-1) {
-        html += ', ';
-      }
-    }
-    console.log(html)
-    $('#selectedTags').html(html);
-  });
-});
 
-//Pass the JS Array to the webui to request new entries from DB
-$(function() {
-  $(".viewTags#submitButton").click(function(e) {
-    console.log("did a thing")
-  });
-});
+// var tagsToSearchFor = [];
+
+// $(function() {
+//   $('ul#selectTags li').click(function(e) {
+//     if($(this).hasClass("selected")) {
+//       $(this).removeClass("selected").addClass("deselected");
+//       //Remove from the array
+//       var index = tagsToSearchFor.indexOf($(this).html())
+//       if(index > -1) {
+//         tagsToSearchFor.splice(index, 1)
+//       }
+//     }
+//     else {
+//       $(this).removeClass("deselected").addClass("selected");
+//       //Add to the array
+//       tagsToSearchFor.push($(this).html())
+//     }
+
+//     var html=' ';
+//     for (var i=0; i<tagsToSearchFor.length; i++) {
+//       html += tagsToSearchFor[i];
+//       if(tagsToSearchFor.length>1 && i<tagsToSearchFor.length-1) {
+//         html += ', ';
+//       }
+//     }
+//     console.log(html)
+//     $('#selectedTags').html(html);
+//   });
+// });
+
+// //Pass the JS Array to the webui to request new entries from DB
+// $(function() {
+//   $(".viewTags#submitButton").click(function(e) {
+//     console.log("did a thing")
+//   });
+// });
