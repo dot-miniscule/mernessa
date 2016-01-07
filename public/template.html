@@ -90,7 +90,8 @@
                               </ul>
                             </div>
                             {{if ne $cache.CacheType "unanswered"}}
-                              <a href="/user?id={{$reply.GetUserIDByQn $question.Question_id}}">{{$reply.GetUserNameByQn $question.Question_id}}</a>
+                              {{$owner := index $reply.Qns $question.Question_id}}
+                              <a href="/user?id={{$owner.User_id}}">{{$owner.Display_name}}</a>
                             {{end}}
                           </td>
                           {{if ne $cache.CacheType "unanswered"}}

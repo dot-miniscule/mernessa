@@ -24,7 +24,7 @@
         		</div><!-- END TITLE BAR -->
 		        <div class="content">
 		        	<ul>
-		        		{{range $qn := $reply.AnsweredCache}}
+		        		{{range $qn := index $reply.Caches "answered"}}
 		        		<li>{{$qn.Title}}</li>
 		        		{{end}}
 		        	</ul>
