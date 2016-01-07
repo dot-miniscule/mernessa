@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,14 +14,13 @@ import (
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
-func refreshCache() {
+func refreshLocalCache() {
 	tempData := readFromDb("")
 
 	data.CacheLock.Lock()
-	data.UnansweredCache = tempData.UnansweredCache
-	data.AnsweredCache = tempData.AnsweredCache
-	data.PendingCache = tempData.PendingCache
-	data.UpdatingCache = tempData.UpdatingCache
+	for cacheType, _ := range tempData.Caches {
+		data.Caches[cacheType] = tempData.Caches[cacheType]
+	}
 	data.Qns = tempData.Qns
 	data.CacheLock.Unlock()
 }
@@ -83,16 +81,8 @@ func readFromDb(queries string) webData {
 			currentQ.Tags = append(currentQ.Tags, tagToAdd)
 		}
 		//Switch on the state as read from the database to ensure question is added to correct cace
-		switch state {
-		case "unanswered":
-			tempData.UnansweredCache = append(tempData.UnansweredCache, currentQ)
-		case "answered":
-			tempData.AnsweredCache = append(tempData.AnsweredCache, currentQ)
-		case "pending":
-			tempData.PendingCache = append(tempData.PendingCache, currentQ)
-		case "updating":
-			tempData.UpdatingCache = append(tempData.UpdatingCache, currentQ)
-		}
+		tempData.Caches[state] = append(tempData.Caches[state], currentQ)
+
 		if owner.Valid {
 			tempData.Qns[id] = stackongo.User{
 				User_id:       int(owner.Int64),
@@ -102,10 +92,9 @@ func readFromDb(queries string) webData {
 		}
 	}
 
-	sort.Sort(byCreationDate(tempData.UnansweredCache))
-	sort.Sort(byCreationDate(tempData.AnsweredCache))
-	sort.Sort(byCreationDate(tempData.PendingCache))
-	sort.Sort(byCreationDate(tempData.UpdatingCache))
+	for cacheType, _ := range tempData.Caches {
+		sort.Sort(byCreationDate(tempData.Caches[cacheType]))
+	}
 
 	mostRecentUpdate = int32(time.Now().Unix())
 	return tempData
@@ -187,7 +176,7 @@ func updateTableTimes(tableName string) {
 }
 
 // Write user data into the database
-func addUser(newUser stackongo.User) {
+func addUserToDB(newUser stackongo.User) {
 
 	stmts, err := db.Prepare("INSERT IGNORE INTO user (id, name, pic) VALUES (?, ?, ?)")
 	if err != nil {
@@ -210,80 +199,52 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	// Collect the submitted form info based on the name of the form
 	// Check each cache against the form data
 
-	// Create a copy of Data as a reflect.Value
-	dataCopy := reflect.ValueOf(data)
 	// Updated data
 	newData := newWebData()
 	// Question IDs of questions that have been updated
 	// Maps IDs to new states
 	changedQns := map[int]string{}
 
-	// Range through the fields of the data copy
-	for i := 0; i < dataCopy.NumField(); i++ {
-		field := dataCopy.Field(i)
-		if field.Type().String() == "[]stackongo.Question" {
+	for cacheType, cache := range data.Caches {
 
-			// Get the prefix of the form names
-			cacheType := strings.ToLower(strings.TrimSuffix(dataCopy.Type().Field(i).Name, "Cache")) + "_"
+		// Range through the array of the caches
+		for _, question := range cache {
 
-			// Range through the array of the caches
-			for j := 0; j < field.Len(); j++ {
+			var newState string
 
-				// Collect the question from the slice, changing it to the correct type
-				question := field.Index(j).Interface().(stackongo.Question)
-				var newState string
+			// Get the full form names
+			questionID := cacheType + "_" + strconv.Itoa(question.Question_id)
+			// Collect form from Request
+			form_input := r.PostFormValue(questionID)
 
-				// Get the full form names
-				name := cacheType + strconv.Itoa(question.Question_id)
-				// Collect form from Request
-				form_input := r.PostFormValue(name)
-
-				// Add the question to the appropriate cache, updating the state
-				switch form_input {
-				case "unanswered":
-					newData.UnansweredCache = append(newData.UnansweredCache, question)
-				case "answered":
-					newData.AnsweredCache = append(newData.AnsweredCache, question)
-				case "pending":
-					newData.PendingCache = append(newData.PendingCache, question)
-				case "updating":
-					newData.UpdatingCache = append(newData.UpdatingCache, question)
-				default:
-					// If there has been no change, add the question back into the cache it was originally in
-					newState = strings.Split(name, "_")[0]
-					switch newState {
-					case "unanswered":
-						newData.UnansweredCache = append(newData.UnansweredCache, question)
-					case "answered":
-						newData.AnsweredCache = append(newData.AnsweredCache, question)
-					case "pending":
-						newData.PendingCache = append(newData.PendingCache, question)
-					case "updating":
-						newData.UpdatingCache = append(newData.UpdatingCache, question)
-					}
-				}
+			// Add the question to the appropriate cache, updating the state
+			if _, ok := newData.Caches[form_input]; ok {
+				newData.Caches[form_input] = append(newData.Caches[form_input], question)
 
 				// Update any info on the updated question
-				if form_input != "" && form_input != "no_change" {
-					changedQns[question.Question_id] = form_input
-					if form_input != "unanswered" {
-						data.Qns[question.Question_id] = user
-					}
+				log.Println(form_input)
+				changedQns[question.Question_id] = form_input
+				if form_input != "unanswered" {
+					newData.Qns[question.Question_id] = user
+
 				}
+			} else if form_input == "no_change" {
+				// If there has been no change, add the question back into the cache it was originally in
+				newState = strings.Split(questionID, "_")[0]
+
+				newData.Caches[newState] = append(newData.Caches[newState], question)
 			}
 		}
 	}
 
-	sort.Sort(byCreationDate(newData.UnansweredCache))
-	sort.Sort(byCreationDate(newData.AnsweredCache))
-	sort.Sort(byCreationDate(newData.PendingCache))
-	sort.Sort(byCreationDate(newData.UpdatingCache))
+	for cacheType, _ := range newData.Caches {
+		sort.Sort(byCreationDate(newData.Caches[cacheType]))
+	}
 
 	data.CacheLock.Lock()
-	data.UnansweredCache = newData.UnansweredCache
-	data.AnsweredCache = newData.AnsweredCache
-	data.PendingCache = newData.PendingCache
-	data.UpdatingCache = newData.UpdatingCache
+	for cacheType, _ := range newData.Caches {
+		data.Caches[cacheType] = newData.Caches[cacheType]
+	}
 	data.CacheLock.Unlock()
 
 	// Update the database

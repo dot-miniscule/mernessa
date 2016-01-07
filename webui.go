@@ -45,13 +45,11 @@ type cacheInfo struct {
 }
 
 type webData struct {
-	Wrapper         *stackongo.Questions   // Request information
-	UnansweredCache []stackongo.Question   // Unanswered questions
-	AnsweredCache   []stackongo.Question   // Answered questions
-	PendingCache    []stackongo.Question   // Pending questions
-	UpdatingCache   []stackongo.Question   // Updating questions
-	Qns             map[int]stackongo.User // Map of users by question ids
-	CacheLock       sync.Mutex             // For multithreading, will use to avoid updating cache and serving cache at the same time
+	Wrapper   *stackongo.Questions            // Request information
+	Caches    map[string][]stackongo.Question // Caches by question states
+	Qns       map[int]stackongo.User          // Map of users by question ids
+	Users     map[int]*userData               // Map of users by user ids
+	CacheLock sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
 type userData struct {
@@ -64,11 +62,14 @@ type userData struct {
 
 func newWebData() webData {
 	return webData{
-		UnansweredCache: []stackongo.Question{},
-		AnsweredCache:   []stackongo.Question{},
-		PendingCache:    []stackongo.Question{},
-		UpdatingCache:   []stackongo.Question{},
-		Qns:             make(map[int]stackongo.User),
+		Caches: map[string][]stackongo.Question{
+			"unanswered": []stackongo.Question{},
+			"answered":   []stackongo.Question{},
+			"pending":    []stackongo.Question{},
+			"updating":   []stackongo.Question{},
+		},
+		Qns:   make(map[int]stackongo.User),
+		Users: make(map[int]*userData),
 	}
 }
 
@@ -76,9 +77,6 @@ const timeout = 1 * time.Minute
 
 // Global variable with cache info
 var data = newWebData()
-
-// Map of users by user ids
-var users = make(map[int]*userData)
 
 // Standard guest user
 var guest = stackongo.User{
@@ -111,36 +109,45 @@ func init() {
 	// Initialising stackongo session
 	backend.NewSession()
 
+	// defining the duration to pull questions from
 	day := 24 * time.Hour
 	week := 7 * day
 	toDate := time.Now()
 	fromDate := toDate.Add(-1*week + day)
 
+	// goroutine to collect the questions from SO and add them to the database
 	go func(fromDate time.Time, toDate time.Time, db *sql.DB) {
+		// Iterate over ([SPECIFIED DURATION])
 		for i := 0; i < 0; i++ {
-			reply, err := backend.GetNewQns(fromDate, toDate)
+			// Collect new questions from SO
+			questions, err := backend.GetNewQns(fromDate, toDate)
 			if err != nil {
 				log.Printf("Error getting new questions: %v", err.Error())
 				continue
 			}
-			if err = backend.AddQuestions(db, reply); err != nil {
+
+			// Add new questions to database
+			if err = backend.AddQuestions(db, questions); err != nil {
 				log.Printf("Error updating database: %v", err.Error())
 				continue
 			}
-			toDate = fromDate.Add(-1 * day)
+
+			// adjust the date to the time until the next pull
+			toDate = time.Now()
 			fromDate = toDate.Add(-1*week + day)
 		}
 	}(fromDate, toDate, db)
 
 	log.Println("Initial cache download")
-	refreshCache()
+	refreshLocalCache()
 
+	// goroutine to update local cache if there has been any change to database
 	count := 1
 	go func(count int) {
 		for {
 			if checkDBUpdateTime("questions", mostRecentUpdate) {
 				log.Printf("Refreshing cache %v", count)
-				refreshCache()
+				refreshLocalCache()
 				count++
 			}
 		}
@@ -164,11 +171,11 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(302)
 }
 
+// Handler for checking if the database has been updated
 func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 	time, _ := strconv.Atoi(r.FormValue("time"))
 	page, _ := template.New("updatePage").Parse("{{$.CacheUpdated}}")
-	// WriteResponse creates a new response with the various caches
 	if err := page.Execute(w, genReply{UpdateTime: int32(time)}); err != nil {
 		log.Printf("%v", err.Error())
 	}
@@ -179,12 +186,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Create a new appengine context for logging purposes
 	c := appengine.NewContext(r)
 
+	// set the appengine transport using the http request
 	backend.SetTransport(r)
-	backend.NewSession()
 
+	// get the current user
 	user := getUser(w, r, c)
 
-	page := template.Must(template.ParseFiles("public/template.html"))
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
@@ -219,7 +226,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// WriteResponse creates a new response with the various caches
+	page := template.Must(template.ParseFiles("public/template.html"))
 	if err := page.Execute(w, writeResponse(user, data, c, "")); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
@@ -232,28 +239,15 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 	tag := r.FormValue("tagSearch")
 
 	// Create and fill in a new webData struct
-	tempData := webData{}
+	tempData := newWebData()
 
 	data.CacheLock.Lock()
 	// range through the question caches golang stackongoand add if the question contains the tag
-	for _, question := range data.UnansweredCache {
-		if contains(question.Tags, tag) {
-			tempData.UnansweredCache = append(tempData.UnansweredCache, question)
-		}
-	}
-	for _, question := range data.AnsweredCache {
-		if contains(question.Tags, tag) {
-			tempData.AnsweredCache = append(tempData.AnsweredCache, question)
-		}
-	}
-	for _, question := range data.PendingCache {
-		if contains(question.Tags, tag) {
-			tempData.PendingCache = append(tempData.PendingCache, question)
-		}
-	}
-	for _, question := range data.UpdatingCache {
-		if contains(question.Tags, tag) {
-			tempData.UpdatingCache = append(tempData.UpdatingCache, question)
+	for cacheType, cache := range data.Caches {
+		for _, question := range cache {
+			if contains(question.Tags, tag) {
+				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
+			}
 		}
 	}
 	tempData.Qns = data.Qns
@@ -267,38 +261,29 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 
 // Handler to find all questions answered/being answered by the user in URL
 func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	userID := r.FormValue("id")
-
-	page := template.Must(template.ParseFiles("public/template.html"))
-
-	query := readUserFromDb(userID)
-	userID_int, _ := strconv.Atoi(userID)
+	userID, _ := strconv.Atoi(r.FormValue("id"))
+	query := data.Users[userID]
 
 	// Create and fill in a new webData struct
 	tempData := webData{}
 
 	data.CacheLock.Lock()
 	// range through the question caches golang stackongo and add if the question contains the tag
-	tempData.UnansweredCache = data.UnansweredCache
-	for _, question := range data.AnsweredCache {
-		if data.Qns[question.Question_id].User_id == userID_int {
-			tempData.AnsweredCache = append(tempData.AnsweredCache, question)
-		}
-	}
-	for _, question := range data.PendingCache {
-		if data.Qns[question.Question_id].User_id == userID_int {
-			tempData.PendingCache = append(tempData.PendingCache, question)
-		}
-	}
-	for _, question := range data.UpdatingCache {
-		if data.Qns[question.Question_id].User_id == userID_int {
-			tempData.UpdatingCache = append(tempData.UpdatingCache, question)
+	tempData.Caches["unanswered"] = data.Caches["unanswered"]
+	for cacheType, cache := range data.Caches {
+		if cacheType != "unanswered" {
+			for _, question := range cache {
+				if data.Qns[question.Question_id].User_id == userID {
+					tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
+				}
+			}
 		}
 	}
 	tempData.Qns = data.Qns
 	data.CacheLock.Unlock()
 
-	if err := page.Execute(w, writeResponse(user, tempData, c, query.Display_name)); err != nil {
+	page := template.Must(template.ParseFiles("public/template.html"))
+	if err := page.Execute(w, writeResponse(user, tempData, c, query.user_info.Display_name)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
@@ -340,38 +325,43 @@ func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stacko
 		token = cookie.Value
 	}
 	user, err := backend.AuthenticatedUser(map[string]string{}, token)
-	addUser(user)
 	if err != nil {
 		c.Errorf(err.Error())
 		return guest
 	}
+	data.CacheLock.Lock()
+	if _, ok := data.Users[user.User_id]; !ok {
+		data.Users[user.User_id] = newUser(user, token)
+		addUserToDB(user)
+	}
+	data.CacheLock.Unlock()
 	return user
 }
 
 // Write a genReply struct with the inputted Question slices
-// This can call readFromDb() now as a method, most of this is redunant.
+// This can call readFromDb() now as a method, most of this is redundant.
 func writeResponse(user stackongo.User, writeData webData, c appengine.Context, query string) genReply {
 	return genReply{
 		Wrapper: writeData.Wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
 			cacheInfo{
 				CacheType: "unanswered",
-				Questions: writeData.UnansweredCache,
+				Questions: writeData.Caches["unanswered"],
 				Info:      "These are questions that have not yet been answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "answered",
-				Questions: writeData.AnsweredCache,
+				Questions: writeData.Caches["answered"],
 				Info:      "These are questions that have been answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "pending",
-				Questions: writeData.PendingCache,
+				Questions: writeData.Caches["pending"],
 				Info:      "These are questions that are being answered by the Places API team",
 			},
 			cacheInfo{
 				CacheType: "updating",
-				Questions: writeData.UpdatingCache,
+				Questions: writeData.Caches["updating"],
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
@@ -406,10 +396,9 @@ func contains(slice []string, toFind string) bool {
 }
 
 // Initializes userData struct
-func (user userData) init(u stackongo.User, token string) {
-	user.user_info = u
-	user.access_token = token
-	user.answeredCache = []stackongo.Question{}
-	user.pendingCache = []stackongo.Question{}
-	user.updatingCache = []stackongo.Question{}
+func newUser(u stackongo.User, token string) *userData {
+	return &userData{
+		user_info:    u,
+		access_token: token,
+	}
 }
