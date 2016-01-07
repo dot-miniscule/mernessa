@@ -75,7 +75,7 @@
                       {{range $question := $cache.Questions}}
                         <tr>
                           <td id="question">
-                            <a href={{$question.Link}} target="_blank">{{$question.Title}}</a>
+                            <a href={{$question.Link}} target="_blank" id="question_title">{{$question.Title}}</a>
                             <br>
                             <div class="bodySnippet" id="{{$question.Question_id}}_body">
                               <script>
