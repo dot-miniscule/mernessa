@@ -4,6 +4,7 @@
 	<head>
 		<title>StackTracker</title>
 		<link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
+		<link rel="stylesheet" type="text/css" href="/stylesheets/userProfile.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script type="text/javascript" src="public/javascripts/tabs.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
@@ -21,7 +22,7 @@
         		</div> <!-- END USER BAR DIV -->
 
         		<div class="titleBar">
-        			<h4><a href="/"><img src="../mernessa/public/images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
+        			<h4><a href="/"><img src="images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
         		</div><!-- END TITLE BAR -->
 		        <div class="content">
 		        	<div class="sidebar">
@@ -34,11 +35,16 @@
 		        		<div class="profileInformation">
 		        			<div class="profilePicture-large">
 			        			<span class="centerer"></span>
-			        			<img class="centered" src="profilePic.png">
+			        			<img class="centered" src="images/profilePic.png">
 			        		</div>
-		        			<p>DisplayName</p>
-		        			<p>Reputation</p>
-		        			<p>Question_count</p>
+		        			<p>Name: {{$reply.User_info.Display_name}}</p>
+		        			<p>Reputation: {{$reply.User_info.Reputation}}</p>
+		        			<br>
+		        			<ul>
+		        				{{range $v, $qns := $reply.Caches}}
+		        				<li>{{$qns.Title}}</li>
+		        				{{end}}
+		        			</ul>
 		        		</div>
 		        	</div><!-- END USER PROFILE -->
 		        	<ul>

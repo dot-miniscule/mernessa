@@ -24,10 +24,13 @@
         		</div><!-- END TITLE BAR -->
 		        <div class="content userPage">
 		        	Browse users...
-
-			    	{{range $user := $reply}}
-			        <a href='/userPage?userId={{$user.ID}}'><li>{{$user.Name}}</li></a>
-			        {{end}}
+		        	<div class="tagContainer">
+		        		<ul>
+				    		{{range $user := $reply}}
+				        	<a href='/userPage?userId={{$user.ID}}'><li>{{$user.Name}}</li></a>
+				        	{{end}}
+				        </ul>
+				    </div><!--END TAG CONTAINER-->
 		        </div><!-- END CONTENT -->
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
