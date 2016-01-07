@@ -44,6 +44,7 @@ type cacheInfo struct {
 	Info      string               // blurb about the cache
 }
 
+// Data struct with SO information, caches, user information
 type webData struct {
 	Wrapper   *stackongo.Questions            // Request information
 	Caches    map[string][]stackongo.Question // Caches by question states
@@ -53,11 +54,9 @@ type webData struct {
 }
 
 type userData struct {
-	user_info     stackongo.User       // SE user info
-	access_token  string               // Token to access info
-	answeredCache []stackongo.Question //  answered by user
-	pendingCache  []stackongo.Question // Questions being answered by user
-	updatingCache []stackongo.Question // Questions that are being updated
+	User_info    stackongo.User                  // SE user info
+	Access_token string                          // Token to access info
+	Caches       map[string][]stackongo.Question // questions modified by user sorted into cacheTypes
 }
 
 func newWebData() webData {
@@ -265,32 +264,28 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	query := data.Users[userID]
 
 	// Create and fill in a new webData struct
-	tempData := webData{}
+	tempData := newWebData()
 
 	data.CacheLock.Lock()
 	// range through the question caches golang stackongo and add if the question contains the tag
 	tempData.Caches["unanswered"] = data.Caches["unanswered"]
-	for cacheType, cache := range data.Caches {
+	for cacheType, cache := range data.Users[userID].Caches {
 		if cacheType != "unanswered" {
-			for _, question := range cache {
-				if data.Qns[question.Question_id].User_id == userID {
-					tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
-				}
-			}
+			tempData.Caches[cacheType] = cache
 		}
 	}
 	tempData.Qns = data.Qns
 	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user, tempData, c, query.user_info.Display_name)); err != nil {
+	if err := page.Execute(w, writeResponse(user, tempData, c, query.User_info.Display_name)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
 
 func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	page := template.Must(template.ParseFiles("/public/viewTags.html"))
-	tempData := webData{}
+	tempData := newWebData()
 	if err := page.Execute(w, writeResponse(user, tempData, c, "thing")); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
@@ -398,7 +393,12 @@ func contains(slice []string, toFind string) bool {
 // Initializes userData struct
 func newUser(u stackongo.User, token string) *userData {
 	return &userData{
-		user_info:    u,
-		access_token: token,
+		User_info:    u,
+		Access_token: token,
+		Caches: map[string][]stackongo.Question{
+			"answered": []stackongo.Question{},
+			"pending":  []stackongo.Question{},
+			"updating": []stackongo.Question{},
+		},
 	}
 }

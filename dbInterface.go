@@ -22,6 +22,7 @@ func refreshLocalCache() {
 		data.Caches[cacheType] = tempData.Caches[cacheType]
 	}
 	data.Qns = tempData.Qns
+	data.Users = tempData.Users
 	data.CacheLock.Unlock()
 }
 
@@ -84,11 +85,16 @@ func readFromDb(queries string) webData {
 		tempData.Caches[state] = append(tempData.Caches[state], currentQ)
 
 		if owner.Valid {
-			tempData.Qns[id] = stackongo.User{
+			user := stackongo.User{
 				User_id:       int(owner.Int64),
 				Display_name:  name.String,
 				Profile_image: name.String,
 			}
+			tempData.Qns[id] = user
+			if _, ok := tempData.Users[user.User_id]; !ok {
+				tempData.Users[user.User_id] = newUser(user, "")
+			}
+			tempData.Users[user.User_id].Caches[state] = append(tempData.Users[user.User_id].Caches[state], currentQ)
 		}
 	}
 
@@ -210,8 +216,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 		// Range through the array of the caches
 		for _, question := range cache {
 
-			var newState string
-
 			// Get the full form names
 			questionID := cacheType + "_" + strconv.Itoa(question.Question_id)
 			// Collect form from Request
@@ -222,17 +226,25 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				newData.Caches[form_input] = append(newData.Caches[form_input], question)
 
 				// Update any info on the updated question
-				log.Println(form_input)
 				changedQns[question.Question_id] = form_input
 				if form_input != "unanswered" {
 					newData.Qns[question.Question_id] = user
+					if _, ok := newData.Users[user.User_id]; !ok {
+						newData.Users[user.User_id] = newUser(user, "")
+					}
 
+					newData.Users[user.User_id].Caches[form_input] = append(newData.Users[user.User_id].Caches[form_input], question)
 				}
 			} else if form_input == "no_change" {
 				// If there has been no change, add the question back into the cache it was originally in
-				newState = strings.Split(questionID, "_")[0]
-
-				newData.Caches[newState] = append(newData.Caches[newState], question)
+				newData.Caches[cacheType] = append(newData.Caches[cacheType], question)
+				if cacheType != "unanswered" {
+					prevUser := data.Qns[question.Question_id]
+					if _, ok := newData.Users[prevUser.User_id]; !ok {
+						newData.Users[prevUser.User_id] = newUser(prevUser, "")
+					}
+					newData.Users[prevUser.User_id].Caches[cacheType] = append(newData.Users[prevUser.User_id].Caches[cacheType], question)
+				}
 			}
 		}
 	}
