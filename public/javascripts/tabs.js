@@ -40,9 +40,22 @@ $(function() {
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
 function checkDB(updateTime) {
   $.post('/dbUpdated?time='+updateTime, function( dbChanged ) {
-    console.log(dbChanged);
     if (dbChanged == 'true') {
-        if (!confirm('Database has been updated. Do you wish to continue submit?')) { return }
+      
+      // Getting the values of the checked radios and saving them as an array
+      titles_selector = $('form input[type=radio]:checked:not(.no_change_radios)').parent().siblings('#question').children('#question_title');
+      titles = titles_selector.map(function() {
+        return $(this).text();
+      });
+
+      // Writing the text to display in the confirm dialog box
+      confirm_text = 'Database has been updated\nChanges:\n';
+      for (i = 0; i < titles.length; i++) {
+        confirm_text += '\t* ' + titles[i] + '\n';
+      }
+      confirm_text += '\nDo you wish to continue submit?';
+
+      if (!confirm(confirm_text)) { return }
     }
     $('#stateForm').submit();
   });

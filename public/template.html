@@ -68,7 +68,7 @@
                       {{range $question := $cache.Questions}}
                         <tr>
                           <td id="question">
-                            <a href={{$question.Link}} target="_blank">{{$question.Title}}</a>
+                            <a href={{$question.Link}} target="_blank" id="question_title">{{$question.Title}}</a>
                             <br>
                             <div class="bodySnippet" id="{{$question.Question_id}}_body">
                               <script>
@@ -83,7 +83,8 @@
                               </ul>
                             </div>
                             {{if ne $cache.CacheType "unanswered"}}
-                              <a href="/user?id={{$reply.GetUserIDByQn $question.Question_id}}">{{$reply.GetUserNameByQn $question.Question_id}}</a>
+                              {{$owner := index $reply.Qns $question.Question_id}}
+                              <a href="/user?id={{$owner.User_id}}">{{$owner.Display_name}}</a>
                             {{end}}
                           </td>
                           {{if ne $cache.CacheType "unanswered"}}

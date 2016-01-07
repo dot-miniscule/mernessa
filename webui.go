@@ -101,13 +101,6 @@ var db = backend.SqlInit()
 //This is then checked against the update time of the database and determine whether the cache should be updated
 var mostRecentUpdate int32
 
-// Functions for template to recieve data from maps
-func (r genReply) GetUserIDByQn(id int) int {
-	return r.Qns[id].User_id
-}
-func (r genReply) GetUserNameByQn(id int) string {
-	return r.Qns[id].Display_name
-}
 func (r genReply) CacheUpdated() bool {
 	return mostRecentUpdate > r.UpdateTime
 }
@@ -279,7 +272,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 // Handler to find all questions answered/being answered by the user in URL
 func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	userID, _ := strconv.Atoi(r.FormValue("id"))
-	query := data.Users[userID]
+	query := &userData{}
 
 	// Create and fill in a new webData struct
 	tempData := newWebData()
@@ -287,12 +280,15 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	data.CacheLock.Lock()
 	// range through the question caches golang stackongo and add if the question contains the tag
 	tempData.Caches["unanswered"] = data.Caches["unanswered"]
-	for cacheType, cache := range data.Users[userID].Caches {
-		if cacheType != "unanswered" {
-			tempData.Caches[cacheType] = cache
+	if userQuery, ok := data.Users[userID]; ok {
+		query = userQuery
+		for cacheType, cache := range data.Users[userID].Caches {
+			if cacheType != "unanswered" {
+				tempData.Caches[cacheType] = cache
+			}
 		}
+		tempData.Qns = data.Qns
 	}
-	tempData.Qns = data.Qns
 	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
