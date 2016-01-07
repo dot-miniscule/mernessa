@@ -13,37 +13,42 @@
     <div class="wrap">
       <div class="innerWrap">
         <div id="userDiv">
-                <p id="welcomeSentence"> Welcome, Guest. 
-                <a href="/login">Login</a> </p>
-            </div> <!-- END USER BAR DIV -->
+          <p id="welcomeSentence"> Welcome,
+            {{if eq $reply.User.Display_name "Guest"}}
+              Guest <a href="/login">Login</a>
+            {{else}}
+            <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img id="profilePic" src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+            {{end}}
+          </p>
+        </div> <!-- END USER BAR DIV -->
 
-            <div class="titleBar">
-              <h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
-              {{if ne $reply.Query ""}}
-                <h5>Querying: {{$reply.Query}}</h5>
-              {{end}}
-            </div><!-- END TITLE BAR -->
-        </div><!-- END TITLE DIV -->
-        <div class="content">
-          <div class="sidebar">
-              <p> View...</p>
-              <ul id="tagUser">
-                <li><a href="/viewTags">Tags</a></li>
-                <li><a href="/viewUsers">Users</a></li>
-              </ul>
-          </div> 
-          <div class="tab-panels">
-            <ul class="tabs">
-              <li rel="unanswered" class="navigation active">Unanswered</li>
-              <li rel="answered" class="navigation">Answered</li>
-              <li rel="pending" class="navigation">Pending</li>
-              <li rel="updating" class="navigation">Update</li>
-            </ul>
-            <form name="change_state" id="stateForm" method="POST">
-              {{range $cache := $reply.Caches}}
+        <div class="titleBar">
+          <h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
+          {{if ne $reply.Query ""}}
+            <h5>Querying: {{$reply.Query}}</h5>
+          {{end}}
+        </div><!-- END TITLE BAR -->
+      </div><!-- END TITLE DIV -->
+      <div class="content">
+        <div class="sidebar">
+          <p> View...</p>
+          <ul id="tagUser">
+            <li><a href="/viewTags">Tags</a></li>
+            <li><a href="/viewUsers">Users</a></li>
+          </ul>
+        </div> 
+        <div class="tab-panels">
+          <ul class="tabs">
+            <li rel="unanswered" class="navigation active">Unanswered</li>
+            <li rel="answered" class="navigation">Answered</li>
+            <li rel="pending" class="navigation">Pending</li>
+            <li rel="updating" class="navigation">Update</li>
+          </ul>
+          <form name="change_state" id="stateForm" method="POST">
+            {{range $cache := $reply.Caches}}
               <div id="{{$cache.CacheType}}" class="panel">
                 <div id="info">
-                    <p>{{$cache.Info}}</p>
+                  <p>{{$cache.Info}}</p>
                 </div>
                 <div class="tableContainer">
                   <table>
