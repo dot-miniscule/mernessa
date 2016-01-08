@@ -15,7 +15,9 @@ import (
 )
 
 func initCacheDownload() {
-
+	data.CacheLock.Lock()
+	data.Users = readUsersFromDb()
+	data.CacheLock.Unlock()
 	refreshLocalCache()
 }
 
@@ -294,6 +296,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	// Question IDs of questions that have been updated
 	// Maps IDs to new states
 	changedQns := map[int]string{}
+	changedQnsTitles := []string{}
 
 	for cacheType, cache := range data.Caches {
 
@@ -311,6 +314,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 
 				// Update any info on the updated question
 				changedQns[question.Question_id] = form_input
+				changedQnsTitles = append(changedQnsTitles, question.Title)
 				if form_input != "unanswered" {
 					newData.Qns[question.Question_id] = user
 					if _, ok := newData.Users[user.User_id]; !ok {
@@ -324,8 +328,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				newData.Caches[cacheType] = append(newData.Caches[cacheType], question)
 				if cacheType != "unanswered" {
 					prevUser := data.Qns[question.Question_id]
-					if _, ok := newData.Users[user.User_id]; !ok {
-						newData.Users[user.User_id] = newUser(user, "")
+					if _, ok := newData.Users[prevUser.User_id]; !ok {
+						newData.Users[prevUser.User_id] = newUser(prevUser, "")
 					}
 					newData.Users[prevUser.User_id].Caches[cacheType] = append(newData.Users[prevUser.User_id].Caches[cacheType], question)
 				}
@@ -344,10 +348,11 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	data.CacheLock.Unlock()
 
 	// Update the database
-	go func(qns map[int]string, userId int) {
+	go func(qns map[int]string, qnsTitles []string, userId int) {
 		mostRecentUpdate = int32(time.Now().Unix())
+		recentChangedQns = qnsTitles
 		updateDb(qns, userId)
-	}(changedQns, user.User_id)
+	}(changedQns, changedQnsTitles, user.User_id)
 	return nil
 }
 
