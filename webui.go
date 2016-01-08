@@ -49,7 +49,7 @@ type webData struct {
 	Wrapper   *stackongo.Questions            // Request information
 	Caches    map[string][]stackongo.Question // Caches by question states
 	Qns       map[int]stackongo.User          // Map of users by question ids
-	Users     map[int]*userData               // Map of users by user ids
+	Users     map[int]userData                // Map of users by user ids
 	CacheLock sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
@@ -80,7 +80,7 @@ func newWebData() webData {
 			"updating":   []stackongo.Question{},
 		},
 		Qns:   make(map[int]stackongo.User),
-		Users: make(map[int]*userData),
+		Users: make(map[int]userData),
 	}
 }
 
@@ -143,7 +143,7 @@ func init() {
 	}(fromDate, toDate, db)
 
 	log.Println("Initial cache download")
-	refreshLocalCache()
+	initCacheDownload()
 
 	// goroutine to update local cache if there has been any change to database
 	count := 1
@@ -272,7 +272,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 // Handler to find all questions answered/being answered by the user in URL
 func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	userID, _ := strconv.Atoi(r.FormValue("id"))
-	query := &userData{}
+	query := userData{}
 
 	// Create and fill in a new webData struct
 	tempData := newWebData()
@@ -440,8 +440,8 @@ func contains(slice []string, toFind string) bool {
 }
 
 // Initializes userData struct
-func newUser(u stackongo.User, token string) *userData {
-	return &userData{
+func newUser(u stackongo.User, token string) userData {
+	return userData{
 		User_info:    u,
 		Access_token: token,
 		Caches: map[string][]stackongo.Question{

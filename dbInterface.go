@@ -14,6 +14,11 @@ import (
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
+func initCacheDownload() {
+
+	refreshLocalCache()
+}
+
 func refreshLocalCache() {
 	tempData := readFromDb("")
 
@@ -22,7 +27,9 @@ func refreshLocalCache() {
 		data.Caches[cacheType] = tempData.Caches[cacheType]
 	}
 	data.Qns = tempData.Qns
-	data.Users = tempData.Users
+	for id, info := range tempData.Users {
+		data.Users[id] = info
+	}
 	data.CacheLock.Unlock()
 }
 
@@ -138,11 +145,11 @@ func readTagsFromDb() []tagData {
 //Function to read all user data from the database when a /viewUsers request is made
 //Retrieves all users data
 
-func readUsersFromDb() []userInfo {
+func readUsersFromDb() map[int]userData {
 
 	log.Println("Retrieving users from db")
 
-	var tempData []userInfo
+	tempData := make(map[int]userData)
 
 	var (
 		id   sql.NullInt64
@@ -163,8 +170,13 @@ func readUsersFromDb() []userInfo {
 			log.Println("User scan failed, ln 170:", err)
 		}
 
-		currentUser := userInfo{int(id.Int64), name.String, pic.String, link.String}
-		tempData = append(tempData, currentUser)
+		currentUser := stackongo.User{
+			User_id:       int(id.Int64),
+			Display_name:  name.String,
+			Profile_image: pic.String,
+			Link:          link.String,
+		}
+		tempData[int(id.Int64)] = newUser(currentUser, "")
 	}
 
 	return tempData
@@ -312,8 +324,8 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				newData.Caches[cacheType] = append(newData.Caches[cacheType], question)
 				if cacheType != "unanswered" {
 					prevUser := data.Qns[question.Question_id]
-					if _, ok := newData.Users[prevUser.User_id]; !ok {
-						newData.Users[prevUser.User_id] = newUser(prevUser, "")
+					if _, ok := newData.Users[user.User_id]; !ok {
+						newData.Users[user.User_id] = newUser(user, "")
 					}
 					newData.Users[prevUser.User_id].Caches[cacheType] = append(newData.Users[prevUser.User_id].Caches[cacheType], question)
 				}
