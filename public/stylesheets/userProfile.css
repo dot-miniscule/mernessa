@@ -1,7 +1,7 @@
 
 .userProfile {
 	padding:20px;
-	overflow:hidden;
+	overflow:scroll;
 	height:100%;
 }
 
@@ -28,4 +28,8 @@
 	vertical-align:middle;
 	width:150px;
 	height:150px;
+}
+
+p #profile #username {
+	font-size:30px;
 }

@@ -1,5 +1,3 @@
-<!doctype html>
-
 <html>
 	<head>
 		<title>StackTracker</title>
@@ -17,32 +15,38 @@
 			<div class="innerWrap">
 
 				<div id="userDiv">
-          			<p id="welcomeSentence"> Welcome, Guest. 
-            		<a href="/login">Login</a> </p>
-        		</div> <!-- END USER BAR DIV -->
+          			<p id="welcomeSentence"> Welcome, user (awaiting fixed)</p>
+			            <div class="titleBar">
+			              <h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
+			            </div><!-- END TITLE BAR -->
+		        	</div><!-- END USER DIV -->
 
-        		<div class="titleBar">
-        			<h4><a href="/"><img src="images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
-        		</div><!-- END TITLE BAR -->
 		        <div class="content">
-		        	<div class="sidebar">
-		        		<ul>
-		        			<li><a href='/'>Home</a></li>
-		        			<li><a href='/viewTags'>Tags</a></li>
-		        		</ul>
-		        	</div>
+		        	<div class="sitenav">
+			        	<ul>
+			        		<li><a href='/'>Home</a></li>
+			        		<li><a href='/viewTags'>Tags</a></li>
+			        		<li><a href='/viewUsers'>Users</a></li>
+			        	</ul>
+			        </div>
 		        	<div class="userProfile">
 		        		<div class="profileInformation">
 		        			<div class="profilePicture-large">
 			        			<span class="centerer"></span>
-			        			<img class="centered" src="images/profilePic.png">
+			        			<img class="centered" src="{{$reply.User_info.Profile_image}}">
 			        		</div>
-		        			<p>Name: {{$reply.User_info.Display_name}}</p>
+		        			<h2>Name: {{$reply.User_info.Display_name}}</h2>
+		        			<hr>
 		        			<p>Reputation: {{$reply.User_info.Reputation}}</p>
-		        			<br>
+		        			<p>Questions: {{$reply.User_info.Question_count}}</p>
+		        			<p>Answers: {{$reply.User_info.Answer_count}}</p>
+		        			<a href="{{$reply.User_info.Link}}"><p>Visit on StackOverflow</p></a>
+		        			<hr>
 		        			<ul>
-		        				{{range $v, $qns := $reply.Caches}}
-		        				<li>{{$qns.Title}}</li>
+		        				{{range $v, $cache := $reply.Caches}}
+		        					{{range $qn := $cache}}
+		        						<li><a href="{{$qn.Link}}">{{$qn.Title}}</a></li>
+		        					{{end}}
 		        				{{end}}
 		        			</ul>
 		        		</div>
