@@ -41,14 +41,15 @@ a:hover {
 }
 
 .content.tagPage, .content.userPage {
-  background:#fff;
   padding-top:40px;
   margin-top:20px;
   overflow-y:scroll;
   overflow-x:hidden;
+  background:#fff;
 }
 
-.content.tagPage form, p {
+
+#tagSearchBar {
   padding-left:50px;
 }
 
@@ -273,6 +274,12 @@ td#question {
   font-size:12px;
   word-wrap:break-word;
   margin-right:none;
+}
+
+.questionOwner {
+  font-size:13px;
+  font-style: italic;
+  padding-left:none;
 }
 
 /*--- TAGS --- */

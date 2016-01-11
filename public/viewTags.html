@@ -24,14 +24,21 @@
         		<div class="titleBar">
         			<h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height=30></a>StackTracker</h4>
         		</div><!-- END TITLE BAR -->
+        		<div class="sitenav">
+			            <ul>
+			                <li><a href='/'>Home</a></li>
+			                <li><a href='/viewTags'>Tags</a></li>
+			            	<li><a href='/viewUsers'>Users</a></li>
+			            </ul>
+			        </div>
 		        <div class="content tagPage">
 		        	<div id="tagSearchBar">
           				<form action="/tag" method="get">
 			            Search by tag: <input type="text" name="tagSearch">
 			            <input type="submit" value="Search">
 			          </form>
-			        </div> <!-- END TAG SEARCH DIV -->
-		        	<p>Or select Tags to filter questions...</p>
+		        		<p>Or select Tags to filter questions...</p>
+		        	</div> <!-- END TAG SEARCH DIV -->
 	        		<table id="tag-browser">
 	        			<tbody>
 							{{range $tagArray := $reply.Data}}

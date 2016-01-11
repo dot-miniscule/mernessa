@@ -43,16 +43,24 @@
 			        		</div>
 		        			<h2>Name: {{$profile.User_info.Display_name}}</h2>
 		        			<hr>
-		        			<p>Reputation: {{$reply.User_info.Reputation}}</p>
-		        			<p>Questions: {{$reply.User_info.Question_count}}</p>
-		        			<p>Answers: {{$reply.User_info.Answer_count}}</p>
-		        			<a href="https://www.stackoverflow.com/users/{{$reply.User_info.User_id}}?tab=profile" target="_blank"><p>Visit on StackOverflow</p></a>
+		        			<a href="https://www.stackoverflow.com/users/{{$profile.User_info.User_id}}?tab=profile" target="_blank"><p>Visit on StackOverflow</p></a>
 		        			<hr>
+		        			<h4>Answered</h4>
 		        			<ul>
-		        				{{range $v, $cache := $profile.Caches}}
-                                  {{range $x, $qns := $cache}}
-    		        				<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
-                                  {{end}}
+		        				{{range $qns := $profile.Caches.answered}}
+		        					<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
+		        				{{end}}
+		        			</ul>
+		        			<h4>Pending</h4>
+		        			<ul>
+		        				{{range $qns := $profile.Caches.pending}}
+		        					<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
+		        				{{end}}
+		        			</ul>
+		        			<h4>Updating</h4>
+		        			<ul>
+		        				{{range $qns := $profile.Caches.updating}}
+		        					<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
 		        				{{end}}
 		        			</ul>
 		        		</div>
