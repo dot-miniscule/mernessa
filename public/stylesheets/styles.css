@@ -197,7 +197,7 @@ a:hover {
 
 .tab-panels .panel.active {
   overflow-y:scroll;
-  overflow-x:hidden;
+  overflow-x:scroll;
   height:717px;
   padding:10px;
   display:block;
