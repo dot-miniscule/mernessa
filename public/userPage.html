@@ -14,11 +14,17 @@
 			<div class="innerWrap">
 
 				<div id="userDiv">
-          			<p id="welcomeSentence"> Welcome, user (awaiting fixed)</p>
-			            <div class="titleBar">
-			              <h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
-			            </div><!-- END TITLE BAR -->
-		        	</div><!-- END USER DIV -->
+                    <p id="welcomeSentence"> Welcome,
+                        {{if eq $reply.User.Display_name "Guest"}}
+                            {{$reply.User.Display_name}} <a href="/login">Login</a>
+                        {{else}}
+                            <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+                        {{end}}
+                    </p>
+		        </div><!-- END USER DIV -->
+                <div class="titleBar">
+                    <h4><a href="/"><img src="images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
+                </div><!-- END TITLE BAR -->
 
 		        <div class="content">
 		        	<div class="sitenav">
@@ -30,11 +36,12 @@
 			        </div>
 		        	<div class="userProfile">
 		        		<div class="profileInformation">
+                            {{$profile := $reply.Data}}
 		        			<div class="profilePicture-large">
 			        			<span class="centerer"></span>
-			        			<img class="centered" src="{{$reply.User_info.Profile_image}}">
+			        			<img class="centered" src="{{$profile.User_info.Profile_image}}">
 			        		</div>
-		        			<h2>Name: {{$reply.User_info.Display_name}}</h2>
+		        			<h2>Name: {{$profile.User_info.Display_name}}</h2>
 		        			<hr>
 		        			<p>Reputation: {{$reply.User_info.Reputation}}</p>
 		        			<p>Questions: {{$reply.User_info.Question_count}}</p>
@@ -42,7 +49,7 @@
 		        			<a href="https://www.stackoverflow.com/users/{{$reply.User_info.User_id}}?tab=profile" target="_blank"><p>Visit on StackOverflow</p></a>
 		        			<hr>
 		        			<ul>
-		        				{{range $v, $cache := $reply.Caches}}
+		        				{{range $v, $cache := $profile.Caches}}
                                   {{range $x, $qns := $cache}}
     		        				<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
                                   {{end}}
