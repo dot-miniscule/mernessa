@@ -4,7 +4,6 @@
 		<link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
 		<link rel="stylesheet" type="text/css" href="/stylesheets/userProfile.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-    <script type="text/javascript" src="public/javascripts/tabs.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
 	</head>
 	{{$reply := .}}
@@ -40,7 +39,7 @@
 		        			<p>Reputation: {{$reply.User_info.Reputation}}</p>
 		        			<p>Questions: {{$reply.User_info.Question_count}}</p>
 		        			<p>Answers: {{$reply.User_info.Answer_count}}</p>
-		        			<a href="{{$reply.User_info.Link}}"><p>Visit on StackOverflow</p></a>
+		        			<a href="https://www.stackoverflow.com/users/{{$reply.User_info.User_id}}" target="_blank"><p>Visit on StackOverflow</p></a>
 		        			<hr>
 		        			<ul>
 		        				{{range $v, $cache := $reply.Caches}}
@@ -57,4 +56,6 @@
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
 	</body>
+
+	<script type="text/javascript" src="/javascripts/tabs.js"></script>
 </html>

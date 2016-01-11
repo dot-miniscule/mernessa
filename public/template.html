@@ -1,11 +1,9 @@
-<!doctype html>
-
 <html>
   <head>
     <title>Stack Tracker</title>
-    <link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
+    <!--<link rel="icon" type"image/x-icon" href="favicon.ico">-->
+    <link rel="stylesheet" type="text/css" href="stylesheets/styles.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-    <script type="text/javascript" src="/javascripts/tabs.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
   </head>
   {{$reply := .}}
@@ -15,25 +13,27 @@
         <div id="userDiv">
           <p id="welcomeSentence"> Welcome,
             {{if eq $reply.User.Display_name "Guest"}}
-              {{$reply.User.Display_name}} <a href="/login" style="color:white">Login</a>
+              {{$reply.User.Display_name}} <a href="/login">Login</a>
            {{else}}
-              <a href="/user?id={{$reply.User.User_id}}" style="color:white">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+              <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
             {{end}}
           </p>
             <div class="titleBar">
-              <h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
+              <h4><a href="/"><img src="images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
               {{if ne $reply.Query ""}}
                 <h6>Querying: {{$reply.Query}}</h6>
               {{end}}
             </div><!-- END TITLE BAR -->
         </div><!-- END TITLE DIV -->
         <div class="content">
+          <div class="sitenav">
+                <ul>
+                  <li><a href='/'>Home</a></li>
+                  <li><a href='/viewTags'>Tags</a></li>
+                  <li><a href='/viewUsers'>Users</a></li>
+                </ul>
+              </div>
           <div class="sidebar">
-              <p> View...</p>
-              <ul id="tagUser">
-                <li><a href="/viewTags">Tags</a></li>
-                <li><a href="/viewUsers">Users</a></li>
-              </ul>
           </div> 
           <div class="tab-panels">
             <ul class="tabs">
@@ -77,7 +77,7 @@
                               <script>
                                 $('#{{$question.Question_id}}_body').html({{$question.Body}});
                               </script>
-                            </div><!--END OF BODY SNIPPER-->
+                            </div><!--END OF BODY SNIPPET-->
                             <div class="tagContainer">
                               <ul>
                               {{range $tag := $question.Tags}}  
@@ -113,22 +113,23 @@
               <script>
                 $("#unanswered").addClass("active");
               </script>
-            <div class="stickyFooter">
-              <div class="footerContents">
-                <div id="submitContainer">
-                  <input type="button" name="clear" id="clearButton" value="Clear">
-                  {{if ne $reply.User.Display_name "Guest"}}
-                    <input type="button" name="btnSubmit" id="submitButton" value="Submit" onclick="return checkDB({{$reply.UpdateTime}});">
-                  {{else}}
-                    <input type="button" name="btnSubmit" id="submitButton" value="Submit" disabled>
-                  {{end}}
-                </div> <!-- END SUBMIT CONTAINER -->
-              </div><!--END FOOTER CONTENTS-->
-            </div><!-- END FOOTER -->
             </form>
           </div><!--END TAB-PANELS-->
         </div> <!--END CONTENT-->
+        <div class="stickyFooter">
+                <div class="footerContents">
+                  <div id="submitContainer">
+                    <input type="button" name="clear" id="clearButton" value="Clear">
+                    {{if ne $reply.User.Display_name "Guest"}}
+                      <input type="button" name="btnSubmit" id="submitButton" value="Submit" onclick="return checkDB({{$reply.UpdateTime}});">
+                    {{else}}
+                      <input type="button" name="btnSubmit" id="submitButton" value="Submit" disabled>
+                    {{end}}
+                  </div> <!-- END SUBMIT CONTAINER -->
+                </div><!--END FOOTER CONTENTS-->
+              </div><!-- END FOOTER -->
       </div> <!-- END INNER WRAPPER -->
     </div> <!-- END WRAPPER -->
   </body>
+  <script type="text/javascript" src="/javascripts/tabs.js"></script>
 </html>

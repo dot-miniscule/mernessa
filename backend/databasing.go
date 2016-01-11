@@ -32,7 +32,8 @@ func SqlInit() *sql.DB {
 	} */
 	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
 	//		Also, update logging for appengine context.
-	db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
+	// db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
+	db, err := sql.Open("mysql", "root:password@tcp(173.194.225.82:3306)/mernessa")
 	if err != nil {
 		log.Println("Open fail: \t", err)
 	}

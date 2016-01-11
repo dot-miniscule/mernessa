@@ -146,6 +146,7 @@ a:hover {
 /*------------- TABS ------------- */
 
 .tab-panels {
+  overflow:hidden;
   float:left;
   width:765px;
   height:100%;
@@ -158,7 +159,7 @@ a:hover {
 
 /*------------ LINKS -------------*/ 
 
-.tab-panels ul li.navigation {
+.tabs li.navigation {
   list-style-type:none;
   display:inline-block;
   background:#666;
@@ -175,12 +176,12 @@ a:hover {
   padding:0.5em;
 }
 
-.tab-panels ul li:not(.tag):hover {
+.tabs li:not(.tag):hover {
   color:#fff;
   background:#cccccc;
 }
 
-.tab-panels ul li.active {
+.tabs li.active {
   color:#000;
   background:#fff;
 }
@@ -188,6 +189,7 @@ a:hover {
 /*----------- PANELS/CONTENT ----------*/ 
 
 .tab-panels .panel {
+  overflow:hidden;
   display:none;
   background:#fff;
   height:100%;
@@ -316,12 +318,14 @@ td:not(#question) {
 /*--------- STICKY FOOTER -----------*/
 
 .stickyFooter {
+  margin:15px 0px 0px 0px;
   width:100%;
   height:50px;
   background:#fff;
   border:none;
   display:block;
   float:bottom
+  overflow:hidden;
 }
 
 .footerContents {

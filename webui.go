@@ -328,9 +328,9 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 
 func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	query := readUsersFromDb()
+	//query := readUsersFromDb()
 	//uname, _ := strconv.Atoi(r.FormValue("username"))
-	//query := users
+	query := data.Users
 	if err := page.Execute(w, query); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
@@ -340,6 +340,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 	page := template.Must(template.ParseFiles("public/userPage.html"))
 	currentUser, _ := strconv.Atoi(r.FormValue("userId"))
 	query := data.Users[currentUser]
+	log.Println(query.User_info)
 	if err := page.Execute(w, query); err != nil {
 		c.Criticalf("%v", err.Error())
 	}

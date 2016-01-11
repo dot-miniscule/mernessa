@@ -1,11 +1,8 @@
-<!doctype html>
-
 <html>
 	<head>
 		<title>StackTracker - View Users</title>
 		<link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-    <script type="text/javascript" src="/javascripts/tabs.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
 	</head>
 	{{$reply := .}}
@@ -26,8 +23,8 @@
 		        	Browse users...
 		        	<div class="tagContainer">
 		        		<ul>
-				    		{{range $user := $reply}}
-				        	<a href='/userPage?userId={{$user.ID}}'><li>{{$user.Name}}</li></a>
+				    		{{range $k, $user := $reply}}
+				        	<a href='/userPage?userId={{$user.User_info.User_id}}'><li>{{$user.User_info.Display_name}}</li></a>
 				        	{{end}}
 				        </ul>
 				    </div><!--END TAG CONTAINER-->
@@ -35,4 +32,5 @@
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
 	</body>
+	<script type="text/javascript" src="/javascripts/tabs.js"></script>
 </html>
