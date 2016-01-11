@@ -37,6 +37,11 @@ type genReply struct {
 	Query      string
 }
 
+type queryReply struct {
+	User stackongo.User
+	Data interface{}
+}
+
 // Info on the various caches
 type cacheInfo struct {
 	CacheType string               // "unanswered"/"answered"/"pending"/"updating"
@@ -327,7 +332,7 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 	}
 	tagArray = append(tagArray, tempTagArray)
 	page := template.Must(template.ParseFiles("public/viewTags.html"))
-	if err := page.Execute(w, tagArray); err != nil {
+	if err := page.Execute(w, queryReply{user, tagArray}); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 
@@ -337,7 +342,7 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Contex
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	//query := readUsersFromDb()
 	query := data.Users
-	if err := page.Execute(w, query); err != nil {
+	if err := page.Execute(w, queryReply{user, query}); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
@@ -348,7 +353,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 
 	query := data.Users[currentUser]
 	log.Println(query.User_info)
-	if err := page.Execute(w, query); err != nil {
+	if err := page.Execute(w, queryReply{user, query}); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
