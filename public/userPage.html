@@ -35,14 +35,16 @@
 		        		<div class="profileInformation">
 		        			<div class="profilePicture-large">
 			        			<span class="centerer"></span>
-			        			<img class="centered" src="images/profilePic.png">
+                                <img class="centered" src="{{$reply.User_info.Profile_image}}">
 			        		</div>
 		        			<p>Name: {{$reply.User_info.Display_name}}</p>
 		        			<p>Reputation: {{$reply.User_info.Reputation}}</p>
 		        			<br>
 		        			<ul>
-		        				{{range $v, $qns := $reply.Caches}}
-		        				<li>{{$qns.Title}}</li>
+		        				{{range $v, $cache := $reply.Caches}}
+                                  {{range $x, $qns := $cache}}
+    		        				<li>{{$qns.Title}}</li>
+                                  {{end}}
 		        				{{end}}
 		        			</ul>
 		        		</div>

@@ -26,8 +26,8 @@
 		        	Browse users...
 		        	<div class="tagContainer">
 		        		<ul>
-				    		{{range $user := $reply}}
-				        	<a href='/userPage?userId={{$user.ID}}'><li>{{$user.Name}}</li></a>
+				    		{{range $id, $user := $reply}}
+				        	<a href='/userPage?userId={{$user.User_info.User_id}}'><li>{{$user.User_info.Display_name}}</li></a>
 				        	{{end}}
 				        </ul>
 				    </div><!--END TAG CONTAINER-->

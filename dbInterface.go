@@ -48,7 +48,7 @@ func readFromDb(queries string) webData {
 		creation_date int
 		owner         sql.NullInt64
 		name          sql.NullString
-		image         sql.NullString
+		pic           sql.NullString
 		link          sql.NullString
 	)
 	//Select all questions in the database and read into a new data object
@@ -64,7 +64,7 @@ func readFromDb(queries string) webData {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &owner, &name, &image, &link)
+		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &owner, &name, &pic, &link)
 		currentQ := stackongo.Question{
 			Question_id:   id,
 			Title:         title,
@@ -97,7 +97,7 @@ func readFromDb(queries string) webData {
 			user := stackongo.User{
 				User_id:       int(owner.Int64),
 				Display_name:  name.String,
-				Profile_image: name.String,
+				Profile_image: pic.String,
 			}
 			tempData.Qns[id] = user
 			if _, ok := tempData.Users[user.User_id]; !ok {
