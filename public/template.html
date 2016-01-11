@@ -37,10 +37,10 @@
           </div> 
           <div class="tab-panels">
             <ul class="tabs">
-              <li rel="unanswered" class="navigation active">Unanswered</li>
-              <li rel="answered" class="navigation">Answered</li>
-              <li rel="pending" class="navigation">Pending</li>
-              <li rel="updating" class="navigation">Update</li>
+              <li rel="unanswered" class="navigation active">Unanswered ({{len ((index $reply.Caches 0).Questions)}})</li>
+              <li rel="answered" class="navigation">Answered ({{len ((index $reply.Caches 1).Questions)}})</li>
+              <li rel="pending" class="navigation">Pending ({{len ((index $reply.Caches 2).Questions)}})</li>
+              <li rel="updating" class="navigation">Update ({{len ((index $reply.Caches 3).Questions)}})</li>
             </ul>
             <form name="change_state" id="stateForm" method="POST">
               {{range $cache := $reply.Caches}}

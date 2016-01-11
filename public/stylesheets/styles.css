@@ -252,18 +252,17 @@ td {
   padding-top:20px;
   padding-bottom:20px;
   border-bottom:thin dashed #c6c6c6;
+  text-align:center;
 }
 
 .lockIcon {
   cursor:pointer;
 }
 
-#question {
+td#question {
   word-wrap:break-word;
-  width:100;
-}
-td:not(#question) {
-  text-align: center;
+  width:100%;
+  text-align:left;
 }
 
 /*--- RADIOS ---*/

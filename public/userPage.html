@@ -39,12 +39,12 @@
 		        			<p>Reputation: {{$reply.User_info.Reputation}}</p>
 		        			<p>Questions: {{$reply.User_info.Question_count}}</p>
 		        			<p>Answers: {{$reply.User_info.Answer_count}}</p>
-		        			<a href="https://www.stackoverflow.com/users/{{$reply.User_info.User_id}}" target="_blank"><p>Visit on StackOverflow</p></a>
+		        			<a href="https://www.stackoverflow.com/users/{{$reply.User_info.User_id}}?tab=profile" target="_blank"><p>Visit on StackOverflow</p></a>
 		        			<hr>
 		        			<ul>
 		        				{{range $v, $cache := $reply.Caches}}
                                   {{range $x, $qns := $cache}}
-    		        				<li>{{$qns.Title}}</li>
+    		        				<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
                                   {{end}}
 		        				{{end}}
 		        			</ul>
