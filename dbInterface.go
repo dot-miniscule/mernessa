@@ -146,7 +146,6 @@ func readTagsFromDb() []tagData {
 
 //Function to read all user data from the database when a /viewUsers request is made
 //Retrieves all users data
-
 func readUsersFromDb() map[int]userData {
 
 	log.Println("Retrieving users from db")

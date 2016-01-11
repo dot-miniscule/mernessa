@@ -30,18 +30,26 @@ a:hover {
 .innerWrap {
   float:left;
   width:100%;
+  overflow:hidden;
 }
 
 .content {
   width:100%;
   height:800px;
   padding-top:10px;
+  overflow:hidden;
 }
 
 .content.tagPage, .content.userPage {
   background:#fff;
-  padding:10px;
-  overflow:scroll;
+  padding-top:40px;
+  margin-top:20px;
+  overflow-y:scroll;
+  overflow-x:hidden;
+}
+
+.content.tagPage form, p {
+  padding-left:50px;
 }
 
 #userDiv {
@@ -79,7 +87,6 @@ a:hover {
   color: #333;
   text-align: center;
   background:#fff;
-  border-bottom:#f0f3f5 15px solid;
   margin-top:0px;
   overflow:hidden;
 }
@@ -95,6 +102,23 @@ a:hover {
   height:20px;
   width:20px;
   padding:5px;
+}
+
+/*----- SITE NAV ------ */
+.sitenav {
+  height:50px;
+  width:100%;
+  margin:10px 10px 0px 0px;
+  margin-bottom:20px;
+  padding:10px;
+  background-color:#fff;
+  border-radius:5px;
+}
+
+.sitenav li {
+  list-style-type:none;
+  display:inline-block;
+  padding-right:20px;
 }
 
 /*-------- TAG SEARCH ----------- */
@@ -122,6 +146,7 @@ a:hover {
 /*------------- TABS ------------- */
 
 .tab-panels {
+  overflow:hidden;
   float:left;
   width:765px;
   height:100%;
@@ -134,7 +159,7 @@ a:hover {
 
 /*------------ LINKS -------------*/ 
 
-.tab-panels ul li.navigation {
+.tabs li.navigation {
   list-style-type:none;
   display:inline-block;
   background:#666;
@@ -151,12 +176,12 @@ a:hover {
   padding:0.5em;
 }
 
-.tab-panels ul li:not(.tag):hover {
+.tabs li:not(.tag):hover {
   color:#fff;
   background:#cccccc;
 }
 
-.tab-panels ul li.active {
+.tabs li.active {
   color:#000;
   background:#fff;
 }
@@ -164,6 +189,7 @@ a:hover {
 /*----------- PANELS/CONTENT ----------*/ 
 
 .tab-panels .panel {
+  overflow:hidden;
   display:none;
   background:#fff;
   height:100%;
@@ -292,12 +318,14 @@ td:not(#question) {
 /*--------- STICKY FOOTER -----------*/
 
 .stickyFooter {
+  margin:15px 0px 0px 0px;
   width:100%;
   height:50px;
   background:#fff;
   border:none;
   display:block;
   float:bottom
+  overflow:hidden;
 }
 
 .footerContents {

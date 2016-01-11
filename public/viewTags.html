@@ -1,11 +1,8 @@
-<!doctype html>
-
 <html>
 	<head>
 		<title>StackTracker - View Tags</title>
 		<link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-    <script type="text/javascript" src="/javascripts/tabs.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
 	</head>
 	{{$reply := .}}
@@ -20,7 +17,7 @@
         		</div> <!-- END USER BAR DIV -->
 
         		<div class="titleBar">
-        			<h4><a href="/"><img src="images/home.svg" height=30></a>StackTracker</h4>
+        			<h4><a href="/"><img src="/images/stackoverflowicon-google.jpg" height=30></a>StackTracker</h4>
         		</div><!-- END TITLE BAR -->
 		        <div class="content tagPage">
 		        	<div id="tagSearchBar">
@@ -29,7 +26,7 @@
 			            <input type="submit" value="Search">
 			          </form>
 			        </div> <!-- END TAG SEARCH DIV -->
-		        	Or select Tags to filter questions...
+		        	<p>Or select Tags to filter questions...</p>
 	        		<table id="tag-browser">
 	        			<tbody>
 							{{range $tagArray := $reply}}
@@ -51,4 +48,6 @@
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
 	</body>
+
+	<script type="text/javascript" src="/javascripts/tabs.js"></script>
 </html>

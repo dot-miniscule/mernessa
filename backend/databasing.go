@@ -24,16 +24,16 @@ type databaseInfo struct {
 func SqlInit() *sql.DB {
 	//ipv6:= "tcp(" + net.JoinHostPort("2001:4860:4864:1:aebb:124d:884e:3108", "3306") + ")"
 	//log.Println("JoinHostPort -", ipv6)
-	sqldb := databaseInfo{
+	/*sqldb := databaseInfo{
 		"root",
 		"mernessa",
 		"password",
 		"tcp(173.194.225.82:3306)",
-	}
-
-	dbString := "mysql" + sqldb.username + ":" + sqldb.password + "@" + sqldb.IP + "/" + sqldb.dbName
-	log.Println("sql open url =", dbString)
-	db, err := sql.Open("mysql", sqldb.username+":"+sqldb.password+"@"+sqldb.IP+"/"+sqldb.dbName)
+	} */
+	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
+	//		Also, update logging for appengine context.
+	// db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
+	db, err := sql.Open("mysql", "root:password@tcp(173.194.225.82:3306)/mernessa")
 	if err != nil {
 		log.Println("Open fail: \t", err)
 	}

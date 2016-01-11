@@ -19,7 +19,7 @@ var (
 	tags    = []string{"google-places-api"}
 	appInfo = dataCollect.AppDetails{
 		Client_id:     "6029",
-		Redirect_uri:  "http://127.0.0.1:8080/home",
+		Redirect_uri:  "http://stacktracker-1184.appspot.com/home",
 		Client_secret: "ymefu0zw2TIULhSTM03qyg((",
 		Key:           "nHI22oWrBEsUN8kHe4ARsQ((",
 

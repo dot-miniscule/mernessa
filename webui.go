@@ -347,6 +347,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 	currentUser, _ := strconv.Atoi(r.FormValue("userId"))
 
 	query := data.Users[currentUser]
+	log.Println(query.User_info)
 	if err := page.Execute(w, query); err != nil {
 		c.Criticalf("%v", err.Error())
 	}

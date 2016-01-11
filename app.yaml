@@ -7,7 +7,7 @@
 #All Go packages for a given app are built into a single executable, and request dispatch is handled by the Go program itself. 
 #This is why we have called http.HandleFunc inside the init function to associate our handler with the web root ("/")
 
-application: hellovanessa
+application: stacktracker-1184
 version: 1
 runtime: go
 api_version: go1
