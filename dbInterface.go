@@ -293,16 +293,16 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	// required to collect post form data
 	r.ParseForm()
 
-	// Collect the submitted form info based on the name of the form
-	// Check each cache against the form data
-
 	// Updated data
-	newData := newWebData()
+	newData := data
+
 	// Question IDs of questions that have been updated
 	// Maps IDs to new states
 	changedQns := map[int]string{}
 	changedQnsTitles := []string{}
 
+	// Collect the submitted form info based on the name of the form
+	// Check each cache against the form data
 	for cacheType, cache := range data.Caches {
 
 		// Range through the array of the caches
@@ -316,6 +316,12 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			if _, ok := newData.Caches[form_input]; ok {
 				question.Last_edit_date = mostRecentUpdate
 				newData.Caches[form_input] = append(newData.Caches[form_input], question)
+				for i := 0; i < len(newData.Caches[cacheType]); i++ {
+					if newData.Caches[cacheType][i].Question_id == question.Question_id {
+						newData.Caches[cacheType] = append(newData.Caches[cacheType][:i], newData.Caches[cacheType][i+1:]...)
+						break
+					}
+				}
 
 				// Update any info on the updated question
 				changedQns[question.Question_id] = form_input
@@ -327,17 +333,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 					}
 
 					newData.Users[user.User_id].Caches[form_input] = append(newData.Users[user.User_id].Caches[form_input], question)
-				}
-			} else if form_input == "no_change" {
-				// If there has been no change, add the question back into the cache it was originally in
-				newData.Caches[cacheType] = append(newData.Caches[cacheType], question)
-				if cacheType != "unanswered" {
-					prevUser := data.Qns[question.Question_id]
-					newData.Qns[question.Question_id] = prevUser
-					if _, ok := newData.Users[prevUser.User_id]; !ok {
-						newData.Users[prevUser.User_id] = newUser(prevUser, "")
-					}
-					newData.Users[prevUser.User_id].Caches[cacheType] = append(newData.Users[prevUser.User_id].Caches[cacheType], question)
 				}
 			}
 		}
