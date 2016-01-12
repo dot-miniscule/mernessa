@@ -306,7 +306,6 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			questionID := cacheType + "_" + strconv.Itoa(question.Question_id)
 			// Collect form from Request
 			form_input := r.PostFormValue(questionID)
-
 			// Add the question to the appropriate cache, updating the state
 			if _, ok := newData.Caches[form_input]; ok {
 				newData.Caches[form_input] = append(newData.Caches[form_input], question)
@@ -327,6 +326,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 				newData.Caches[cacheType] = append(newData.Caches[cacheType], question)
 				if cacheType != "unanswered" {
 					prevUser := data.Qns[question.Question_id]
+					newData.Qns[question.Question_id] = prevUser
 					if _, ok := newData.Users[prevUser.User_id]; !ok {
 						newData.Users[prevUser.User_id] = newUser(prevUser, "")
 					}
@@ -342,6 +342,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 
 	data.CacheLock.Lock()
 	data.Qns = newData.Qns
+	data.Users = newData.Users
 	for cacheType, _ := range newData.Caches {
 		data.Caches[cacheType] = newData.Caches[cacheType]
 	}
