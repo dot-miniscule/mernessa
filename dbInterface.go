@@ -341,6 +341,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	}
 
 	data.CacheLock.Lock()
+	data.Qns = newData.Qns
 	for cacheType, _ := range newData.Caches {
 		data.Caches[cacheType] = newData.Caches[cacheType]
 	}
