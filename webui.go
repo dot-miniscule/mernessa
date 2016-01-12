@@ -110,8 +110,8 @@ var recentChangedQns []string
 func (r genReply) CacheUpdated() bool {
 	return mostRecentUpdate > r.UpdateTime
 }
-func (r genReply) Timestamp(timeUnix int64) string {
-	return time.Unix(timeUnix, 0).Format("05-01-2006 15:04:05 MST")
+func (r genReply) Timestamp(timeUnix int64) time.Time {
+	return time.Unix(timeUnix, 0)
 }
 
 //The app engine will run its own main function and imports this code as a package
