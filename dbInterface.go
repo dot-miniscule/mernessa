@@ -40,16 +40,17 @@ func readFromDb(queries string) webData {
 	log.Println("Refreshing database read")
 	tempData := newWebData()
 	var (
-		url           string
-		title         string
-		id            int
-		state         string
-		body          string
-		creation_date int
-		owner         sql.NullInt64
-		name          sql.NullString
-		pic           sql.NullString
-		link          sql.NullString
+		url            string
+		title          string
+		id             int
+		state          string
+		body           string
+		creation_date  int64
+		last_edit_time sql.NullInt64
+		owner          sql.NullInt64
+		name           sql.NullString
+		pic            sql.NullString
+		link           sql.NullString
 	)
 	//Select all questions in the database and read into a new data object
 	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id"
@@ -64,13 +65,16 @@ func readFromDb(queries string) webData {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &owner, &name, &pic, &link)
+		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &last_edit_time, &owner, &name, &pic, &link)
 		currentQ := stackongo.Question{
 			Question_id:   id,
 			Title:         title,
 			Link:          url,
 			Body:          body,
-			Creation_date: int64(creation_date),
+			Creation_date: creation_date,
+		}
+		if last_edit_time.Valid {
+			currentQ.Last_edit_date = last_edit_time.Int64
 		}
 		if err != nil {
 			log.Fatal("query failed:\t", err)
@@ -111,7 +115,7 @@ func readFromDb(queries string) webData {
 		sort.Sort(byCreationDate(tempData.Caches[cacheType]))
 	}
 
-	mostRecentUpdate = int32(time.Now().Unix())
+	mostRecentUpdate = time.Now().Unix()
 	return tempData
 }
 
@@ -194,9 +198,9 @@ func getUserQnsFromDb(userId string) []userInfo {
 /* Function to check if the DB has been updated since we last queried it
 Returns true if our cache needs to be refreshed
 False if is all g */
-func checkDBUpdateTime(tableName string, lastUpdate int32) bool {
+func checkDBUpdateTime(tableName string, lastUpdate int64) bool {
 	var (
-		last_updated int32
+		last_updated int64
 	)
 	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'")
 	if err != nil {
@@ -257,7 +261,7 @@ func updateTableTimes(tableName string) {
 		log.Println("Prepare failed:\t", err)
 	}
 
-	timeNow := int32(time.Now().Unix())
+	timeNow := time.Now().Unix()
 	_, err = stmts.Exec(timeNow, tableName)
 	if err != nil {
 		log.Println("Could not update time for", tableName+":\t", err)
@@ -284,6 +288,8 @@ func addUserToDB(newUser stackongo.User) {
 func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
 	c.Infof("updating cache")
 
+	mostRecentUpdate = time.Now().Unix()
+
 	// required to collect post form data
 	r.ParseForm()
 
@@ -308,6 +314,7 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 			form_input := r.PostFormValue(questionID)
 			// Add the question to the appropriate cache, updating the state
 			if _, ok := newData.Caches[form_input]; ok {
+				question.Last_edit_date = mostRecentUpdate
 				newData.Caches[form_input] = append(newData.Caches[form_input], question)
 
 				// Update any info on the updated question
@@ -349,23 +356,22 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	data.CacheLock.Unlock()
 
 	// Update the database
-	go func(qns map[int]string, qnsTitles []string, userId int) {
-		mostRecentUpdate = int32(time.Now().Unix())
+	go func(qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
 		recentChangedQns = qnsTitles
-		updateDb(qns, userId)
-	}(changedQns, changedQnsTitles, user.User_id)
+		updateDb(qns, userId, lastUpdate)
+	}(changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
 	return nil
 }
 
 // Fucntion to update the questions in qns in the database
-func updateDb(qns map[int]string, userId int) {
+func updateDb(qns map[int]string, userId int, lastUpdate int64) {
 	log.Println("Updating database")
 
 	if len(qns) == 0 {
 		return
 	}
 
-	query := "SELECT question_id, state, user FROM questions WHERE "
+	query := "SELECT question_id FROM questions WHERE "
 	// Add questions to update to the query
 	for id, _ := range qns {
 		query += "question_id=" + strconv.Itoa(id) + " OR "
@@ -382,20 +388,16 @@ func updateDb(qns map[int]string, userId int) {
 		rows.Close()
 	}()
 
-	var (
-		id    int
-		owner int
-		state string
-	)
+	var id int
 
 	for rows.Next() {
-		err := rows.Scan(&id, &state, &owner)
+		err := rows.Scan(&id)
 		if err != nil {
 			log.Printf("rows.Scan: %v", err.Error())
 		}
 
 		//Update the database, setting the state and the new user/owner of that question.
-		stmts, err := db.Prepare("UPDATE questions SET state=?,user=? where question_id=?")
+		stmts, err := db.Prepare("UPDATE questions SET state=?,user=?,time_updated=? where question_id=?")
 		if err != nil {
 			log.Printf("%v", err.Error())
 		}
@@ -403,7 +405,7 @@ func updateDb(qns map[int]string, userId int) {
 			userId = 0
 		}
 
-		_, err = stmts.Exec(qns[id], userId, id)
+		_, err = stmts.Exec(qns[id], userId, lastUpdate, id)
 		if err != nil {
 			log.Printf("Update query failed:\t%v", err.Error())
 		}

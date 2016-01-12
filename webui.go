@@ -33,7 +33,7 @@ type genReply struct {
 	Caches     []cacheInfo            // Slice of the 4 caches (Unanswered, Answered, Pending, Updating)
 	User       stackongo.User         // Information on the current user
 	Qns        map[int]stackongo.User // Map of users by question ids
-	UpdateTime int32
+	UpdateTime int64
 	Query      string
 }
 
@@ -104,11 +104,14 @@ var db = backend.SqlInit()
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
-var mostRecentUpdate int32
+var mostRecentUpdate int64
 var recentChangedQns []string
 
 func (r genReply) CacheUpdated() bool {
 	return mostRecentUpdate > r.UpdateTime
+}
+func (r genReply) Timestamp(timeUnix int64) string {
+	return time.Unix(timeUnix, 0).Format("05-01-2006 15:04:05 MST")
 }
 
 //The app engine will run its own main function and imports this code as a package
@@ -187,13 +190,13 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 // Handler for checking if the database has been updated
 func updateHandler(w http.ResponseWriter, r *http.Request) {
 
-	time, _ := strconv.Atoi(r.FormValue("time"))
+	time, _ := strconv.ParseInt(r.FormValue("time"), 10, 64)
 	pageText := "Updated: {{$.CacheUpdated}}\n"
 	for _, question := range recentChangedQns {
 		pageText += question + "\n"
 	}
 	page, _ := template.New("updatePage").Parse(pageText)
-	if err := page.Execute(w, genReply{UpdateTime: int32(time)}); err != nil {
+	if err := page.Execute(w, genReply{UpdateTime: time}); err != nil {
 		log.Printf("%v", err.Error())
 	}
 }
