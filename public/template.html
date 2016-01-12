@@ -53,17 +53,9 @@
                     <thead>
                       <tr>
                         <th id="qHead">Question</th>
-                        {{if ne $cache.CacheType "unanswered"}}
-                          <th>Unanswered</th>
-                        {{end}}
+                        <th>Change to:</th>
                         {{if ne $cache.CacheType "answered"}}
-                          <th>Answered</th>
-                        {{end}}
-                        {{if ne $cache.CacheType "pending"}}
-                          <th>Pending</th>
-                        {{end}}
-                        {{if ne $cache.CacheType "updating"}}
-                          <th>Update</th>
+                          <th>Other states:</th>
                         {{end}}
                       </tr>
                     </thead>
@@ -90,19 +82,38 @@
                               <p class="questionOwner">Question marked as {{$cache.CacheType}} by <a href="/user?id={{$owner.User_id}}">{{$owner.Display_name}}</a></p>
                             {{end}}
                           </td>
-                          {{if ne $cache.CacheType "unanswered"}}
-                            <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="unanswered"></td>
+                          {{if eq $cache.CacheType "unanswered"}}
+                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Pending" onclick="$(this).addClass('clicked'); return checkDB('pending', {{$reply.UpdateTime}});"></td>
+                            <td>
+                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}">
+                                <option value="no_change"></option>
+                                <option value="answered">Answered</option>
+                                <option value="updating">Updating</option>
+                                <option value="pending" style="display:none"></option>
+                              </select>
+                            </td>
+                          {{else if eq $cache.CacheType "answered"}}
+                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Reopen" onclick="$(this).addClass('clicked'); return checkDB('pending', {{$reply.UpdateTime}});"></td>
+                            <td style="display:none">
+                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}">
+                                <option value="no_change"></option>
+                                <option value="pending"></option>
+                              </select>
+                            </td>
+                          {{else}}
+                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Answered" onclick="$(this).addClass('clicked'); return checkDB('answered', {{$reply.UpdateTime}});"></td>
+                            <td>
+                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}">
+                                <option value="no_change"></option>
+                                {{if eq $cache.CacheType "updating"}}
+                                  <option value="pending">Pending</option>
+                                {{else if eq $cache.CacheType "pending"}}
+                                  <option value="updating">Updating</option>
+                                {{end}}
+                                <option value="answered" style="display:none"></option>
+                              </select>
+                            </td>
                           {{end}}
-                          {{if ne $cache.CacheType "answered"}}
-                            <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="answered"></td>
-                          {{end}}
-                          {{if ne $cache.CacheType "pending"}}
-                            <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="pending"></td>
-                          {{end}}
-                          {{if ne $cache.CacheType "updating"}}
-                            <td><input type="radio" class="radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="updating"></td>
-                          {{end}}
-                          <td style="display:none"><input type="radio" class="radios no_change_radios" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="no_change" checked="checked"></td>
                         </tr>
                       {{end}}
                     </tbody>
@@ -117,17 +128,17 @@
           </div><!--END TAB-PANELS-->
         </div> <!--END CONTENT-->
         <div class="stickyFooter">
-                <div class="footerContents">
-                  <div id="submitContainer">
-                    <input type="button" name="clear" id="clearButton" value="Clear">
-                    {{if ne $reply.User.Display_name "Guest"}}
-                      <input type="button" name="btnSubmit" id="submitButton" value="Submit" onclick="return checkDB({{$reply.UpdateTime}});">
-                    {{else}}
-                      <input type="button" name="btnSubmit" id="submitButton" value="Submit" disabled>
-                    {{end}}
-                  </div> <!-- END SUBMIT CONTAINER -->
-                </div><!--END FOOTER CONTENTS-->
-              </div><!-- END FOOTER -->
+          <div class="footerContents">
+            <div id="submitContainer">
+              <input type="button" name="clear" id="clearButton" value="Clear">
+              {{if ne $reply.User.Display_name "Guest"}}
+                <input type="button" name="btnSubmit" id="submitButton" value="Submit" onclick="return checkDB('submit', {{$reply.UpdateTime}});">
+              {{else}}
+                <input type="button" name="btnSubmit" id="submitButton" value="Submit" disabled>
+              {{end}}
+            </div> <!-- END SUBMIT CONTAINER -->
+          </div><!--END FOOTER CONTENTS-->
+        </div><!-- END FOOTER -->
       </div> <!-- END INNER WRAPPER -->
     </div> <!-- END WRAPPER -->
   </body>

@@ -38,12 +38,20 @@ $(function() {
 });
 
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
-function checkDB(updateTime) {
+function checkDB(buttonPressed, updateTime) {
   $.post('/dbUpdated?time='+updateTime, function( data ) {
-    dbChanged = data.indexOf('Updated: true') > -1
+    var titles_selector;
+    if (buttonPressed == 'submit') {
+      titles_selector = $('form select option[value!="no_change"]:selected').parent().parent().siblings('#question').children('#question_title');
+    } else if (buttonPressed != '') {
+      titles_selector = $('form input[type=button].clicked').parent().siblings('#question').children('#question_title');
+      $('form select').val('no_change');
+      $('form input[type=button].clicked').parent().parent().children('td').children('select').val(buttonPressed);
+    }
+
+    dbChanged = data.indexOf('Updated: true') > -1;
     if (dbChanged) {
       // Getting the values of the checked radios and saving them as an array
-      titles_selector = $('form input[type=radio]:checked:not(.no_change_radios)').parent().siblings('#question').children('#question_title');
       titles = titles_selector.map(function() {
         return $(this).text();
       });
@@ -55,10 +63,13 @@ function checkDB(updateTime) {
           confirm_text += '\t* ' + titles[i] + '\n';
         }
       }
-      
+
       confirm_text += '\nDo you wish to continue submit?';
       if (confirm_text.indexOf('*') > -1) {
-        if (!confirm(confirm_text)) { return }
+        if (!confirm(confirm_text)) {
+          $('form select').val('no_change');
+          return;
+        }
       }
     }
     $('#stateForm').submit();
