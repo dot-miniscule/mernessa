@@ -42,11 +42,11 @@ function checkDB(buttonPressed, updateTime) {
   $.post('/dbUpdated?time='+updateTime, function( data ) {
     var titles_selector;
     if (buttonPressed == 'submit') {
-      titles_selector = $('form select option[value!="no_change"]:selected').parent().parent().siblings('#question').children('#question_title');
+      titles_selector = $('#new_state_menu option[value!="no_change"]:selected').parent().parent().siblings('#question').children('#question_title');
     } else if (buttonPressed != '') {
-      titles_selector = $('form input[type=button].clicked').parent().siblings('#question').children('#question_title');
-      $('form select').val('no_change');
-      $('form input[type=button].clicked').parent().parent().children('td').children('select').val(buttonPressed);
+      titles_selector = $('#one-click.clicked').parent().siblings('#question').children('#question_title');
+      $('#new_state_menu').val('no_change');
+      $('#one-click.clicked').parent().parent().children('td').children('select').val(buttonPressed);
     }
 
     dbChanged = data.indexOf('Updated: true') > -1;

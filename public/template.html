@@ -87,9 +87,9 @@
                             {{end}}
                           </td>
                           {{if eq $cache.CacheType "unanswered"}}
-                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Pending" onclick="$(this).addClass('clicked'); return checkDB('pending', {{$reply.UpdateTime}});"></td>
+                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" id="one-click" value="Pending" onclick="$(this).addClass('clicked'); return checkDB('pending', {{$reply.UpdateTime}});"></td>
                             <td>
-                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}">
+                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}" id="new_state_menu">
                                 <option value="no_change"></option>
                                 <option value="answered">Answered</option>
                                 <option value="updating">Updating</option>
@@ -97,17 +97,17 @@
                               </select>
                             </td>
                           {{else if eq $cache.CacheType "answered"}}
-                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Reopen" onclick="$(this).addClass('clicked'); return checkDB('pending', {{$reply.UpdateTime}});"></td>
+                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" id="one-click" value="Reopen" onclick="$(this).addClass('clicked'); return checkDB('pending', {{$reply.UpdateTime}});"></td>
                             <td style="display:none">
-                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}">
+                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}" id="new_state_menu">
                                 <option value="no_change"></option>
                                 <option value="pending"></option>
                               </select>
                             </td>
                           {{else}}
-                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Answered" onclick="$(this).addClass('clicked'); return checkDB('answered', {{$reply.UpdateTime}});"></td>
+                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" id="one-click" value="Answered" onclick="$(this).addClass('clicked'); return checkDB('answered', {{$reply.UpdateTime}});"></td>
                             <td>
-                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}">
+                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}" id="new_state_menu">
                                 <option value="no_change"></option>
                                 {{if eq $cache.CacheType "updating"}}
                                   <option value="pending">Pending</option>
