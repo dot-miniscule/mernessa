@@ -27,8 +27,28 @@ $(function() {
         $(this).addClass('active');
       });
     }
+
+    var subpage = window.location.href.slice(window.location.href.lastIndexOf('/'));
+    var url = removeQuery('tab', subpage)
+    url = addQuery('tab', panelToShow, url);
+    window.history.pushState('', document.title, url);
   });
 });
+
+//---------- SET ACTIVE TAB --------------//
+function setActiveTab(sourceURL) {
+  var queries = sourceURL.slice(window.location.href.indexOf('?')+1).split('&');
+  var param;
+  for (var i = 0; i < queries.length; i++) {
+    var urlparam = queries[i].split('=');
+    if (urlparam[0] == 'tab') {
+      param = urlparam[1];
+      break;
+    }
+  }
+  $('li[rel="'+param+'"]').addClass('active');
+  $('#' + param).addClass('active');
+}
 
 //---------- CLEAR SELECTION BUTTON -------------- //
 $(function() {
@@ -93,16 +113,85 @@ $(function() {
 //-------- SETTING COOKIES -------//
 $(document).ready(function() {
   setCookies();
+  clearEmptyQueries();
+
+  var subpage = window.location.href.split('?')[0].slice(window.location.href.lastIndexOf('/'));
+  if (window.location.search.indexOf('tab') == -1 &&
+      subpage.indexOf('userPage') == -1 && subpage.indexOf('viewTags') == -1 &&
+      subpage.indexOf('viewUsers') == -1) {
+    var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
+    window.history.pushState('', document.title, addedPath);
+  }
+  setActiveTab(window.location.href);
 });
 
 //-------- COOKIES --------//
 function setCookies() {
   var code = location.search.split('code=')[1];
-  if (code !== undefined && code !== "") {
-    document.cookie = "code=" + code;
+  if (code !== undefined && code !== '') {
+    document.cookie = 'code=' + code;
   }
+  removeQuery('code', window.location.href);
+  window.history.pushState("", document.title, "");
 }
 
+//-------- Removing queries ---------//
+function clearEmptyQueries() {
+  var urlParts = window.location.href.split('?');
+  var newURL = urlParts[0].slice(window.location.href.lastIndexOf('/'));
+  var param;
+  var params_arr = [];
+  var queryString = urlParts[1];
+
+  if (typeof queryString !== 'undefined') {
+    params_arr = queryString.split('&');
+    for (var i = params_arr.length -1; i >= 0; i--) {
+      query = params_arr[i].split('=')[1];
+      if (query == '') {
+        params_arr.splice(i, 1);
+      }
+    }
+    newURL += '?' + params_arr.join('&');
+  }
+  window.history.pushState('', document.title, newURL);
+}
+
+// returns path including modified query assuming sourceURL does not
+// contain the key
+function addQuery(key, query, sourceURL) {
+  var newURL = sourceURL;
+  if (sourceURL.indexOf('?') !== -1) {
+    if (sourceURL.split('?')[1] !== '') {
+      newURL += '&';
+    }
+  } else {
+    newURL += '?';
+  }
+  newURL += key + '=' + query;
+  return newURL;
+}
+
+// returns path without query specified
+function removeQuery(key, sourceURL) {
+  var newURL = sourceURL.split('?')[0];
+  var param;
+  var params_arr = [];
+  var queryString = sourceURL.split('?')[1];
+
+  if (typeof queryString !== 'undefined') {
+    params_arr = queryString.split('&');
+    for (var i = params_arr.length -1; i >= 0; i--) {
+      param = params_arr[i].split('=')[0];
+      if (param == key) {
+        params_arr.splice(i, 1);
+      }
+    }
+    if (params_arr.length > 0) {
+      newURL += '?' + params_arr.join('&');
+    }
+  }
+  return newURL;
+}
 
 /* ====================== VIEW TAGS PAGE  ===================== */
 /* THIS IS THE JAVASCRIPT FOR THE VIEW TAGS PAGE */
