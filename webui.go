@@ -124,12 +124,8 @@ func init() {
 	// Initialising stackongo session
 	backend.NewSession()
 
-	// defining the duration to pull questions from
-	day := 24 * time.Hour
-	week := 7 * day
-
 	// goroutine to collect the questions from SO and add them to the database
-	go func(fromDate time.Time, toDate time.Time, db *sql.DB) {
+	go func(db *sql.DB) {
 		// Iterate over ([SPECIFIED DURATION])
 		for _ = range time.NewTicker(timeout).C {
 			toDate := time.Now()
@@ -147,7 +143,7 @@ func init() {
 				continue
 			}
 		}
-	}(fromDate, toDate, db)
+	}(db)
 
 	log.Println("Initial cache download")
 	initCacheDownload()
