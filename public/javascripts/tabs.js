@@ -131,8 +131,8 @@ function setCookies() {
   if (code !== undefined && code !== '') {
     document.cookie = 'code=' + code;
   }
-  removeQuery('code', window.location.href);
-  window.history.pushState("", document.title, "");
+  var url = removeQuery('code', window.location.href);
+  window.history.pushState("", document.title, url);
 }
 
 //-------- Removing queries ---------//
