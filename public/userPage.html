@@ -23,7 +23,7 @@
                     </p>
 		        </div><!-- END USER DIV -->
                 <div class="titleBar">
-                    <h4><a href="/"><img src="images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
+                    <a href="/"><img src="images/stacktracker-banner.jpg"></a>
                 </div><!-- END TITLE BAR -->
 
 		        <div class="content">
@@ -35,38 +35,32 @@
 			        	</ul>
 			        </div>
 		        	<div class="userProfile">
+		        		{{$profile := $reply.Data}}
 		        		<div class="profileInformation">
-                            {{$profile := $reply.Data}}
-		        			<div class="profilePicture-large">
+		        			<h2>Name: {{$profile.User_info.Display_name}}</h2>
+		        			{{range $key, $cache := $profile.Caches}}
+		        			<hr>
+		        			<h4 class="capitalize">{{$key}}</h4>
+		        			<ul class="userQuestions {{$key}}">
+		        				{{range $qn := $cache}}
+		        				<a href="{{$qn.Link}}"><li>{{$qn.Title}}</li></a>
+		        				{{end}}
+		        				<a href="/user?id=$profile.User_info.User_id"><li class="viewMore">{{len $cache}} in total...</li></a>
+		        			</ul><!-- END QUESTIONS -->
+		        			{{end}}
+		        		</div>
+		        		<div class="rightSidebar">
+				        	<div class="profilePicture-large">
 			        			<span class="centerer"></span>
 			        			<img class="centered" src="{{$profile.User_info.Profile_image}}">
 			        		</div>
-		        			<h2>Name: {{$profile.User_info.Display_name}}</h2>
+					        <hr>
+		        			<div class="soLink">
+		        				<a href="https://www.stackoverflow.com/users/{{$profile.User_info.User_id}}?tab=profile" target="_blank"><p>Visit on StackOverflow</p></a>
+		        			</div>
 		        			<hr>
-		        			<a href="https://www.stackoverflow.com/users/{{$profile.User_info.User_id}}?tab=profile" target="_blank"><p>Visit on StackOverflow</p></a>
-		        			<hr>
-		        			<h4>Answered</h4>
-		        			<ul>
-		        				{{range $qns := $profile.Caches.answered}}
-		        					<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
-		        				{{end}}
-		        			</ul>
-		        			<h4>Pending</h4>
-		        			<ul>
-		        				{{range $qns := $profile.Caches.pending}}
-		        					<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
-		        				{{end}}
-		        			</ul>
-		        			<h4>Updating</h4>
-		        			<ul>
-		        				{{range $qns := $profile.Caches.updating}}
-		        					<li><a href="{{$qns.Link}}">{{$qns.Title}}</a></li>
-		        				{{end}}
-		        			</ul>
-		        		</div>
+			        	</div><!-- END SIDE BAR -->
 		        	</div><!-- END USER PROFILE -->
-		        	<ul>
-		        	</ul>
 		        </div><!-- END CONTENT -->
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->

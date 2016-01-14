@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"sync"
 	"time"
-
 	"appengine"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -110,8 +109,8 @@ var recentChangedQns []string
 func (r genReply) CacheUpdated() bool {
 	return mostRecentUpdate > r.UpdateTime
 }
-func (r genReply) Timestamp(timeUnix int64) string {
-	return time.Unix(timeUnix, 0).Format("05-01-2006 15:04:05 MST")
+func (r genReply) Timestamp(timeUnix int64) time.Time {
+	return time.Unix(timeUnix, 0)
 }
 
 //The app engine will run its own main function and imports this code as a package
@@ -157,16 +156,16 @@ func init() {
 	initCacheDownload()
 
 	// goroutine to update local cache if there has been any change to database
-	count := 1
-	go func(count int) {
-		for {
-			if checkDBUpdateTime("questions", mostRecentUpdate) {
-				log.Printf("Refreshing cache %v", count)
-				refreshLocalCache()
-				count++
-			}
-		}
-	}(count)
+	//count := 1
+	// go func(count int) {
+	// 	for {
+	// 		if checkDBUpdateTime("questions", mostRecentUpdate) {
+	// 			log.Printf("Refreshing cache %v", count)
+	// 			refreshLocalCache()
+	// 			count++
+	// 		}
+	// 	}
+	// }(count)
 
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
@@ -343,19 +342,34 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 
 func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	//query := readUsersFromDb()
 	query := data.Users
 	if err := page.Execute(w, queryReply{user, query}); err != nil {
 		c.Criticalf("%v", err.Error())
-	}
+	} 
 }
 
 func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/userPage.html"))
-	currentUser, _ := strconv.Atoi(r.FormValue("userId"))
+	usr, _ := strconv.Atoi(r.FormValue("userId"))
+	currentUser := data.Users[usr]
+	query := userData {User_info: currentUser.User_info}
 
-	query := data.Users[currentUser]
-	log.Println(query.User_info)
+	var n int
+	query.Caches = make(map[string][]stackongo.Question)
+
+	n = Min(3, len(currentUser.Caches["unanswered"]))
+	if (n > 0) {
+		query.Caches["answered"] = currentUser.Caches["answered"][0:n]
+	}
+	n = Min(3, len(currentUser.Caches["pending"]))
+	if(n > 0) {
+		query.Caches["pending"] = currentUser.Caches["pending"][0:n]
+	}
+
+	n = Min(3, len(currentUser.Caches["updating"]))
+	if(n >0) {
+		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
+	}
 	if err := page.Execute(w, queryReply{user, query}); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
@@ -465,5 +479,13 @@ func newUser(u stackongo.User, token string) userData {
 			"pending":  []stackongo.Question{},
 			"updating": []stackongo.Question{},
 		},
+	}
+}
+
+func Min(x int, y int) int {
+	if (x < y) {
+		return x
+	} else {
+		return y
 	}
 }
