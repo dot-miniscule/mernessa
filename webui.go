@@ -88,7 +88,7 @@ func newWebData() webData {
 	}
 }
 
-const timeout = 1 * time.Minute
+const timeout = 6 * time.Hour
 
 // Global variable with cache info
 var data = newWebData()
@@ -123,16 +123,12 @@ func init() {
 	// Initialising stackongo session
 	backend.NewSession()
 
-	// defining the duration to pull questions from
-	day := 24 * time.Hour
-	week := 7 * day
-	toDate := time.Now()
-	fromDate := toDate.Add(-1*week + day)
-
 	// goroutine to collect the questions from SO and add them to the database
-	go func(fromDate time.Time, toDate time.Time, db *sql.DB) {
+	go func(db *sql.DB) {
 		// Iterate over ([SPECIFIED DURATION])
-		for i := 0; i < 0; i++ {
+		for _ = range time.NewTicker(timeout).C {
+			toDate := time.Now()
+			fromDate := toDate.Add(-1 * timeout)
 			// Collect new questions from SO
 			questions, err := backend.GetNewQns(fromDate, toDate)
 			if err != nil {
@@ -145,12 +141,8 @@ func init() {
 				log.Printf("Error updating database: %v", err.Error())
 				continue
 			}
-
-			// adjust the date to the time until the next pull
-			toDate = time.Now()
-			fromDate = toDate.Add(-1*week + day)
 		}
-	}(fromDate, toDate, db)
+	}(db)
 
 	log.Println("Initial cache download")
 	initCacheDownload()
