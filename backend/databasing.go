@@ -63,7 +63,7 @@ func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
 		if err != nil {
 			return err
 		}
-		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, item.Body, item.Creation_date)
+		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, StripTags(item.Body), item.Creation_date)
 		if err != nil {
 			log.Println("Exec insertion for question failed!:\t", err)
 			continue
