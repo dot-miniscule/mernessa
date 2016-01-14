@@ -1,15 +1,54 @@
-
+/*--- USER PROFILE ---*/
 .userProfile {
-	padding:20px;
-	overflow:scroll;
 	height:100%;
+	float:left;
+	width:100%;
+	display:flex;
+	overflow:hidden;
+}
+
+.profileInformation {
+	margin:20px 0px 90px 20px;
+	width:720px;
+	overflow:scroll;
+}
+
+p #profile #username {
+	font-size:30px;
+}
+
+.userQuestions {
+	list-style-type:none;
+}
+
+.userQuestions li {
+	padding:10px 0px 10px 0px;
+}
+
+li.viewMore {
+	color:#c6c6c6;
+	size:11px;
+	font-style:italic;
+	text-align:right;
+	padding-right:75px;
+}
+
+h4.capitalize {
+	font-style:capitalize;
+}
+
+/* --- SIDE BAR/PROFILE PICTURE LINKS ETC ---*/
+.rightSidebar {
+	overflow:hidden;
+	height:100%;
+	width:240px;
+	float:right;
 }
 
 .profilePicture-large {
 	float:right;
 	width:200px;
 	height:200px;
-	float:right;
 	border-radius:5px;
 	border:thin solid #c2c2c2;
 	text-align:center;
@@ -30,6 +69,21 @@
 	height:150px;
 }
 
-p #profile #username {
-	font-size:30px;
+.viewUserQuestions {
+	float:right;
+	width:200px;
+	height:200px;
+	background:purple;
 }
+
+.soLink {
+	text-align:center;
+}
+
+.profileInformation hr {
+	width:90%;
+	border-top:thin dashed #ccc;
+	border-bottom:none;
+	margin-left:0;
+}
+

@@ -20,7 +20,10 @@
           </p>
         </div><!-- END USER DIV -->
         <div class="titleBar">
-          <h4><a href="/"><img src="images/stackoverflowicon-google.jpg" height=50></a>StackTracker</h4>
+          <a href="/"><img src="images/stacktracker-banner.jpg"></a>
+          {{if ne $reply.Query ""}}
+            <h6>Querying: {{$reply.Query}}</h6>
+          {{end}}
         </div><!-- END TITLE BAR -->
         <div class="content">
           <div class="sitenav">
@@ -39,6 +42,7 @@
               <li rel="pending" class="navigation">Pending ({{len ((index $reply.Caches 2).Questions)}})</li>
               <li rel="updating" class="navigation">Update ({{len ((index $reply.Caches 3).Questions)}})</li>
             </ul>
+            <div class="whitespace"></div>
             <form name="change_state" id="stateForm" method="POST">
               {{range $cache := $reply.Caches}}
               <div id="{{$cache.CacheType}}" class="panel">
