@@ -33,7 +33,7 @@ type genReply struct {
 	User       stackongo.User         // Information on the current user
 	Qns        map[int]stackongo.User // Map of users by question ids
 	UpdateTime int64
-	Query      string
+	Query      []string				  // String array holding query and query type (tag vs user)
 }
 
 type queryReply struct {
@@ -167,6 +167,7 @@ func init() {
 	http.HandleFunc("/viewUsers", handler)
 	http.HandleFunc("/userPage", handler)
 	http.HandleFunc("/dbUpdated", updateHandler)
+	http.HandleFunc("/search", handler)
 }
 
 // Handler for authorizing user
@@ -242,18 +243,70 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == "/search" {
+		searchHandler(w, r, c, user)
+		return
+	}
+
 	page := template.Must(template.ParseFiles("public/template.html"))
+	pageQuery := []string {
+		"",
+		"",
+	}
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, data, c, "")); err != nil {
+	if err := page.Execute(w, writeResponse(user, data, c, pageQuery)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
+}
+
+//Handler for keywords, tags, users in the search box
+/* 
+	SQL Fields: Title, Body, Link, Tags, Users.
+*/
+func searchHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+	//Collect query
+	search := r.FormValue("search")
+	//Convert to string to check ID against questions	
+	i, err := strconv.Atoi(search)
+	searchType := ""
+	if (err != nil) {
+		i = 0
+		searchType = "URL"
+	} else {
+		searchType = "ID"
+	}
+	tempData := newWebData()
+
+	//data.CacheLock.Lock()
+	//Range through questions, checking URL and question ID against search term
+	for cacheType, cache := range data.Caches {
+		for _, question := range cache {
+			if (question.Question_id == i || question.Link == search) {
+				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
+			}
+		}
+	}
+
+	tempData.Qns = data.Qns
+	data.CacheLock.Lock()
+
+	page := template.Must(template.ParseFiles("public/template.html"))
+
+	var pageQuery = []string {
+		searchType,
+		search,
+	}
+	if err := page.Execute(w, writeResponse(user, tempData, c, pageQuery)); err != nil {
+		c.Criticalf("%v", err.Error())
+	}
+
+
 }
 
 // Handler to find all questions with specific tags
 func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	// Collect query
 	tag := r.FormValue("tagSearch")
-
 	// Create and fill in a new webData struct
 	tempData := newWebData()
 
@@ -270,7 +323,11 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user, tempData, c, tag)); err != nil {
+	var tagQuery = []string {
+		"tag", 
+		tag,
+	}
+	if err := page.Execute(w, writeResponse(user, tempData, c, tagQuery)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
@@ -296,9 +353,13 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 		tempData.Qns = data.Qns
 	}
 	data.CacheLock.Unlock()
-
 	page := template.Must(template.ParseFiles("public/template.html"))
-	if err := page.Execute(w, writeResponse(user, tempData, c, query.User_info.Display_name)); err != nil {
+	
+	var userQuery = []string {
+		"user",
+		query.User_info.Display_name,
+	}
+	if err := page.Execute(w, writeResponse(user, tempData, c, userQuery)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }
@@ -406,7 +467,7 @@ func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stacko
 
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redundant.
-func writeResponse(user stackongo.User, writeData webData, c appengine.Context, query string) genReply {
+func writeResponse(user stackongo.User, writeData webData, c appengine.Context, query []string) genReply {
 	return genReply{
 		Wrapper: writeData.Wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
