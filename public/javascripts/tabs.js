@@ -167,9 +167,6 @@ function addQuery(key, query, sourceURL) {
   } else {
     newURL += '?';
   }
-<<<<<<< HEAD
-}
-=======
   newURL += key + '=' + query;
   return newURL;
 }

@@ -45,7 +45,7 @@
 		        				{{range $qn := $cache}}
 		        				<a href="{{$qn.Link}}"><li>{{$qn.Title}}</li></a>
 		        				{{end}}
-		        				<a href="/user?id=$profile.User_info.User_id"><li class="viewMore">{{len $cache}} in total...</li></a>
+		        				<a href="/user?id={{$profile.User_info.User_id}}&tab={{$key}}"><li class="viewMore">View all {{$key}} questions...</li></a>
 		        			</ul><!-- END QUESTIONS -->
 		        			{{end}}
 		        		</div>
