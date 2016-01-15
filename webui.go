@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"strings"
 	"appengine"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -277,18 +278,20 @@ func searchHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, 
 	}
 	tempData := newWebData()
 
-	//data.CacheLock.Lock()
+	data.CacheLock.Lock()
 	//Range through questions, checking URL and question ID against search term
 	for cacheType, cache := range data.Caches {
 		for _, question := range cache {
-			if (question.Question_id == i || question.Link == search) {
+
+			if (question.Question_id == i || question.Link == search || contains(question.Tags, search) || 
+				strings.Contains(question.Body, search) || strings.Contains(question.Title, search)) {
 				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
 			}
 		}
 	}
 
 	tempData.Qns = data.Qns
-	data.CacheLock.Lock()
+	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 

@@ -262,7 +262,7 @@ th {
   border-bottom: solid thin #c6c6c6;
 }
 
-th#qHead {
+th.qHead {
   text-align:left;
   width:70%;
 }
@@ -279,7 +279,7 @@ td {
   cursor:pointer;
 }
 
-td#question {
+td.question {
   text-align:left;
 }
 
