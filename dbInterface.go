@@ -1,12 +1,12 @@
 package webui
 
 import (
+	"backend"
 	"database/sql"
 	"log"
 	"net/http"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"appengine"
@@ -253,23 +253,6 @@ func readUserFromDb(id string) stackongo.User {
 	return stackongo.User{}
 }
 
-//A crude way to find out if the working cache needs to be refreshed from the database.
-//Stores the current Unix time in update_times table on Cloud SQL */
-func updateTableTimes(tableName string) {
-	stmts, err := db.Prepare("UPDATE update_times SET last_updated=? WHERE table_name=?")
-	if err != nil {
-		log.Println("Prepare failed:\t", err)
-	}
-
-	timeNow := time.Now().Unix()
-	_, err = stmts.Exec(timeNow, tableName)
-	if err != nil {
-		log.Println("Could not update time for", tableName+":\t", err)
-	} else {
-		log.Printf("Update time for %v successfully updated to %v!", tableName, timeNow)
-	}
-}
-
 // Write user data into the database
 func addUserToDB(newUser stackongo.User) {
 
@@ -351,62 +334,9 @@ func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.Use
 	data.CacheLock.Unlock()
 
 	// Update the database
-	go func(qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
+	go func(db *sql.DB, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
 		recentChangedQns = qnsTitles
-		updateDb(qns, userId, lastUpdate)
-	}(changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
+		backend.UpdateDb(db, qns, userId, lastUpdate)
+	}(db, changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
 	return nil
-}
-
-// Fucntion to update the questions in qns in the database
-func updateDb(qns map[int]string, userId int, lastUpdate int64) {
-	log.Println("Updating database")
-
-	if len(qns) == 0 {
-		return
-	}
-
-	query := "SELECT question_id FROM questions WHERE "
-	// Add questions to update to the query
-	for id, _ := range qns {
-		query += "question_id=" + strconv.Itoa(id) + " OR "
-	}
-	query = strings.TrimSuffix(query, " OR ")
-
-	// Pull the required questions from the database
-	rows, err := db.Query(query)
-	if err != nil {
-		log.Printf("query failed:\t%v", err)
-	}
-	defer func() {
-		log.Println("closing rows: updating")
-		rows.Close()
-	}()
-
-	var id int
-
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			log.Printf("rows.Scan: %v", err.Error())
-		}
-
-		//Update the database, setting the state and the new user/owner of that question.
-		stmts, err := db.Prepare("UPDATE questions SET state=?,user=?,time_updated=? where question_id=?")
-		if err != nil {
-			log.Printf("%v", err.Error())
-		}
-		if qns[id] == "unanswered" {
-			userId = 0
-		}
-
-		_, err = stmts.Exec(qns[id], userId, lastUpdate, id)
-		if err != nil {
-			log.Printf("Update query failed:\t%v", err.Error())
-		}
-	}
-
-	//Update the table on SQL keeping track of table modifications
-	updateTableTimes("questions")
-	log.Println("Database updated")
 }
