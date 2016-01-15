@@ -148,17 +148,17 @@ func init() {
 	log.Println("Initial cache download")
 	initCacheDownload()
 
-	// goroutine to update local cache if there has been any change to database
-	//count := 1
-	// go func(count int) {
-	// 	for {
-	// 		if checkDBUpdateTime("questions", mostRecentUpdate) {
-	// 			log.Printf("Refreshing cache %v", count)
-	// 			refreshLocalCache()
-	// 			count++
-	// 		}
-	// 	}
-	// }(count)
+	//goroutine to update local cache if there has been any change to database
+	count := 1
+	go func(count int) {
+		for {
+			if checkDBUpdateTime("questions", mostRecentUpdate) {
+				log.Printf("Refreshing cache %v", count)
+				refreshLocalCache()
+				count++
+			}
+		}
+	}(count)
 
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
