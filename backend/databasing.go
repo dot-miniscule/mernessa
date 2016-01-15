@@ -3,6 +3,9 @@ package backend
 import (
 	"database/sql"
 	"log"
+	"strconv"
+	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -32,8 +35,8 @@ func SqlInit() *sql.DB {
 	} */
 	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
 	//		Also, update logging for appengine context.
-	//db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
-	db, err := sql.Open("mysql", "root:password@tcp(173.194.225.82:3306)/mernessa")
+	db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
+	//db, err := sql.Open("mysql", "root:password@tcp(173.194.225.82:3306)/mernessa")
 	if err != nil {
 		log.Println("Open fail: \t", err)
 	}
@@ -57,13 +60,15 @@ func SqlInit() *sql.DB {
 }
 
 func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
+
+	defer UpdateTableTimes(db, "questions")
 	for _, item := range newQns.Items {
 		//INSERT IGNORE ensures that the same question won't be added again
 		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date) VALUES (?, ?, ?, ?, ?)")
 		if err != nil {
 			return err
 		}
-		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, item.Body, item.Creation_date)
+		_, err = stmt.Exec(item.Question_id, item.Title, item.Link, StripTags(item.Body), item.Creation_date)
 		if err != nil {
 			log.Println("Exec insertion for question failed!:\t", err)
 			continue
@@ -84,4 +89,74 @@ func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
 		}
 	}
 	return nil
+}
+
+//A crude way to find out if the working cache needs to be refreshed from the database.
+//Stores the current Unix time in update_times table on Cloud SQL */
+func UpdateTableTimes(db *sql.DB, tableName string) {
+	stmts, err := db.Prepare("UPDATE update_times SET last_updated=? WHERE table_name=?")
+	if err != nil {
+		log.Println("Prepare failed:\t", err)
+	}
+
+	timeNow := time.Now().Unix()
+	_, err = stmts.Exec(timeNow, tableName)
+	if err != nil {
+		log.Println("Could not update time for", tableName+":\t", err)
+	} else {
+		log.Printf("Update time for %v successfully updated to %v!", tableName, timeNow)
+	}
+}
+
+// Fucntion to update the questions in qns in the database
+func UpdateDb(db *sql.DB, qns map[int]string, userId int, lastUpdate int64) {
+	log.Println("Updating database")
+
+	if len(qns) == 0 {
+		return
+	}
+
+	query := "SELECT question_id FROM questions WHERE "
+	// Add questions to update to the query
+	for id, _ := range qns {
+		query += "question_id=" + strconv.Itoa(id) + " OR "
+	}
+	query = strings.TrimSuffix(query, " OR ")
+
+	// Pull the required questions from the database
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Printf("query failed:\t%v", err)
+	}
+	defer func() {
+		log.Println("closing rows: updating")
+		rows.Close()
+	}()
+
+	var id int
+
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			log.Printf("rows.Scan: %v", err.Error())
+		}
+
+		//Update the database, setting the state and the new user/owner of that question.
+		stmts, err := db.Prepare("UPDATE questions SET state=?,user=?,time_updated=? where question_id=?")
+		if err != nil {
+			log.Printf("%v", err.Error())
+		}
+		if qns[id] == "unanswered" {
+			userId = 0
+		}
+
+		_, err = stmts.Exec(qns[id], userId, lastUpdate, id)
+		if err != nil {
+			log.Printf("Update query failed:\t%v", err.Error())
+		}
+	}
+
+	//Update the table on SQL keeping track of table modifications
+	UpdateTableTimes(db, "questions")
+	log.Println("Database updated")
 }

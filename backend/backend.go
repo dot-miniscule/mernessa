@@ -59,6 +59,7 @@ func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, erro
 
 	questions := new(stackongo.Questions)
 	questions.Has_more = true
+	appInfo.Quota_remaining = 1
 	page := 0
 
 	for questions.Has_more && appInfo.Quota_remaining > 0 {

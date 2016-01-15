@@ -12,12 +12,13 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
-	"strings"
-	"appengine"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
+
+	"appengine"
 )
 
 // Functions for sorting
@@ -34,7 +35,7 @@ type genReply struct {
 	User       stackongo.User         // Information on the current user
 	Qns        map[int]stackongo.User // Map of users by question ids
 	UpdateTime int64
-	Query      []string				  // String array holding query and query type (tag vs user)
+	Query      []string // String array holding query and query type (tag vs user)
 }
 
 type queryReply struct {
@@ -131,12 +132,14 @@ func init() {
 			toDate := time.Now()
 			fromDate := toDate.Add(-1 * timeout)
 			// Collect new questions from SO
+			log.Println("Getting new questions")
 			questions, err := backend.GetNewQns(fromDate, toDate)
 			if err != nil {
 				log.Printf("Error getting new questions: %v", err.Error())
 				continue
 			}
 
+			log.Println("Adding questions to db")
 			// Add new questions to database
 			if err = backend.AddQuestions(db, questions); err != nil {
 				log.Printf("Error updating database: %v", err.Error())
@@ -148,7 +151,7 @@ func init() {
 	log.Println("Initial cache download")
 	initCacheDownload()
 
-	//goroutine to update local cache if there has been any change to database
+	// goroutine to update local cache if there has been any change to database
 	count := 1
 	go func(count int) {
 		for {
@@ -250,7 +253,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
-	pageQuery := []string {
+	pageQuery := []string{
 		"",
 		"",
 	}
@@ -261,16 +264,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 //Handler for keywords, tags, users in the search box
-/* 
+/*
 	SQL Fields: Title, Body, Link, Tags, Users.
 */
 func searchHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	//Collect query
 	search := r.FormValue("search")
-	//Convert to string to check ID against questions	
+	//Convert to string to check ID against questions
 	i, err := strconv.Atoi(search)
 	searchType := ""
-	if (err != nil) {
+	if err != nil {
 		i = 0
 		searchType = "URL"
 	} else {
@@ -283,8 +286,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, 
 	for cacheType, cache := range data.Caches {
 		for _, question := range cache {
 
-			if (question.Question_id == i || question.Link == search || contains(question.Tags, search) || 
-				strings.Contains(question.Body, search) || strings.Contains(question.Title, search)) {
+			if question.Question_id == i || question.Link == search || contains(question.Tags, search) ||
+				strings.Contains(question.Body, search) || strings.Contains(question.Title, search) {
 				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
 			}
 		}
@@ -295,14 +298,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, 
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 
-	var pageQuery = []string {
+	var pageQuery = []string{
 		searchType,
 		search,
 	}
 	if err := page.Execute(w, writeResponse(user, tempData, c, pageQuery)); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
-
 
 }
 
@@ -326,8 +328,8 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
-	var tagQuery = []string {
-		"tag", 
+	var tagQuery = []string{
+		"tag",
 		tag,
 	}
 	if err := page.Execute(w, writeResponse(user, tempData, c, tagQuery)); err != nil {
@@ -357,8 +359,8 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	}
 	data.CacheLock.Unlock()
 	page := template.Must(template.ParseFiles("public/template.html"))
-	
-	var userQuery = []string {
+
+	var userQuery = []string{
 		"user",
 		query.User_info.Display_name,
 	}
@@ -401,29 +403,29 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Contex
 	query := data.Users
 	if err := page.Execute(w, queryReply{user, query}); err != nil {
 		c.Criticalf("%v", err.Error())
-	} 
+	}
 }
 
 func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/userPage.html"))
 	usr, _ := strconv.Atoi(r.FormValue("userId"))
 	currentUser := data.Users[usr]
-	query := userData {User_info: currentUser.User_info}
+	query := userData{User_info: currentUser.User_info}
 
 	var n int
 	query.Caches = make(map[string][]stackongo.Question)
 
 	n = Min(3, len(currentUser.Caches["unanswered"]))
-	if (n > 0) {
+	if n > 0 {
 		query.Caches["answered"] = currentUser.Caches["answered"][0:n]
 	}
 	n = Min(3, len(currentUser.Caches["pending"]))
-	if(n > 0) {
+	if n > 0 {
 		query.Caches["pending"] = currentUser.Caches["pending"][0:n]
 	}
 
 	n = Min(3, len(currentUser.Caches["updating"]))
-	if(n >0) {
+	if n > 0 {
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
 	if err := page.Execute(w, queryReply{user, query}); err != nil {
@@ -539,7 +541,7 @@ func newUser(u stackongo.User, token string) userData {
 }
 
 func Min(x int, y int) int {
-	if (x < y) {
+	if x < y {
 		return x
 	} else {
 		return y
