@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+
 <html>
   <head>
     <title>Stack Tracker</title>
@@ -21,17 +23,22 @@
         </div><!-- END USER DIV -->
         <div class="titleBar">
           <a href="/"><img src="images/stacktracker-banner.jpg"></a>
-          {{if ne $reply.Query ""}}
-            <h6>Querying: {{$reply.Query}}</h6>
-          {{end}}
         </div><!-- END TITLE BAR -->
         <div class="content">
           <div class="sitenav">
+            <div class="links">
               <ul>
                 <li><a href='/'>Home</a></li>
                 <li><a href='/viewTags'>Tags</a></li>
                 <li><a href='/viewUsers'>Users</a></li>
               </ul>
+            </div>
+            <div class="searchBox">
+              <form action="/search" method="get"> 
+                <input class="sb" name="search" type="text" placeholder="Search question ID or question URL" required>
+                <input type="submit" value="Search">
+              </form>
+            </div>
           </div>
           <!--<div class="sidebar">
           </div>--> 
@@ -48,6 +55,9 @@
               <div id="{{$cache.CacheType}}" class="panel">
                 <div class="info">
                   <p>{{$cache.Info}}</p>
+                  {{if ne (index $reply.Query 0) ""}}
+                  <p class="searchTerms">Filtered by: {{index $reply.Query 1}}</p>
+                  {{end}}
                 </div>
                 <div class="tableContainer">
                   <table>
