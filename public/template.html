@@ -84,6 +84,7 @@
                               {{end}}
                               </ul>
                             </div>
+                            <p class="questionOwner">asked on {{$reply.Timestamp $question.Creation_date}}</p>
                             {{if ne $cache.CacheType "unanswered"}}
                               {{$owner := index $reply.Qns $question.Question_id}}
                               <p class="questionOwner">Question marked as {{$cache.CacheType}} by <a href="/user?id={{$owner.User_id}}">{{$owner.Display_name}}</a>
