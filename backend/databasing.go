@@ -38,7 +38,7 @@ func SqlInit() *sql.DB {
 	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
 	//		Also, update logging for appengine context.
 	db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
-	//, err := sql.Open("mysql", "root:password@tcp(173.194.225.82:3306)/mernessa")
+	//db, err := sql.Open("mysql", "root:password@tcp(173.194.225.82:3306)/mernessa")
 	if err != nil {
 		log.Println("Open fail: \t", err)
 	}
@@ -147,8 +147,11 @@ func RemoveDeletedQuestions(db *sql.DB) error {
 			query += " OR "
 		}
 	}
-	log.Println(query)
 	_, err = db.Exec(query)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("DELETE FROM question_tag WHERE question_id NOT IN (SELECT questions.question_id FROM questions)")
 	if err != nil {
 		return err
 	}
