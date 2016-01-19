@@ -76,7 +76,11 @@
                           <td class="question">
                             <a href={{$question.Link}} target="_blank" class="question_title">{{$question.Title}}</a>
                             <br>
-                            <div class="bodySnippet" id="{{$question.Question_id}}_body">{{$question.Body}}...<br></div><!--END OF BODY SNIPPET-->
+                            <div class="bodySnippet" id="{{$question.Question_id}}_body">
+                              <script>
+                                $('#{{$question.Question_id}}_body').text({{$question.Body}}.substring(0, 255));
+                              </script>...<br>
+                            </div><!--END OF BODY SNIPPET-->
                             <div class="tagContainer">
                               <ul>
                               {{range $tag := $question.Tags}}  
