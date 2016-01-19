@@ -23,11 +23,11 @@ var (
 		Client_secret: "ymefu0zw2TIULhSTM03qyg((",
 		Key:           "nHI22oWrBEsUN8kHe4ARsQ((",
 
-		Filters: "!846.hCHXJtBDPB1pe-0GnXRad1cyWBkz(ithJ4-ztkzynXtQgKxaGE4ry3jiLpLNWv5",
+		Filters: "!*7Pmg80Pr9s5.fICa8ob-dRh8NP6",
 		// Filters include:
 		//	- Wrapper: backoff, error_id, error_message, error_name,
-		//             has_more, items, quota_remaining
-		//	- Question: body, creation_date, link, question_id, title
+		//             has_more, items, page, quota_remaining
+		//	- Question: body, creation_date, link, question_id, tags, title
 
 		Options: map[string]string{
 			"scope": "write_access, no_expiry",
@@ -57,26 +57,9 @@ func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, erro
 	params.Add("accepted", false)
 	params.AddVectorized("tagged", tags)
 
-	questions := new(stackongo.Questions)
-	questions.Has_more = true
-	appInfo.Quota_remaining = 1
-	page := 0
-
-	for questions.Has_more && appInfo.Quota_remaining > 0 {
-		page++
-		params.Page(page)
-
-		nextPage, err := dataCollect.Collect(session, appInfo, params)
-		if err != nil {
-			return nil, errors.New("Error collecting questions\t" + err.Error())
-		}
-
-		appInfo.Quota_remaining = nextPage.Quota_remaining
-		if nextPage.Error_id != 0 {
-			return nil, errors.New("Request error:\t" + questions.Error_name + ": " + questions.Error_message)
-		}
-		nextPage.Items = append(questions.Items, nextPage.Items...)
-		questions = nextPage
+	questions, err := dataCollect.Collect(session, appInfo, params)
+	if err != nil {
+		return nil, errors.New("Error collecting questions\t" + err.Error())
 	}
 	return questions, nil
 }

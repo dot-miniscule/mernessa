@@ -142,7 +142,13 @@ func init() {
 			log.Println("Adding questions to db")
 			// Add new questions to database
 			if err = backend.AddQuestions(db, questions); err != nil {
-				log.Printf("Error updating database: %v", err.Error())
+				log.Printf("Error adding new questions: %v", err.Error())
+				continue
+			}
+
+			log.Println("Removing deleted from db")
+			if err = backend.RemoveDeletedQuestions(db); err != nil {
+				log.Printf("Error removing deleted questions: %v", err.Error())
 				continue
 			}
 		}
