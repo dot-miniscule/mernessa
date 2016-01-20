@@ -17,8 +17,6 @@ import (
 	"time"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
-
-	"appengine"
 )
 
 // Functions for sorting
@@ -139,14 +137,14 @@ func init() {
 				continue
 			}
 
-			log.Println("Adding questions to db")
+			log.Println("Adding new questions to db")
 			// Add new questions to database
 			if err = backend.AddQuestions(db, questions); err != nil {
 				log.Printf("Error adding new questions: %v", err.Error())
 				continue
 			}
 
-			log.Println("Removing deleted from db")
+			log.Println("Removing deleted questions from db")
 			if err = backend.RemoveDeletedQuestions(db); err != nil {
 				log.Printf("Error removing deleted questions: %v", err.Error())
 				continue
@@ -205,56 +203,53 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for main information to be read and written from
 func handler(w http.ResponseWriter, r *http.Request) {
-	// Create a new appengine context for logging purposes
-	c := appengine.NewContext(r)
-
 	// set the appengine transport using the http request
 	backend.SetTransport(r)
 
 	// get the current user
-	user := getUser(w, r, c)
+	user := getUser(w, r)
 
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
-		err := updatingCache_User(r, c, user)
+		err := updatingCache_User(r, user)
 		if err != nil {
-			c.Errorf(err.Error())
+			log.Printf(err.Error())
 		}
 		http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 	}
 
 	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("tagSearch") != "" {
-		tagHandler(w, r, c, user)
+		tagHandler(w, r, user)
 		return
 	}
 
 	// Send to user subpage
 	if r.URL.Path == "/user" {
-		userHandler(w, r, c, user)
+		userHandler(w, r, user)
 		return
 	}
 
 	//Send to viewTags page
 	if r.URL.Path == "/viewTags" {
-		viewTagsHandler(w, r, c, user)
+		viewTagsHandler(w, r, user)
 		return
 	}
 
 	//Send to viewUsers page
 	if r.URL.Path == "/viewUsers" {
-		viewUsersHandler(w, r, c, user)
+		viewUsersHandler(w, r, user)
 		return
 	}
 
 	if r.URL.Path == "/userPage" {
-		userPageHandler(w, r, c, user)
+		userPageHandler(w, r, user)
 		return
 	}
 
 	if r.URL.Path == "/search" {
-		searchHandler(w, r, c, user)
+		searchHandler(w, r, user)
 		return
 	}
 
@@ -264,8 +259,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		"",
 	}
 	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, data, c, pageQuery)); err != nil {
-		c.Criticalf("%v", err.Error())
+	if err := page.Execute(w, writeResponse(user, data, pageQuery)); err != nil {
+		log.Fatalf("%v", err.Error())
 	}
 }
 
@@ -273,7 +268,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 /*
 	SQL Fields: Title, Body, Link, Tags, Users.
 */
-func searchHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+func searchHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
 	//Collect query
 	search := r.FormValue("search")
 	//Convert to string to check ID against questions
@@ -308,14 +303,14 @@ func searchHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, 
 		searchType,
 		search,
 	}
-	if err := page.Execute(w, writeResponse(user, tempData, c, pageQuery)); err != nil {
-		c.Criticalf("%v", err.Error())
+	if err := page.Execute(w, writeResponse(user, tempData, pageQuery)); err != nil {
+		log.Fatalf("%v", err.Error())
 	}
 
 }
 
 // Handler to find all questions with specific tags
-func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+func tagHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
 	// Collect query
 	tag := r.FormValue("tagSearch")
 	// Create and fill in a new webData struct
@@ -338,13 +333,13 @@ func tagHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, use
 		"tag",
 		tag,
 	}
-	if err := page.Execute(w, writeResponse(user, tempData, c, tagQuery)); err != nil {
-		c.Criticalf("%v", err.Error())
+	if err := page.Execute(w, writeResponse(user, tempData, tagQuery)); err != nil {
+		log.Fatalf("%v", err.Error())
 	}
 }
 
 // Handler to find all questions answered/being answered by the user in URL
-func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+func userHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
 	userID, _ := strconv.Atoi(r.FormValue("id"))
 	query := userData{}
 
@@ -370,15 +365,15 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 		"user",
 		query.User_info.Display_name,
 	}
-	if err := page.Execute(w, writeResponse(user, tempData, c, userQuery)); err != nil {
-		c.Criticalf("%v", err.Error())
+	if err := page.Execute(w, writeResponse(user, tempData, userQuery)); err != nil {
+		log.Fatalf("%v", err.Error())
 	}
 }
 
 //This is the main tags page
 //Should display a list of tags that are logged in the database
 //User can either click on a tag to view any questions containing that tag or search by a specific tag
-func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+func viewTagsHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
 	//Read all tags and their counts from the db, and execute the page
 	query := readTagsFromDb()
 	//Format array of tags into another array, to be easier formatted on the page into a table
@@ -399,20 +394,20 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 	tagArray = append(tagArray, tempTagArray)
 	page := template.Must(template.ParseFiles("public/viewTags.html"))
 	if err := page.Execute(w, queryReply{user, tagArray}); err != nil {
-		c.Criticalf("%v", err.Error())
+		log.Fatalf("%v", err.Error())
 	}
 
 }
 
-func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+func viewUsersHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	query := data.Users
 	if err := page.Execute(w, queryReply{user, query}); err != nil {
-		c.Criticalf("%v", err.Error())
+		log.Fatalf("%v", err.Error())
 	}
 }
 
-func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
+func userPageHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/userPage.html"))
 	usr, _ := strconv.Atoi(r.FormValue("userId"))
 	currentUser := data.Users[usr]
@@ -435,11 +430,11 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
 	if err := page.Execute(w, queryReply{user, query}); err != nil {
-		c.Criticalf("%v", err.Error())
+		log.Fatalf("%v", err.Error())
 	}
 }
 
-func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stackongo.User {
+func getUser(w http.ResponseWriter, r *http.Request) stackongo.User {
 	// Collect access token from browswer cookie
 	// If cookie does not exist, obtain token using code from URL and set as cookie
 	// If code does not exist, redirect to login page for authorization
@@ -448,15 +443,15 @@ func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stacko
 	if err != nil {
 		code := r.URL.Query().Get("code")
 		if code == "" {
-			c.Infof("Returning Guest user")
+			log.Printf("Returning Guest user")
 			return guest
 		}
 		access_tokens, err := backend.ObtainAccessToken(code)
 		if err != nil {
-			c.Errorf(err.Error())
+			log.Printf(err.Error())
 			return guest
 		}
-		c.Infof("Setting cookie: access_token")
+		log.Printf("Setting cookie: access_token")
 		token = access_tokens["access_token"]
 		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: token})
 	} else {
@@ -464,7 +459,7 @@ func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stacko
 	}
 	user, err := backend.AuthenticatedUser(map[string]string{}, token)
 	if err != nil {
-		c.Errorf(err.Error())
+		log.Printf(err.Error())
 		return guest
 	}
 	data.CacheLock.Lock()
@@ -478,7 +473,7 @@ func getUser(w http.ResponseWriter, r *http.Request, c appengine.Context) stacko
 
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redundant.
-func writeResponse(user stackongo.User, writeData webData, c appengine.Context, query []string) genReply {
+func writeResponse(user stackongo.User, writeData webData, query []string) genReply {
 	return genReply{
 		Wrapper: writeData.Wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
