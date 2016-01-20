@@ -1,7 +1,5 @@
 package backend
 
-//package main
-
 import (
 	"dataCollect"
 	"errors"
@@ -91,14 +89,3 @@ func GetUser(user_id int, params map[string]string) (stackongo.User, error) {
 	}
 	return users.Items[0], nil
 }
-
-// for collecting datasets
-// TODO(gregoriou): remove before launch
-/*func main() {
-	input, err := Collect(nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	ioutil.WriteFile("3-12_dataset.json", input, 640)
-}*/
