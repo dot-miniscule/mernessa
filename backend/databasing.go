@@ -121,7 +121,6 @@ func RemoveDeletedQuestions(db *sql.DB) error {
 		return err
 	}
 
-	log.Println(time.Now().Unix())
 	if len(questions.Items) == len(ids) {
 		return nil
 	}
