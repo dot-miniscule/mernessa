@@ -140,6 +140,7 @@ func init() {
 
 func warmupHandler(w http.ResponseWriter, r *http.Request) {
 	backend.SetTransport(r)
+
 	// goroutine to collect the questions from SO and add them to the database
 	go func(db *sql.DB) {
 		// Iterate over ([SPECIFIED DURATION])
@@ -207,8 +208,6 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for main information to be read and written from
 func handler(w http.ResponseWriter, r *http.Request) {
-	// set the appengine transport using the http request
-	backend.SetTransport(r)
 
 	// get the current user
 	user := getUser(w, r)
