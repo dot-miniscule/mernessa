@@ -123,6 +123,23 @@ func init() {
 	// Initialising stackongo session
 	backend.NewSession()
 
+	log.Println("Initial cache download")
+	initCacheDownload()
+
+	http.HandleFunc("/_ah/warmup", warmupHandler)
+	http.HandleFunc("/login", authHandler)
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/tag", handler)
+	http.HandleFunc("/user", handler)
+	http.HandleFunc("/viewTags", handler)
+	http.HandleFunc("/viewUsers", handler)
+	http.HandleFunc("/userPage", handler)
+	http.HandleFunc("/dbUpdated", updateHandler)
+	http.HandleFunc("/search", handler)
+}
+
+func warmupHandler(w http.ResponseWriter, r *http.Request) {
+	backend.SetTransport(r)
 	// goroutine to collect the questions from SO and add them to the database
 	go func(db *sql.DB) {
 		// Iterate over ([SPECIFIED DURATION])
@@ -152,9 +169,6 @@ func init() {
 		}
 	}(db)
 
-	log.Println("Initial cache download")
-	initCacheDownload()
-
 	// goroutine to update local cache if there has been any change to database
 	count := 1
 	go func(count int) {
@@ -166,16 +180,6 @@ func init() {
 			}
 		}
 	}(count)
-
-	http.HandleFunc("/login", authHandler)
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/tag", handler)
-	http.HandleFunc("/user", handler)
-	http.HandleFunc("/viewTags", handler)
-	http.HandleFunc("/viewUsers", handler)
-	http.HandleFunc("/userPage", handler)
-	http.HandleFunc("/dbUpdated", updateHandler)
-	http.HandleFunc("/search", handler)
 }
 
 // Handler for authorizing user
