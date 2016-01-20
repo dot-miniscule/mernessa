@@ -1,42 +1,57 @@
 /* ====================== MAINPAGE  ===================== */
 /* THIS IS THE JAVASCRIPT FOR THE MAIN PAGE */
 
-//----------- TAB SELECTION ------------//
+//Nav bar active state
+$(".nav a").on("click", function(){
+   $(".nav").find(".active").removeClass("active");
+   $(this).parent().addClass("active");
+});
+
 $(function() {
-  $('.tab-panels .tabs li').on('click', function() {
-
-    //On mouse click find the next element of tab panels
-    //find the closes active one and remove that class
-    //set the current panel to active
-    var $panel = $(this).closest('.tab-panels');
-    $panel.find('.tabs li.active').removeClass('active');
-    $(this).addClass('active');
-
-    //find which panel to show
-    //The related panel is saved in the list item as an attribute
-    var panelToShow = $(this).attr('rel');
-
-    //Hide the current panel
-    $panel.find('.panel.active').slideUp(400, showNextPanel);
-
-    //show next panel
-    function showNextPanel() {
-      $('.panel.active').removeClass('active');
-
-      $('#'+panelToShow).slideDown(400, function() {
-        $(this).addClass('active');
-      });
-    }
-
+  $('.navigation a').on('click', function() {
+    var tab = $(this).attr("href");
     var subpage = window.location.href.slice(window.location.href.lastIndexOf('/'));
     var url = removeQuery('tab', subpage)
-    url = addQuery('tab', panelToShow, url);
+    url = addQuery('tab', tab, url);
     window.history.pushState('', document.title, url);
+    setActiveTab(window.location.href);
+    setWindowHeight();
   });
 });
 
+// Function to fix window height
+// The main container (white div) will be at a minimum the height of the window size
+// If the container inside (the table) overflows, it will resize to fit.
+// Plus an offset of 300px to account for the header
+function setWindowHeight() {
+  var container = $('.wrap');
+  var inner = $('.tab-pane.active');
+  if(inner.height() > $(window).innerHeight()) {
+    container.height(inner.height()+300);
+  } else {
+    $('.container.wrap').css({ height: $(window).innerHeight() });
+    $(window).resize(function(){
+      $('.container.wrap').css({ height: $(window).innerHeight() });
+    });
+  }
+}
+
+// Function to remove query, i.e if questions are filtered by tag, user, URL, keyword etc.
+// URL splits on any query (?) and the & to maintain the currently selected tab.
+function removePageQuery(queryString) {
+  console.log(queryString);
+  var sourceURL = window.location.href;
+  var queries = sourceURL.split(queryString);
+  var tab = sourceURL.split('&')[1];
+  console.log(queries[0]+'?'+tab);
+  window.location = queries[0]+'?'+tab;
+}
+
 //---------- SET ACTIVE TAB --------------//
+// removes the currently active tab, and then finds the new one based on the URL
+// resizes the container div height
 function setActiveTab(sourceURL) {
+  $('.active').removeClass('active');
   var queries = sourceURL.slice(window.location.href.indexOf('?')+1).split('&');
   var param;
   for (var i = 0; i < queries.length; i++) {
@@ -46,8 +61,9 @@ function setActiveTab(sourceURL) {
       break;
     }
   }
-  $('li[rel="'+param+'"]').addClass('active');
-  $('#' + param).addClass('active');
+  $('li a[href="'+param+'"]').parent().addClass('active');
+  $(param).addClass('active');
+  setWindowHeight();
 }
 
 //---------- CLEAR SELECTION BUTTON -------------- //
@@ -62,17 +78,18 @@ function checkDB(buttonPressed, updateTime) {
   $.post('/dbUpdated?time='+updateTime, function( data ) {
     var titles_selector;
     if (buttonPressed == 'submit') {
-      titles_selector = $('.new_state_menu option[value!="no_change"]:selected').parent().parent().siblings('.question').children('.question_title');
+      titles_selector = $('.new_state_menu option[value!="no_change"]:selected').parent().parent().parent().siblings('.question').children('.question_title');
     } else if (buttonPressed != '') {
       titles_selector = $('.one-click.clicked').parent().siblings('.question').children('.question_title');
       $('.new_state_menu').val('no_change');
-      $('.one-click.clicked').parent().parent().children('td').children('select').val(buttonPressed);
+      $('.one-click.clicked').siblings('.new_state_menu').val(buttonPressed);
     }
 
     dbChanged = data.indexOf('Updated: true') > -1;
     if (dbChanged) {
       // Getting the values of the checked radios and saving them as an array
       titles = titles_selector.map(function() {
+        console.log($(this).text())
         return $(this).text();
       });
 
@@ -119,7 +136,7 @@ $(document).ready(function() {
   if (window.location.search.indexOf('tab') == -1 &&
       subpage.indexOf('userPage') == -1 && subpage.indexOf('viewTags') == -1 &&
       subpage.indexOf('viewUsers') == -1) {
-    var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
+    var addedPath = subpage + addQuery('tab', '#unanswered', window.location.search);
     window.history.pushState('', document.title, addedPath);
   }
   setActiveTab(window.location.href);

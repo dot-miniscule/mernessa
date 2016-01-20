@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"sort"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 
@@ -23,10 +24,15 @@ import (
 
 // Functions for sorting
 type byCreationDate []stackongo.Question
+type ByDisplayName []userData
 
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
+
+func (a ByDisplayName) Len() int 			{ return len(a) }
+func (a ByDisplayName) Swap(i, j int) 		{ a[i], a[j] = a[j], a[i] }
+func (a ByDisplayName) Less(i, j int) bool	{ return a[i].User_info.Display_name > a[j].User_info.Display_name }
 
 // Reply to send to template
 type genReply struct {
@@ -151,17 +157,17 @@ func init() {
 	log.Println("Initial cache download")
 	initCacheDownload()
 
-	// goroutine to update local cache if there has been any change to database
-	count := 1
-	go func(count int) {
-		for {
-			if checkDBUpdateTime("questions", mostRecentUpdate) {
-				log.Printf("Refreshing cache %v", count)
-				refreshLocalCache()
-				count++
-			}
-		}
-	}(count)
+	// // goroutine to update local cache if there has been any change to database
+	// count := 1
+	// go func(count int) {
+	// 	for {
+	// 		if checkDBUpdateTime("questions", mostRecentUpdate) {
+	// 			log.Printf("Refreshing cache %v", count)
+	// 			refreshLocalCache()
+	// 			count++
+	// 		}
+	// 	}
+	// }(count)
 
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
@@ -185,7 +191,6 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for checking if the database has been updated
 func updateHandler(w http.ResponseWriter, r *http.Request) {
-
 	time, _ := strconv.ParseInt(r.FormValue("time"), 10, 64)
 	pageText := "Updated: {{$.CacheUpdated}}\n"
 	for _, question := range recentChangedQns {
@@ -369,14 +374,13 @@ func userHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, us
 	}
 }
 
-//This is the main tags page
-//Should display a list of tags that are logged in the database
-//User can either click on a tag to view any questions containing that tag or search by a specific tag
+
+//Display a list of tags that are logged in the database
+//User can either click on a tag to view any questions containing that tag
+//Format array of tags into another array, to be easier formatted on the page into a table in the template
+//An array of tagData arrays of size 4
 func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	//Read all tags and their counts from the db, and execute the page
 	query := readTagsFromDb()
-	//Format array of tags into another array, to be easier formatted on the page into a table
-	//An array of tagData arrays of size 4
 	var tagArray [][]tagData
 	var tempTagArray []tagData
 	i := 0
@@ -398,10 +402,34 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, c appengine.Context
 
 }
 
+// Handler for viewing all users in the database
+// Formats the response into an array of userData maps, for easier formatting onto the page.
+// User data is stored as a map, which gives no guarantee as to the order of iteration
+// It is first read into an array, and that array sorted lexicographically by the users Display name.
 func viewUsersHandler(w http.ResponseWriter, r *http.Request, c appengine.Context, user stackongo.User) {
-	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	query := data.Users
-	if err := page.Execute(w, queryReply{user, query}); err != nil {
+	var querySorted []userData
+	for _, i := range query {
+		querySorted = append(querySorted, i)
+	}
+	log.Println("before sorting, ", querySorted[0])
+	sort.Sort(ByDisplayName(querySorted))
+	log.Println("after sorting, ", querySorted[0])
+
+	var queryArray [][]userData 
+	var tempQueryArray []userData
+
+	for i, u := range querySorted {
+		tempQueryArray = append(tempQueryArray, u)
+		if i % 4 == 0  || i == len(query){
+			log.Println("adding user", u.User_info.Display_name)
+			queryArray = append(queryArray, tempQueryArray)
+			//clear temp array
+			tempQueryArray = nil
+		}
+	}
+	page := template.Must(template.ParseFiles("public/viewUsers.html"))
+	if err := page.Execute(w, queryReply{user, queryArray}); err != nil {
 		c.Criticalf("%v", err.Error())
 	}
 }

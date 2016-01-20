@@ -120,9 +120,8 @@ func readFromDb(queries string) webData {
 }
 
 //Function called when the /viewTags request is made
-//Retrieves all tags (which should be unique) and the number of questions saved in the db with that tag
+//Retrieves all distinct tags and the number of questions saved in the db with that tag
 func readTagsFromDb() []tagData {
-	log.Println("Retrieving tags from db")
 	var tempData []tagData
 
 	var (
@@ -130,7 +129,7 @@ func readTagsFromDb() []tagData {
 		count sql.NullInt64
 	)
 
-	rows, err := db.Query("SELECT * FROM tags")
+	rows, err := db.Query("SELECT tag, COUNT(tag) FROM question_tag GROUP BY tag;")
 	if err != nil {
 		log.Println("Tag query failed, ln 127:", err)
 	}

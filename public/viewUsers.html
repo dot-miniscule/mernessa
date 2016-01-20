@@ -1,41 +1,114 @@
+
+<!DOCTYPE html>
+
 <html>
-	<head>
-		<title>StackTracker - View Users</title>
-		<link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-        <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
-	</head>
-	{{$reply := .}}
-	<body>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-		<div class="wrap">
-			<div class="innerWrap">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <!-- Place favicon.ico in the root directory -->
+    <title>Stack Tracker</title>
 
-				<div id="userDiv">
-          		    <p id="welcomeSentence"> Welcome,
-                        {{if eq $reply.User.Display_name "Guest"}}
-                            {{$reply.User.Display_name}} <a href="/login">Login</a>
-                        {{else}}
-                             <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
-                        {{end}}
-                    </p>
-        		</div> <!-- END USER BAR DIV -->
+    <!-- STYLE SHEETS AND FONTS -->
 
-        		<div class="titleBar">
-        			<a href="/"><img src="images/stacktracker-banner.jpg"></a>
-        		</div><!-- END TITLE BAR -->
-		        <div class="content userPage">
-		        	Browse users...
-		        	<div class="tagContainer">
-		        		<ul>
-				    		{{range $k, $user := $reply.Data}}
-		    		        	<a href='/userPage?userId={{$user.User_info.User_id}}'><li>{{$user.User_info.Display_name}}</li></a>
-				        	{{end}}
-				        </ul>
-				    </div><!--END TAG CONTAINER-->
-		        </div><!-- END CONTENT -->
-			</div><!-- END INNER WRAP -->
-		</div><!--END WRAP-->
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    
+    <link rel="stylesheet" type="text/css" href="stylesheets/styles.css">
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+  </head>
+  {{$reply := .}}
+  <body>
+    <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+    <div class="container wrap">
+      <div class="page-header">
+        <div class="row">
+          <div class="col-lg-9 col-md-9 col-sm-6 col-xs-12">
+            <a href="/"><img src="images/stacktracker-banner.jpg"></a>
+          </div>
+          <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12 userDiv">
+            <p id="welcomeSentence">Welcome,
+              {{if eq $reply.User.Display_name "Guest"}}
+                {{$reply.User.Display_name}}</p>
+                <p id="welcomeSentence"><a href="/login">Login</a> with your StackOverflow account...</p>
+              {{else}}
+                <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+              {{end}}
+          </div>
+        </div><!-- END ROW -->
+
+        <nav class="navbar navbar-default navbar-fixed">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              </button>
+            </div><!-- /.navbar-header -->
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+              <ul class="nav navbar-nav">
+                <li><a href="/">Home<span class="sr-only">(current)</span></a></li>
+                <li><a href="/viewTags">Tags</a></li>
+                <li class="active"><a href="/viewUsers">Users</a></li>
+              </ul>
+
+              <form class="navbar-form navbar-right search-form" role="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" placeholder="Search StackTracker...">
+                </div><!-- ./form-group -->
+                <button type="submit" class="btn btn-default">Submit</button>
+              </form>
+            </div><!-- /.navbar-collapse -->
+          </div><!-- /.container -->
+        </nav><!-- END NAVBAR -->
+    	</div>
+    	<div class="container-fluid">
+	      	<div class="row">
+			    <p>Browse users...</p>
+			</div><!--/.row-->
+
+			<div class="row">
+				{{range $userArray := $reply.Data}}
+				<div class="row-fluid row-centered">
+					{{range $user := $userArray}}
+							<div class="card col-lg-3 col-md-4 col-sm-6 col-xs-12 col-centered">
+								<div class="content">
+									<a href="/userPage?userId={{$user.User_info.User_id}}"><img class="card-img-left" src="{{$user.User_info.Profile_image}}" alt="profile picture missing"></a>
+									<div class="card-block">
+										<h4 class="card-title"><a href="/userPage?userId={{$user.User_info.User_id}}">{{$user.User_info.Display_name}}</a></h4>
+									</div>
+									<small class="text-muted">
+										<p class="card-text">{{len (index $user.Caches.answered)}} answered questions</p>
+										<p class="card-text">{{len (index $user.Caches.pending)}} questions marked as pending.</p>
+										<p class="card-text">{{len (index $user.Caches.answered)}} waiting for update.</p>
+									</small>
+								</div>
+							</div>
+					{{end}}
+				</div>
+				{{end}}
+			</div>
+		</div><!--/.container-fluid-->
+	</div><!--/.container-->
 	</body>
-	<script type="text/javascript" src="/javascripts/tabs.js"></script>
+	<!-- JAVASCRIPT, BOOTSTRAP, JQUERY -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript" src="javascripts/tabs.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 </html>

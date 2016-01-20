@@ -1,65 +1,116 @@
+<!DOCTYPE html>
+
 <html>
-	<head>
-		<title>StackTracker - View Tags</title>
-		<link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <!-- Place favicon.ico in the root directory -->
+    <title>Stack Tracker</title>
+
+    <!-- STYLE SHEETS AND FONTS -->
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    
+    <link rel="stylesheet" type="text/css" href="stylesheets/styles.css">
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
-	</head>
-	{{$reply := .}}
+  </head>
+  {{$reply := .}}
 	<body>
 
-		<div class="wrap">
-			<div class="innerWrap">
+		<!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+    <div class="container wrap">
+      <div class="page-header">
+        <div class="row">
+          <div class="col-lg-9 col-md-9 col-sm-6 col-xs-12">
+            <a href="/"><img src="images/stacktracker-banner.jpg"></a>
+          </div>
+          <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12 userDiv">
+            <p id="welcomeSentence">Welcome,
+              {{if eq $reply.User.Display_name "Guest"}}
+                {{$reply.User.Display_name}}</p>
+                <p id="welcomeSentence"><a href="/login">Login</a> with your StackOverflow account...</p>
+              {{else}}
+                <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+              {{end}}
+          </div>
+        </div><!-- END ROW -->
 
-				<div id="userDiv">
-          			<p id="welcomeSentence"> Welcome,
-                        {{if eq $reply.User.Display_name "Guest"}}
-                            {{$reply.User.Display_name}} <a href="/login">Login</a>
-                        {{else}}
-                            <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
-                        {{end}}
-                    </p>
-        		</div> <!-- END USER BAR DIV -->
+        <nav class="navbar navbar-default navbar-fixed">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              </button>
+            </div><!-- /.navbar-header -->
 
-        		<div class="titleBar">
-        			<a href="/"><img src="images/stacktracker-banner.jpg"></a>
-        		</div><!-- END TITLE BAR -->
-        		<div class="sitenav">
-			            <ul>
-			                <li><a href='/'>Home</a></li>
-			                <li><a href='/viewTags'>Tags</a></li>
-			            	<li><a href='/viewUsers'>Users</a></li>
-			            </ul>
-			        </div>
-		        <div class="content tagPage">
-		        	<div id="tagSearchBar">
-          				<form action="/tag" method="get">
-			            Search by tag: <input type="text" name="tagSearch">
-			            <input type="submit" value="Search">
-			          </form>
-		        		<p>Or select Tags to filter questions...</p>
-		        	</div> <!-- END TAG SEARCH DIV -->
-	        		<table id="tag-browser">
-	        			<tbody>
-							{{range $tagArray := $reply.Data}}
-		        				<tr>
-		        					{{range $tag := $tagArray}}
-		        					<td>
-		        						<div class="tagContainer viewTags">
-						        			<ul id="selectTags">
-						        					<a href='/tag?tagSearch={{$tag.Tag}}'><li>{{$tag.Tag}}</a></li>
-						        			</ul><!-- END TAG LIST -->
-						        		</div><!-- END TAG CONTAINER -->
-					        		</td>
-					        		{{end}}
-					        	</tr>
-					        {{end}}
-			        	</tbody><!-- END TABLE BODY -->
-			        </table><!--END TABLE-->
-		        </div><!-- END CONTENT -->
-			</div><!-- END INNER WRAP -->
-		</div><!--END WRAP-->
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+              <ul class="nav navbar-nav">
+                <li><a href="/">Home<span class="sr-only">(current)</span></a></li>
+                <li class="active"><a href="/viewTags">Tags</a></li>
+                <li><a href="/viewUsers">Users</a></li>
+              </ul>
+
+              <form class="navbar-form navbar-right search-form" role="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" placeholder="Search StackTracker...">
+                </div><!-- ./form-group -->
+                <button type="submit" class="btn btn-default">Submit</button>
+              </form>
+            </div><!-- /.navbar-collapse -->
+          </div><!-- /.container -->
+        </nav><!-- END NAVBAR -->
+      </div><!-- END HEADER -->
+
+      <div class="container-fluid">
+      	<div class="row">
+      		<p>Select tags to view questions...</p>
+      	</div><!--/.row -->
+		<div class="row tag-browser">
+		    <div class="table-responsive">
+		       	<table class="table">
+		        	<tbody>
+						{{range $tagArray := $reply.Data}}
+			        		<tr>
+			        			{{range $tag := $tagArray}}
+				        			<td>
+				        				<div class="tagContainer viewTags">
+								        	<ul id="selectTags">
+								        		<a href='/tag?tagSearch={{$tag.Tag}}'><li>{{$tag.Tag}}</li></a>
+								        	</ul>
+								        </div> <!-- /.tagContainer.viewTags -->
+								        <small class="text-muted">
+								        	{{$tag.Count}}
+								        </small>
+							        </td>
+						    	{{end}}
+						    </tr>
+						{{end}}
+				   	</tbody><!-- END TABLE BODY -->
+				</table><!--END TABLE-->
+			</div><!-- /.table-responsive -->
+		</div>
 	</body>
 
-	<script type="text/javascript" src="/javascripts/tabs.js"></script>
+	<!-- JAVASCRIPT, BOOTSTRAP, JQUERY -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript" src="javascripts/tabs.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 </html>

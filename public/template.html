@@ -1,72 +1,115 @@
+
 <!DOCTYPE html>
 
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <!-- Place favicon.ico in the root directory -->
     <title>Stack Tracker</title>
-    <!--<link rel="icon" type"image/x-icon" href="favicon.ico">-->
+
+    <!-- STYLE SHEETS AND FONTS -->
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    
     <link rel="stylesheet" type="text/css" href="stylesheets/styles.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
   </head>
   {{$reply := .}}
   <body>
-    <div class="wrap">
-      <div class="innerWrap">
-        <div id="userDiv">
-          <p id="welcomeSentence"> Welcome,
-            {{if eq $reply.User.Display_name "Guest"}}
-              {{$reply.User.Display_name}} <a href="/login">Login</a>
-            {{else}}
-              <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
-            {{end}}
-          </p>
-        </div><!-- END USER DIV -->
-        <div class="titleBar">
-          <a href="/"><img src="images/stacktracker-banner.jpg"></a>
-        </div><!-- END TITLE BAR -->
-        <div class="content">
-          <div class="sitenav">
-            <div class="links">
-              <ul>
-                <li><a href='/'>Home</a></li>
-                <li><a href='/viewTags'>Tags</a></li>
-                <li><a href='/viewUsers'>Users</a></li>
-              </ul>
-            </div>
-            <div class="searchBox">
-              <form action="/search" method="get"> 
-                <input class="sb" name="search" type="text" placeholder="Search by tag, keyword, user, ID, URL..." required>
-                <input type="submit" value="Search">
-              </form>
-            </div>
+    <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+    <div class="container wrap">
+      <div class="page-header">
+        <div class="row">
+          <div class="col-lg-9 col-md-9 col-sm-6 col-xs-12">
+            <a href="/"><img src="images/stacktracker-banner.jpg"></a>
           </div>
-          <!--<div class="sidebar">
-          </div>--> 
-          <div class="tab-panels">
-            <ul class="tabs">
-              <li rel="unanswered" class="navigation">Unanswered ({{len ((index $reply.Caches 0).Questions)}})</li>
-              <li rel="answered" class="navigation">Answered ({{len ((index $reply.Caches 1).Questions)}})</li>
-              <li rel="pending" class="navigation">Pending ({{len ((index $reply.Caches 2).Questions)}})</li>
-              <li rel="updating" class="navigation">Update ({{len ((index $reply.Caches 3).Questions)}})</li>
-            </ul>
-            <div class="whitespace"></div>
-            <form name="change_state" id="stateForm" method="POST">
+          <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12 userDiv">
+            <p id="welcomeSentence">Welcome,
+              {{if eq $reply.User.Display_name "Guest"}}
+                {{$reply.User.Display_name}}</p>
+                <p id="welcomeSentence"><a href="/login">Login</a> with your StackOverflow account...</p>
+              {{else}}
+                <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+              {{end}}
+          </div>
+        </div><!-- END ROW -->
+
+        <nav class="navbar navbar-default navbar-fixed">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              </button>
+            </div><!-- /.navbar-header -->
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+              <ul class="nav navbar-nav">
+                <li class="active"><a href="/">Home<span class="sr-only">(current)</span></a></li>
+                <li><a href="/viewTags">Tags</a></li>
+                <li><a href="/viewUsers">Users</a></li>
+              </ul>
+
+              <form class="navbar-form navbar-right search-form" action="/search" method="get" role="search">
+                <div class="form-group">
+                  <input type="text" class="form-control sb" name="search" placeholder="Search StackTracker..." required>
+                </div><!-- ./form-group -->
+                <button type="submit" class="btn btn-default">Submit</button>
+              </form>
+            </div><!-- /.navbar-collapse -->
+          </div><!-- /.container -->
+        </nav><!-- END NAVBAR -->
+      </div><!-- END HEADER -->
+
+      <div class="container-fluid">
+
+        <div class="tab-panels">
+          <!-- Nav tabs -->
+          <ul id="tabs" class="nav nav-tabs nav-justified tabs" data-tabs="tabs">
+            <li class="navigation"><a href="#unanswered" data-toggle="tab">Unanswered ({{len ((index $reply.Caches 0).Questions)}})</a></li>
+            <li class="navigation"><a href="#answered" data-toggle="tab">Answered ({{len ((index $reply.Caches 1).Questions)}})</a></li>
+            <li class="navigation"><a href="#pending" data-toggle="tab">Pending ({{len ((index $reply.Caches 2).Questions)}})</a></li>
+            <li class="navigation"><a href="#updating" data-toggle="tab">Updating ({{len ((index $reply.Caches 3).Questions)}})</a></li>
+          </ul>
+          {{if ne (index $reply.Query 0) ""}}
+            <p>Filtering by:</p>
+            <div class="query-fragment">
+              <span id="close" onclick="removePageQuery({{index $reply.Query 0}})">x</span><!--/.close -->
+              <p>{{index $reply.Query 1}}</p>
+            </div><!--/.query-fragment-->
+          {{end}}
+          <form name="change_state" id="stateForm" method="POST">
+            <div class="tab-content my-tabs">
               {{range $cache := $reply.Caches}}
-              <div id="{{$cache.CacheType}}" class="panel">
+              <div class="tab-pane fade in" id="{{$cache.CacheType}}">
                 <div class="info">
-                  <p>{{$cache.Info}}</p>
-                  {{if ne (index $reply.Query 0) ""}}
-                  <p class="searchTerms">Filtered by: {{index $reply.Query 1}}</p>
-                  {{end}}
-                </div>
-                <div class="tableContainer">
-                  <table>
+                  {{$cache.Info}}
+                </div><!-- /.info -->
+                <div class="questions">
+                  <table class="table table-striped">
                     <thead>
                       <tr>
-                        <th class="qHead">Question</th>
-                        <th></th>
+                        <th class="col-xs-10 qHead">Question</th>
                         {{if ne $cache.CacheType "answered"}}
-                          <th>Other states:</th>
+                          <th class="col-xs-2">State</th>
+                        {{else}}
+                          <th class="col-xs-2">Reopen</th>
                         {{end}}
                       </tr>
                     </thead>
@@ -74,11 +117,11 @@
                       {{range $question := $cache.Questions}}
                         <tr>
                           <td class="question">
-                            <a href={{$question.Link}} target="_blank" class="question_title">{{$question.Title}}</a>
+                            <a href={{$question.Link}} target="_blank" class="question_title"><h4>{{$question.Title}}</h4></a>
                             <br>
                             <div class="bodySnippet" id="{{$question.Question_id}}_body">{{$question.Body}}...<br></div><!--END OF BODY SNIPPET-->
                             <div class="tagContainer">
-                              <ul>
+                              <ul class="tags">
                               {{range $tag := $question.Tags}}  
                                 <li class="tag" a href="#" data-tooltip="tooltip" title="Display questions containing the tag &quot;{{$tag}}&quot;"><a href="/tag?tagSearch={{$tag}}">{{$tag}}</a></li>
                               {{end}}
@@ -94,59 +137,64 @@
                             {{end}}
                           </td>
                           {{if eq $cache.CacheType "unanswered"}}
-                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" class="one-click" value="Pending" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'pending', {{$reply.UpdateTime}});"></td>
                             <td>
-                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}" class="new_state_menu">
-                                <option value="no_change"></option>
-                                <option value="answered">Answered</option>
-                                <option value="updating">Updating</option>
-                                <option value="pending" style="display:none"></option>
-                              </select>
+                              <div class="input-group">
+                                <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Pending" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'pending', {{$reply.UpdateTime}});">
+                                <select class="form-control-sm new_state_menu" name="{{$cache.CacheType}}_{{$question.Question_id}}" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
+                                  <option value="no_change"></option>
+                                  <option value="answered">Answered</a></option>
+                                  <option value="updating">Updating</a></option>
+                                  <option value="pending" style="display:none"></option>
+                                </select>
+                              </div><!--/.input-group -->
                             </td>
                           {{else if eq $cache.CacheType "answered"}}
-                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" class="one-click" value="Reopen" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'pending', {{$reply.UpdateTime}});"></td>
-                            <td style="display:none">
-                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}" class="new_state_menu">
-                                <option value="no_change"></option>
-                                <option value="pending"></option>
-                              </select>
+                            <td>
+                              <div class="input-group">
+                                <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Reopen" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'pending', {{$reply.UpdateTime}});">
+                                <select class="form-control-sm new_state_menu" name="{{$cache.CacheType}}_{{$question.Question_id}}"  style="display:none" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
+                                  <option value="no_change"></option>
+                                  <option value="pending"></option>
+                                </select>
+                              </div><!--/.input-group-->
                             </td>
                           {{else}}
-                            <td><input type="button" name="{{$cache.CacheType}}_{{$question.Question_id}}" class="one-click" value="Answered" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'answered', {{$reply.UpdateTime}});"></td>
                             <td>
-                              <select name="{{$cache.CacheType}}_{{$question.Question_id}}" class="new_state_menu">
-                                <option value="no_change"></option>
-                                {{if eq $cache.CacheType "updating"}}
-                                  <option value="pending">Pending</option>
-                                {{else if eq $cache.CacheType "pending"}}
-                                  <option value="updating">Updating</option>
-                                {{end}}
-                                <option value="answered" style="display:none"></option>
-                              </select>
+                              <div class="input-group">
+                                <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Answered" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'answered', {{$reply.UpdateTime}});">
+                                <select class="form-control-sm new_state_menu dropdown" name="{{$cache.CacheType}}_{{$question.Question_id}}" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
+                                  <option value="no_change"></option>
+                                  {{if eq $cache.CacheType "updating"}}
+                                    <option value="pending">Pending</option>
+                                  {{else if eq $cache.CacheType "pending"}}
+                                    <option value="updating">Updating</option>
+                                  {{end}}
+                                  <option value="answered" style="display:none"></option>
+                                </select>
+                              </div><!-- /.input-group -->
                             </td>
                           {{end}}
                         </tr>
                       {{end}}
                     </tbody>
                   </table>
-                </div> <!-- END TABLE CONTAINER -->
-              </div> <!-- END PANEL -->
-              {{end}}
-            </form>
-          </div><!--END TAB-PANELS-->
-        </div> <!--END CONTENT-->
-        <div class="stickyFooter">
-          <div class="footerContents">
-            <div id="submitContainer">
-              <input type="button" name="clear" id="clearButton" value="Clear">
-              <input type="button" name="btnSubmit" id="submitButton" value="Submit" onclick="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
-            </div> <!-- END SUBMIT CONTAINER -->
-          </div><!--END FOOTER CONTENTS-->
-        </div><!-- END FOOTER -->
-      </div> <!-- END INNER WRAPPER -->
-    </div> <!-- END WRAPPER -->
+                </div><!-- /.questions -->
+              </div>
+            {{end}}
+            </div><!-- /.tab-content -->
+          </form>
+        </div><!-- /.tabs-panels -->
+      </div><!-- /.container-fluid.content -->
+    </div> <!-- END CONTAINER -->
+
+    <!-- JAVASCRIPT, BOOTSTRAP, JQUERY -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript" src="javascripts/tabs.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
   </body>
-  <script type="text/javascript" src="/javascripts/tabs.js"></script>
+
   <script>
     function checkUser(username) {
     console.log('checking');
