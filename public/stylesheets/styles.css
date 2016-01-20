@@ -88,8 +88,7 @@ table {
 
 /* --- QUERY FRAGMENTS --- */
 .query-fragment {
-	padding-left:5px;
-	padding-right:5px;
+	padding:5px;
 	display:inline-block;
 	box-sizing:border-box;
 	background-color:#e6e6e6;
@@ -97,8 +96,11 @@ table {
 }
 
 .query-fragment p {
-	margin-bottom:5px;
-	margin-right:10px;
+	margin-bottom:0px;
+}
+
+.queryTerm {
+	display:inline-block;
 }
 
 #close {
