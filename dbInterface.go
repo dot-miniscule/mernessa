@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"appengine"
-
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
@@ -267,8 +265,8 @@ func addUserToDB(newUser stackongo.User) {
 }
 
 // updating the caches based on input from the appi
-func updatingCache_User(r *http.Request, c appengine.Context, user stackongo.User) error {
-	c.Infof("updating cache")
+func updatingCache_User(r *http.Request, user stackongo.User) error {
+	log.Printf("updating cache")
 
 	mostRecentUpdate = time.Now().Unix()
 

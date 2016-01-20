@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"dataCollect"
 	"database/sql"
 	"html"
 	"log"
@@ -89,6 +90,71 @@ func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
 			}
 		}
 	}
+	return nil
+}
+
+func RemoveDeletedQuestions(db *sql.DB) error {
+	defer UpdateTableTimes(db, "questions")
+	ids := []int{}
+	rows, err := db.Query("SELECT question_id FROM questions")
+	if err != nil {
+		return err
+	}
+	var id int
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			return err
+		}
+		ids = append(ids, id)
+	}
+
+	// Get the questions from StackExchange
+	params := make(stackongo.Params)
+	params.Pagesize(100)
+	params.Sort("creation")
+	params.AddVectorized("tagged", tags)
+
+	questions, err := dataCollect.GetQuestionsByIDs(session, ids, appInfo, params)
+	if err != nil {
+		return err
+	}
+
+	if len(questions.Items) == len(ids) {
+		return nil
+	}
+
+	deletedQns := make([]int, 0, len(ids)-len(questions.Items))
+	for _, id := range ids {
+		deleted := true
+		for _, question := range questions.Items {
+			if question.Question_id == id {
+				deleted = false
+				break
+			}
+		}
+		if deleted {
+			deletedQns = append(deletedQns, id)
+		}
+	}
+
+	query := "DELETE FROM questions WHERE "
+	for i, id := range deletedQns {
+		query += "question_id=" + strconv.Itoa(id)
+		if i < len(deletedQns)-1 {
+			query += " OR "
+		}
+	}
+	_, err = db.Exec(query)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("DELETE FROM question_tag WHERE question_id NOT IN (SELECT questions.question_id FROM questions)")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

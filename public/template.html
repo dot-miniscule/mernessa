@@ -119,7 +119,11 @@
                           <td class="question">
                             <a href={{$question.Link}} target="_blank" class="question_title"><h4>{{$question.Title}}</h4></a>
                             <br>
-                            <div class="bodySnippet" id="{{$question.Question_id}}_body">{{$question.Body}}...<br></div><!--END OF BODY SNIPPET-->
+                            <div class="bodySnippet" id="{{$question.Question_id}}_body">
+                              <script>
+                                $('#{{$question.Question_id}}_body').text({{$question.Body}}.substring(0, 255));
+                              </script>...<br>
+                            </div><!--END OF BODY SNIPPET-->
                             <div class="tagContainer">
                               <ul class="tags">
                               {{range $tag := $question.Tags}}  
@@ -127,6 +131,7 @@
                               {{end}}
                               </ul>
                             </div>
+                            <p class="questionOwner">asked on {{$reply.Timestamp $question.Creation_date}}</p>
                             {{if ne $cache.CacheType "unanswered"}}
                               {{$owner := index $reply.Qns $question.Question_id}}
                               <p class="questionOwner">Question marked as {{$cache.CacheType}} by <a href="/user?id={{$owner.User_id}}">{{$owner.Display_name}}</a>
