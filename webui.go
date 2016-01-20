@@ -274,26 +274,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//Handler for keywords, tags, users in the search box
-/*
-	SQL Fields: Title, Body, Link, Tags, Users.
-*/
-func searchHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
-	//Collect query
-	search := r.FormValue("search")
-	//Convert to string to check ID against questions
-	i, err := strconv.Atoi(search)
-	searchType := ""
-	if err != nil {
-		i = 0
-		searchType = "URL"
-	} else {
-		searchType = "ID"
-	}
-	tempData := newWebData()
 
+// Handler for keywords, tags, users in the search box
+// Checks input against fields in the question/user caches and returns any matches
+func searchHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
+
+	search := r.FormValue("search")
+	i, _ := strconv.Atoi(search)
+	tempData := newWebData()
 	data.CacheLock.Lock()
-	//Range through questions, checking URL and question ID against search term
+
 	for cacheType, cache := range data.Caches {
 		for _, question := range cache {
 
@@ -306,13 +296,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) 
 
 	tempData.Qns = data.Qns
 	data.CacheLock.Unlock()
-
 	page := template.Must(template.ParseFiles("public/template.html"))
 
 	var pageQuery = []string{
-		searchType,
+		"search",
 		search,
 	}
+
 	if err := page.Execute(w, writeResponse(user, tempData, pageQuery)); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
