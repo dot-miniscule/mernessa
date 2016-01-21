@@ -155,6 +155,10 @@ $(document).ready(function() {
       subpage.indexOf('viewUsers') == -1) {
     var addedPath = subpage + addQuery('tab', '#unanswered', window.location.search);
     window.history.pushState('', document.title, addedPath);
+  } else if (window.location.search.indexOf('page') == -1 && (subpage.indexOf('viewTags') != -1 ||
+             subpage.indexOf('viewUsers') != -1)) {
+    var addedPath = subpage + addQuery('page', '1', window.location.search);
+    window.history.pushState('', document.title, addedPath);
   }
   setActiveTab(window.location.href);
 });

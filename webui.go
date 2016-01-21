@@ -7,6 +7,7 @@ package webui
 import (
 	"backend"
 	"database/sql"
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
@@ -16,7 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"encoding/json"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
@@ -47,6 +47,7 @@ type genReply struct {
 
 type queryReply struct {
 	User stackongo.User
+	Page int
 	Data interface{}
 }
 
@@ -120,6 +121,9 @@ func (r genReply) CacheUpdated() bool {
 }
 func (r genReply) Timestamp(timeUnix int64) string {
 	return time.Unix(timeUnix, 0).Format("Jan 2 at 2:15")
+}
+func (r queryReply) PagePlus(num int) int {
+	return r.Page + num
 }
 
 //The app engine will run its own main function and imports this code as a package
@@ -222,7 +226,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 // Parses the returned data into a new page, which can be inserted into the template.
 func newQnHandler(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(r.FormValue("id"))
-	intArray := []int {id}
+	intArray := []int{id}
 	questions, err := backend.GetQuestions(intArray)
 	if err != nil {
 		log.Println(err)
@@ -247,6 +251,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// get the current user
 	user := getUser(w, r)
 
+	//Collect page number
+	pageNum, _ := strconv.Atoi(r.FormValue("page"))
+	if pageNum == 0 {
+		pageNum = 1
+	}
+
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
@@ -258,51 +268,52 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send to tag subpage
-	if r.URL.Path == "/tag" && r.FormValue("tagSearch") != "" {
-		tagHandler(w, r, user)
-	} else if r.URL.Path == "/user" {
-		userHandler(w, r, user)
-	} else if r.URL.Path == "/viewTags" {
-		viewTagsHandler(w, r, user)
-	} else if r.URL.Path == "/viewUsers" {
-		viewUsersHandler(w, r, user)
-	} else if r.URL.Path == "/userPage" {
-		userPageHandler(w, r, user)
-	} else if r.URL.Path == "/search" {
-		searchHandler(w, r, user)
-	} 
+	if strings.HasPrefix(r.URL.Path, "/tag") && r.FormValue("tagSearch") != "" {
+		tagHandler(w, r, pageNum, user)
+	} else if strings.HasPrefix(r.URL.Path, "/user") {
+		userHandler(w, r, pageNum, user)
+	} else if strings.HasPrefix(r.URL.Path, "/viewTags") {
+		viewTagsHandler(w, r, pageNum, user)
+	} else if strings.HasPrefix(r.URL.Path, "/viewUsers") {
+		viewUsersHandler(w, r, pageNum, user)
+	} else if strings.HasPrefix(r.URL.Path, "/userPage") {
+		userPageHandler(w, r, pageNum, user)
+	} else if strings.HasPrefix(r.URL.Path, "/search") {
+		searchHandler(w, r, pageNum, user)
+	} else if strings.HasPrefix(r.URL.Path, "/addQuestion") {
+		addQuestionHandler(w, r, pageNum, user)
+	} else {
 
-	if r.URL.Path == "/addQuestion" {
-		addQuestionHandler(w, r, user)
-		return
-	}
+		page := template.Must(template.ParseFiles("public/template.html"))
+		pageQuery := []string{
+			"",
+			"",
+		}
 
-	page := template.Must(template.ParseFiles("public/template.html"))
-	pageQuery := []string{
-		"",
-		"",
-	}
-	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, data, pageQuery)); err != nil {
-		log.Fatalf("%v", err.Error())
+		// WriteResponse creates a new response with the various caches
+		if err := page.Execute(w, writeResponse(user, data, pageNum, pageQuery)); err != nil {
+			log.Fatalf("%v", err.Error())
+		}
 	}
 }
 
 // Handler for keywords, tags, users in the search box
 // Checks input against fields in the question/user caches and returns any matches
-func searchHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
+func searchHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 
 	search := r.FormValue("search")
-	i, _ := strconv.Atoi(search)
+	id, _ := strconv.Atoi(search)
 	tempData := newWebData()
 	data.CacheLock.Lock()
 
 	for cacheType, cache := range data.Caches {
 		for _, question := range cache {
-
-			if question.Question_id == i || question.Link == search || contains(question.Tags, search) ||
+			if question.Question_id == id || question.Link == search || contains(question.Tags, search) ||
 				strings.Contains(question.Body, search) || strings.Contains(question.Title, search) {
 				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
+			}
+			if len(tempData.Caches[cacheType]) >= 25 {
+				break
 			}
 		}
 	}
@@ -316,14 +327,14 @@ func searchHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) 
 		search,
 	}
 
-	if err := page.Execute(w, writeResponse(user, tempData, pageQuery)); err != nil {
+	if err := page.Execute(w, writeResponse(user, tempData, pageNum, pageQuery)); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 
 }
 
 // Handler to find all questions with specific tags
-func tagHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
+func tagHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	// Collect query
 	tag := r.FormValue("tagSearch")
 	// Create and fill in a new webData struct
@@ -346,13 +357,13 @@ func tagHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
 		"tag",
 		tag,
 	}
-	if err := page.Execute(w, writeResponse(user, tempData, tagQuery)); err != nil {
+	if err := page.Execute(w, writeResponse(user, tempData, pageNum, tagQuery)); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }
 
 // Handler to find all questions answered/being answered by the user in URL
-func userHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
+func userHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	userID, _ := strconv.Atoi(r.FormValue("id"))
 	query := userData{}
 
@@ -378,16 +389,16 @@ func userHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
 		"user",
 		query.User_info.Display_name,
 	}
-	if err := page.Execute(w, writeResponse(user, tempData, userQuery)); err != nil {
+	if err := page.Execute(w, writeResponse(user, tempData, pageNum, userQuery)); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }
 
-// Display a list of tags that are logged in the database
-// User can either click on a tag to view any questions containing that tag
-// Format array of tags into another array, to be easier formatted on the page into a table in the template
-// An array of tagData arrays of size 4
-func viewTagsHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
+//Display a list of tags that are logged in the database
+//User can either click on a tag to view any questions containing that tag
+//Format array of tags into another array, to be easier formatted on the page into a table in the template
+//An array of tagData arrays of size 4
+func viewTagsHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	query := readTagsFromDb()
 	var tagArray [][]tagData
 	var tempTagArray []tagData
@@ -404,7 +415,12 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, user stackongo.User
 	}
 	tagArray = append(tagArray, tempTagArray)
 	page := template.Must(template.ParseFiles("public/viewTags.html"))
-	if err := page.Execute(w, queryReply{user, tagArray}); err != nil {
+	first := (pageNum - 1) * 5
+	last := pageNum * 5
+	if last > len(tagArray) {
+		last = len(tagArray)
+	}
+	if err := page.Execute(w, queryReply{user, pageNum, tagArray[first:last]}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 
@@ -414,7 +430,7 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, user stackongo.User
 // Formats the response into an array of userData maps, for easier formatting onto the page.
 // User data is stored as a map, which gives no guarantee as to the order of iteration
 // It is first read into an array, and that array sorted lexicographically by the users Display name.
-func viewUsersHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
+func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	query := data.Users
 	var querySorted []userData
 	for _, i := range query {
@@ -437,13 +453,12 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, user stackongo.Use
 	log.Println("printing user")
 	log.Println(user)
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	if err := page.Execute(w, queryReply{user, queryArray}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, queryArray}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }
 
-
-func userPageHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
+func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/userPage.html"))
 	usr, _ := strconv.Atoi(r.FormValue("userId"))
 	currentUser := data.Users[usr]
@@ -465,7 +480,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, user stackongo.User
 	if n > 0 {
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
-	if err := page.Execute(w, queryReply{user, query}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, query}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }
@@ -473,9 +488,9 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, user stackongo.User
 // Handler for when the user needs to find a question that hasn't been pulled from Stack Exchange
 // Allows them to input a URL or question ID, and manually add it to the database.
 
-func addQuestionHandler(w http.ResponseWriter, r *http.Request, user stackongo.User) {
+func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
-	if err := page.Execute(w, queryReply{user, data}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, data}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }
@@ -519,7 +534,7 @@ func getUser(w http.ResponseWriter, r *http.Request) stackongo.User {
 
 // Write a genReply struct with the inputted Question slices
 // This can call readFromDb() now as a method, most of this is redundant.
-func writeResponse(user stackongo.User, writeData webData, query []string) genReply {
+func writeResponse(user stackongo.User, writeData webData, pageNum int, query []string) genReply {
 	return genReply{
 		Wrapper: writeData.Wrapper, // The global wrapper
 		Caches: []cacheInfo{ // Slices caches and their relevant info
