@@ -7,6 +7,7 @@ package webui
 import (
 	"backend"
 	"database/sql"
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
@@ -136,7 +137,7 @@ func init() {
 	backend.NewSession()
 
 	log.Println("Initial cache download")
-	initCacheDownload()
+	//initCacheDownload()
 
 	http.HandleFunc("/_ah/warmup", warmup)
 	http.HandleFunc("/login", authHandler)
@@ -148,6 +149,8 @@ func init() {
 	http.HandleFunc("/userPage", handler)
 	http.HandleFunc("/dbUpdated", updateHandler)
 	http.HandleFunc("/search", handler)
+	http.HandleFunc("/addQuestion", handler)
+	http.HandleFunc("/pullNewQn", newQnHandler)
 }
 
 func warmup(w http.ResponseWriter, r *http.Request) {
@@ -183,16 +186,16 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 	}(db)
 
 	// goroutine to update local cache if there has been any change to database
-	count := 1
-	go func(count int) {
-		for {
-			if checkDBUpdateTime("questions", mostRecentUpdate) {
-				log.Printf("Refreshing cache %v", count)
-				refreshLocalCache()
-				count++
-			}
-		}
-	}(count)
+	// count := 1
+	// go func(count int) {
+	// 	for {
+	// 		if checkDBUpdateTime("questions", mostRecentUpdate) {
+	// 			log.Printf("Refreshing cache %v", count)
+	// 			refreshLocalCache()
+	// 			count++
+	// 		}
+	// 	}
+	// }(count)
 }
 
 // Handler for authorizing user
@@ -215,6 +218,31 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	if err := page.Execute(w, genReply{UpdateTime: time}); err != nil {
 		log.Printf("%v", err.Error())
 	}
+}
+
+// Handler for pulling questions from Stack Overflow manually, based on a given ID
+// Request is parsed to find the supplied ID
+// Makes a new backend request to retrieve new questions
+// Parses the returned data into a new page, which can be inserted into the template.
+func newQnHandler(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.FormValue("id"))
+	intArray := []int{id}
+	questions, err := backend.GetQuestions(intArray)
+	if err != nil {
+		log.Println(err)
+	}
+	pageText := " \"Title\" : \"{{.Title}}\""
+	log.Println(pageText)
+	for _, question := range recentChangedQns {
+		pageText += question + "\n"
+	}
+
+	qnJson, err := json.Marshal(questions.Items[0])
+	if err != nil {
+		log.Println(err)
+	}
+
+	w.Write(qnJson)
 }
 
 // Handler for main information to be read and written from
@@ -252,6 +280,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		userPageHandler(w, r, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/search") {
 		searchHandler(w, r, pageNum, user)
+	} else if strings.HasPrefix(r.URL.Path, "/addQuestion") {
+		addQuestionHandler(w, r, pageNum, user)
 	} else {
 
 		page := template.Must(template.ParseFiles("public/template.html"))
@@ -419,6 +449,9 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 			tempQueryArray = nil
 		}
 	}
+
+	log.Println("printing user")
+	log.Println(user)
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, queryArray}); err != nil {
 		log.Fatalf("%v", err.Error())
@@ -448,6 +481,16 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
 	if err := page.Execute(w, queryReply{user, pageNum, query}); err != nil {
+		log.Fatalf("%v", err.Error())
+	}
+}
+
+// Handler for when the user needs to find a question that hasn't been pulled from Stack Exchange
+// Allows them to input a URL or question ID, and manually add it to the database.
+
+func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
+	page := template.Must(template.ParseFiles("public/addQuestion.html"))
+	if err := page.Execute(w, queryReply{user, pageNum, data}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }

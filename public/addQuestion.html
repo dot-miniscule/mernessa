@@ -21,6 +21,7 @@
     <!-- Optional theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     
     <link rel="stylesheet" type="text/css" href="stylesheets/styles.css">
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
@@ -61,71 +62,32 @@
             <!-- Collect the nav links, forms, and other content for toggling -->
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
               <ul class="nav navbar-nav">
-                <li><a href="/">Home<span class="sr-only">(current)</span></a></li>
+                <li class="active"><a href="/">Home<span class="sr-only">(current)</span></a></li>
                 <li><a href="/viewTags">Tags</a></li>
-                <li class="active"><a href="/viewUsers">Users</a></li>
-                
+                <li><a href="/viewUsers">Users</a></li>
+                <li><a href="/addQuestion">Add a question</a></li>
               </ul>
 
-              <form class="navbar-form navbar-right search-form" role="search">
+              <form class="navbar-form navbar-right search-form" action="/search" method="get" role="search">
                 <div class="form-group">
-                  <input type="text" class="form-control" placeholder="Search StackTracker...">
+                  <input type="text" class="form-control sb" name="search" placeholder="Search StackTracker..." required>
                 </div><!-- ./form-group -->
                 <button type="submit" class="btn btn-default">Submit</button>
               </form>
             </div><!-- /.navbar-collapse -->
           </div><!-- /.container -->
         </nav><!-- END NAVBAR -->
-    	</div>
-    	<div class="container-fluid">
-	      	<div class="row">
-			    <p>Browse users...</p>
-			</div><!--/.row-->
-			<!-- Find the current user, who is logged in. Display their information at the top of the page -->
-			<div class="row user-row">
-				<div class="col-xs-12">
-					{{if ne $reply.User.Display_name "Guest"}}
-						<div class="content">
-							<a href="/userPage?userId={{$reply.User.User_id}}"><img class="card-img-left" src="{{$reply.User.Profile_image}}" alt="profile picture missing"></a>
-							<div class="card-block">
-								<h4 class="card-title"><a href="/userPage?userId={{$reply.User.User_id}}">{{$reply.User.Display_name}}</a></h4>
-							</div>
-							<small class="text-muted"> caches here
-							</small>
-						</div>
-					{{end}}
-				</div><!--/.col -->
-			</div><!--/.user-row-->
-			<div class="row">
-				{{range $userArray := $reply.Data}}
-				<div class="row-fluid row-centered">
-					{{range $user := $userArray}}
-						{{if ne $user.User_info.User_id $reply.User.User_id}}
-							<div class="card col-lg-3 col-md-4 col-sm-6 col-xs-12 col-centered">
-								<div class="content">
-									<a href="/userPage?userId={{$user.User_info.User_id}}"><img class="card-img-left" src="{{$user.User_info.Profile_image}}" alt="profile picture missing"></a>
-									<div class="card-block">
-										<h4 class="card-title"><a href="/userPage?userId={{$user.User_info.User_id}}">{{$user.User_info.Display_name}}</a></h4>
-									</div>
-									<small class="text-muted">
-										<p class="card-text">{{len (index $user.Caches.answered)}} answered questions</p>
-										<p class="card-text">{{len (index $user.Caches.pending)}} questions marked as pending.</p>
-										<p class="card-text">{{len (index $user.Caches.answered)}} waiting for update.</p>
-									</small>
-								</div>
-							</div>
-						{{end}}
-					{{end}}
-				</div>
-				{{end}}
-			</div>
-		</div><!--/.container-fluid-->
-	</div><!--/.container-->
-	</body>
-	<!-- JAVASCRIPT, BOOTSTRAP, JQUERY -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-    <script type="text/javascript" src="javascripts/tabs.js"></script>
+      </div><!-- END HEADER -->
 
-    <!-- Latest compiled and minified JavaScript -->
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+		<div class="container-fluid wrap">
+		        <div class="row content">
+		        	<h4>Search for a question on StackOverflow by id or question URL</h4>
+		        	<input type="text" id="searchTerm">
+		        	<button id="search-for-question" onclick="pullQuestionFromStackOverflow()">Search</button>
+		        	<div class="newQuestion"></div>
+		        </div><!-- END CONTENT -->
+			</div><!-- END INNER WRAP -->
+		</div><!--END WRAP-->
+	<script type="text/javascript" src="/javascripts/tabs.js"></script>
+	</body>
 </html>
