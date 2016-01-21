@@ -242,19 +242,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		userPageHandler(w, r, user)
 	} else if r.URL.Path == "/search" {
 		searchHandler(w, r, user)
-	}
+	} else {
 
-	page := template.Must(template.ParseFiles("public/template.html"))
-	pageQuery := []string{
-		"",
-		"",
-	}
-	// WriteResponse creates a new response with the various caches
-	if err := page.Execute(w, writeResponse(user, data, pageQuery)); err != nil {
-		log.Fatalf("%v", err.Error())
+		page := template.Must(template.ParseFiles("public/template.html"))
+		pageQuery := []string{
+			"",
+			"",
+		}
+		// WriteResponse creates a new response with the various caches
+		if err := page.Execute(w, writeResponse(user, data, pageQuery)); err != nil {
+			log.Fatalf("%v", err.Error())
+		}
 	}
 }
-
 
 // Handler for keywords, tags, users in the search box
 // Checks input against fields in the question/user caches and returns any matches
