@@ -113,6 +113,23 @@ function checkDB(buttonPressed, updateTime) {
   });
 }
 
+// Function to manually pull a question from StackOverflow using it's ID or URL
+// Parses the incoming string to isolate the question ID from the URL
+// Uses the result as a parameter in a call to Stack Exchange API
+// Displays the response on the page, and asks the user to submit it to the database or cancel
+
+function pullQuestionFromStackOverflow() {
+  var query = $('input#searchTerm').val();
+  if(!$.isNumeric(query)) {
+    query = query.split("http://stackoverflow.com/questions/")[1].split("/")[0];
+  }
+  $.post('/pullNewQn?id='+query, function( data ) {
+    var question = JSON.parse(data)
+    console.log(question.Question_id);
+  });
+  
+}
+
 $(function() {
   $('#stateForm').submit(function() {
     $('#submitButton').prop('value', 'Submitting');
@@ -209,4 +226,3 @@ function removeQuery(key, sourceURL) {
   }
   return newURL;
 }
-
