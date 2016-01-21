@@ -65,7 +65,7 @@
                 <li class="active"><a href="/">Home<span class="sr-only">(current)</span></a></li>
                 <li><a href="/viewTags">Tags</a></li>
                 <li><a href="/viewUsers">Users</a></li>
-                <li><a href="/addQuestion">Add a question</a></li>
+                <!--<li><a href="/addQuestion">Add a question</a></li>-->
               </ul>
 
               <form class="navbar-form navbar-right search-form" action="/search" method="get" role="search">
@@ -86,6 +86,28 @@
 		        	<button id="search-for-question" onclick="pullQuestionFromStackOverflow()">Search</button>
 		        	<div class="newQuestion"></div>
 		        </div><!-- END CONTENT -->
+		        <div class="row">
+		        	<table class="table table-striped">
+                    	<thead>
+                      	<tr>
+                        	<th class="col-xs-9 qHead">Question</th>
+                          	<th class="col-xs-3">Action</th>
+                      	</tr>
+                    	</thead>
+                    	<tbody>
+                    		<tr>
+                    			<td class="question">
+                    			</td>
+                    			<td>
+                    				<div class="btn-group" role="group">
+                    					<input type="button" class="btn btn-small" value="Add to StackTracker">
+                    					<input type="button" class="btn btn-small" value="Cancel">
+                    				</div>
+                    			</td>
+                    		</tr>
+                    	</tbody>
+		        	</table>
+		        </div><!--/.row -->
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
 	<script type="text/javascript" src="/javascripts/tabs.js"></script>

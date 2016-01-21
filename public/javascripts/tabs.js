@@ -125,7 +125,7 @@ function pullQuestionFromStackOverflow() {
   }
   $.post('/pullNewQn?id='+query, function( data ) {
     var question = JSON.parse(data)
-    console.log(question.Question_id);
+    $('.questionTitle').text(question.Title);
   });
   
 }

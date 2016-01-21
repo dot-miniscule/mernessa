@@ -133,7 +133,7 @@ func init() {
 	backend.NewSession()
 
 	log.Println("Initial cache download")
-	//initCacheDownload()
+	initCacheDownload()
 
 	http.HandleFunc("/_ah/warmup", warmup)
 	http.HandleFunc("/login", authHandler)
@@ -181,17 +181,17 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 		}
 	}(db)
 
-	// goroutine to update local cache if there has been any change to database
-	// count := 1
-	// go func(count int) {
-	// 	for {
-	// 		if checkDBUpdateTime("questions", mostRecentUpdate) {
-	// 			log.Printf("Refreshing cache %v", count)
-	// 			refreshLocalCache()
-	// 			count++
-	// 		}
-	// 	}
-	// }(count)
+	//goroutine to update local cache if there has been any change to database
+	count := 1
+	go func(count int) {
+		for {
+			if checkDBUpdateTime("questions", mostRecentUpdate) {
+				log.Printf("Refreshing cache %v", count)
+				refreshLocalCache()
+				count++
+			}
+		}
+	}(count)
 }
 
 // Handler for authorizing user
@@ -270,7 +270,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		userPageHandler(w, r, user)
 	} else if r.URL.Path == "/search" {
 		searchHandler(w, r, user)
-	} else {
+	} 
 
 	if r.URL.Path == "/addQuestion" {
 		addQuestionHandler(w, r, user)
