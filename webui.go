@@ -134,7 +134,7 @@ func init() {
 	log.Println("Initial cache download")
 	initCacheDownload()
 
-	http.HandleFunc("/_ah/warmup", warmupHandler)
+	http.HandleFunc("/_ah/warmup", warmup)
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
@@ -146,7 +146,7 @@ func init() {
 	http.HandleFunc("/search", handler)
 }
 
-func warmupHandler(w http.ResponseWriter, r *http.Request) {
+func warmup(w http.ResponseWriter, r *http.Request) {
 	backend.SetTransport(r)
 
 	// goroutine to collect the questions from SO and add them to the database
@@ -232,35 +232,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Send to tag subpage
 	if r.URL.Path == "/tag" && r.FormValue("tagSearch") != "" {
 		tagHandler(w, r, user)
-		return
-	}
-
-	// Send to user subpage
-	if r.URL.Path == "/user" {
+	} else if r.URL.Path == "/user" {
 		userHandler(w, r, user)
-		return
-	}
-
-	//Send to viewTags page
-	if r.URL.Path == "/viewTags" {
+	} else if r.URL.Path == "/viewTags" {
 		viewTagsHandler(w, r, user)
-		return
-	}
-
-	//Send to viewUsers page
-	if r.URL.Path == "/viewUsers" {
+	} else if r.URL.Path == "/viewUsers" {
 		viewUsersHandler(w, r, user)
-		return
-	}
-
-	if r.URL.Path == "/userPage" {
+	} else if r.URL.Path == "/userPage" {
 		userPageHandler(w, r, user)
-		return
-	}
-
-	if r.URL.Path == "/search" {
+	} else if r.URL.Path == "/search" {
 		searchHandler(w, r, user)
-		return
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
@@ -473,12 +454,12 @@ func getUser(w http.ResponseWriter, r *http.Request) stackongo.User {
 	cookie, err := r.Cookie("access_token")
 	var token string
 	if err != nil {
-		code := r.URL.Query().Get("code")
-		if code == "" {
+		code, err := r.Cookie("code")
+		if err != nil {
 			log.Printf("Returning Guest user")
 			return guest
 		}
-		access_tokens, err := backend.ObtainAccessToken(code)
+		access_tokens, err := backend.ObtainAccessToken(code.Value)
 		if err != nil {
 			log.Printf(err.Error())
 			return guest
