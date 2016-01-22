@@ -116,7 +116,9 @@ function checkDB(buttonPressed, updateTime) {
 // Function to manually pull a question from StackOverflow using it's ID or URL
 // Parses the incoming string to isolate the question ID from the URL
 // Uses the result as a parameter in a call to Stack Exchange API
-// Displays the response on the page, and asks the user to submit it to the database or cancel
+// The response is returned as a JSON object, which is then inserted into the page
+// The JSON is saved in local storage, so that if that question is submitted into the database
+// the question information is still available
 
 function pullQuestionFromStackOverflow() {
   var query = $('input#searchTerm').val();
@@ -124,10 +126,30 @@ function pullQuestionFromStackOverflow() {
     query = query.split("http://stackoverflow.com/questions/")[1].split("/")[0];
   }
   $.post('/pullNewQn?id='+query, function( data ) {
-    var question = JSON.parse(data)
-    $('.questionTitle').text(question.Title);
+    var question = JSON.parse(data);
+    localStorage["newQuestion"] = JSON.stringify(question);
+    $('table').removeClass('hidden');
+    $('a.question_title').attr("href", question.Link).children('h4').html(((question.Title)));
+    $('table td.question .bodySnippet').html(question.Body);
+    $.each(question.Tags, function(i, item) {
+      $('.tagContainer ul.tags').append('<a href="#"><li class="tag">'+item+'</li></a>');
+    });
   });
-  
+ }
+
+// Function to post to server to add the new question to StackTrackers database
+// newQuestion is the stringified JSON data that is cached in localStorage
+function addQuestionToStackTracker(newQuestion) {
+  $.ajax({
+    type: "POST",
+    url: "/addNewQuestion",
+    processData: false,
+    contentType: 'application/json',
+    data: newQuestion,
+    success: function( data ) {
+      alert('success!');
+    }
+  });
 }
 
 $(function() {
@@ -153,7 +175,7 @@ $(document).ready(function() {
   if (window.location.search.indexOf('tab') == -1 &&
       subpage.indexOf('userPage') == -1 && subpage.indexOf('viewTags') == -1 &&
       subpage.indexOf('viewUsers') == -1) {
-    var addedPath = subpage + addQuery('tab', '#unanswered', window.location.search);
+      var addedPath = subpage + addQuery('tab', '#unanswered', window.location.search);
     window.history.pushState('', document.title, addedPath);
   } else if (window.location.search.indexOf('page') == -1 && (subpage.indexOf('viewTags') != -1 ||
              subpage.indexOf('viewUsers') != -1)) {
