@@ -75,29 +75,24 @@ $(function() {
 
 //---------- SUBMIT BUTTON RELOAD PAGE ----------- //
 function checkDB(buttonPressed, updateTime) {
-  $.post('/dbUpdated?time='+updateTime, function( data ) {
-    var titles_selector;
+  $.post('/dbUpdated?time='+updateTime, function( dataJSON ) {
+    var title;
     if (buttonPressed == 'submit') {
-      titles_selector = $('.new_state_menu option[value!="no_change"]:selected').parent().parent().parent().siblings('.question').children('.question_title');
+      title = $('.new_state_menu option[value!="no_change"]:selected').parent().parent().parent().siblings('.question').children('.question_title').text();
     } else if (buttonPressed != '') {
-      titles_selector = $('.one-click.clicked').parent().siblings('.question').children('.question_title');
+      title = $('.one-click.clicked').parent().siblings('.question').children('.question_title').text();
       $('.new_state_menu').val('no_change');
       $('.one-click.clicked').siblings('.new_state_menu').val(buttonPressed);
     }
 
-    dbChanged = data.indexOf('Updated: true') > -1;
-    if (dbChanged) {
-      // Getting the values of the checked radios and saving them as an array
-      titles = titles_selector.map(function() {
-        console.log($(this).text())
-        return $(this).text();
-      });
-
+    var data = JSON.parse(dataJSON);
+    if (data.Updated) {
       // Writing the text to display in the confirm dialog box
       confirm_text = 'Database has been updated\nChanges:\n';
-      for (i = 0; i < titles.length; i++) {
-        if (data.indexOf(titles[i]) > -1) {
-          confirm_text += '\t* ' + titles[i] + '\n';
+      for (i = 0; i < data.Questions.length; i++) {
+        if (data.Questions[i] === title) {
+          confirm_text += '\t* ' + title + '\n';
+          break;
         }
       }
 

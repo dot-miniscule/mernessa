@@ -137,7 +137,7 @@ func init() {
 	backend.NewSession()
 
 	log.Println("Initial cache download")
-	//initCacheDownload()
+	initCacheDownload()
 
 	http.HandleFunc("/_ah/warmup", warmup)
 	http.HandleFunc("/login", authHandler)
@@ -186,16 +186,16 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 	}(db)
 
 	// goroutine to update local cache if there has been any change to database
-	// count := 1
-	// go func(count int) {
-	// 	for {
-	// 		if checkDBUpdateTime("questions", mostRecentUpdate) {
-	// 			log.Printf("Refreshing cache %v", count)
-	// 			refreshLocalCache()
-	// 			count++
-	// 		}
-	// 	}
-	// }(count)
+	count := 1
+	go func(count int) {
+		for {
+			if checkDBUpdateTime("questions", mostRecentUpdate) {
+				log.Printf("Refreshing cache %v", count)
+				refreshLocalCache()
+				count++
+			}
+		}
+	}(count)
 }
 
 // Handler for authorizing user
@@ -210,14 +210,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 // Handler for checking if the database has been updated
 func updateHandler(w http.ResponseWriter, r *http.Request) {
 	time, _ := strconv.ParseInt(r.FormValue("time"), 10, 64)
-	pageText := "Updated: {{$.CacheUpdated}}\n"
+	pageText := "{\"Updated\": " + strconv.FormatBool(mostRecentUpdate > time) + ","
+	pageText += "\"Questions\": ["
 	for _, question := range recentChangedQns {
-		pageText += question + "\n"
+		pageText += "\"" + question + "\","
 	}
-	page, _ := template.New("updatePage").Parse(pageText)
-	if err := page.Execute(w, genReply{UpdateTime: time}); err != nil {
-		log.Printf("%v", err.Error())
-	}
+	pageText = strings.TrimSuffix(pageText, ",")
+	pageText += "]}"
+	w.Write([]byte(pageText))
 }
 
 // Handler for pulling questions from Stack Overflow manually, based on a given ID
@@ -450,8 +450,6 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 		}
 	}
 
-	log.Println("printing user")
-	log.Println(user)
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, queryArray}); err != nil {
 		log.Fatalf("%v", err.Error())
