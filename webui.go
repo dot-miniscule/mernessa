@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"reflect"
@@ -17,6 +18,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/net/context"
+
+	"google.golang.org/appengine"
+	burgers "google.golang.org/appengine/log"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
@@ -220,36 +226,13 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(pageText))
 }
 
-// Handler for pulling questions from Stack Overflow manually, based on a given ID
-// Request is parsed to find the supplied ID
-// Makes a new backend request to retrieve new questions
-// Parses the returned data into a new page, which can be inserted into the template.
-func newQnHandler(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(r.FormValue("id"))
-	intArray := []int{id}
-	questions, err := backend.GetQuestions(intArray)
-	if err != nil {
-		log.Println(err)
-	}
-	pageText := " \"Title\" : \"{{.Title}}\""
-	log.Println(pageText)
-	for _, question := range recentChangedQns {
-		pageText += question + "\n"
-	}
-
-	qnJson, err := json.Marshal(questions.Items[0])
-	if err != nil {
-		log.Println(err)
-	}
-
-	w.Write(qnJson)
-}
-
 // Handler for main information to be read and written from
 func handler(w http.ResponseWriter, r *http.Request) {
 
+	ctx := appengine.NewContext(r)
+	backend.SetTransport(r)
 	// get the current user
-	user := getUser(w, r)
+	user := getUser(w, r, ctx)
 
 	//Collect page number
 	pageNum, _ := strconv.Atoi(r.FormValue("page"))
@@ -282,6 +265,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		searchHandler(w, r, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addQuestion") {
 		addQuestionHandler(w, r, pageNum, user)
+	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
+		addNewQuestionToDatabaseHandler(w, r)
 	} else {
 
 		page := template.Must(template.ParseFiles("public/template.html"))
@@ -295,6 +280,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			log.Fatalf("%v", err.Error())
 		}
 	}
+}
+
+// Handler for adding a new question to the database upon submission
+// It is returned as a stringified JSON object in the request body
+// The string is unmarshalled into a stackongo.Question type, and added to an array
+// to be added into the database using the AddQuestions function in backend/databasing.go
+func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
+	body, _ := ioutil.ReadAll(r.Body)
+	var qn stackongo.Question
+	json.Unmarshal([]byte(body), &qn)
+	var qnArray []stackongo.Question
+	qnArray = append(qnArray, qn)
+	var qns stackongo.Questions
+	qns.Items = qnArray
+	if err := backend.AddQuestions(db, &qns); err != nil {
+		log.Println("Error adding new question to db:\t", err)
+	}
+
 }
 
 // Handler for keywords, tags, users in the search box
@@ -493,7 +496,32 @@ func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, use
 	}
 }
 
-func getUser(w http.ResponseWriter, r *http.Request) stackongo.User {
+// Handler for pulling questions from Stack Overflow manually, based on a given ID
+// Request is parsed to find the supplied ID
+// Makes a new backend request to retrieve new questions
+// Parses the returned data into a new page, which can be inserted into the template.
+func newQnHandler(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.FormValue("id"))
+	intArray := []int{id}
+	questions, err := backend.GetQuestions(intArray)
+	if err != nil {
+		log.Println(err)
+	}
+	pageText := " \"Title\" : \"{{.Title}}\""
+	log.Println(pageText)
+	for _, question := range recentChangedQns {
+		pageText += question + "\n"
+	}
+	questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
+	qnJson, err := json.Marshal(questions.Items[0])
+	if err != nil {
+		log.Println(err)
+	}
+
+	w.Write(qnJson)
+}
+
+func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stackongo.User {
 	// Collect access token from browswer cookie
 	// If cookie does not exist, obtain token using code from URL and set as cookie
 	// If code does not exist, redirect to login page for authorization
@@ -502,20 +530,22 @@ func getUser(w http.ResponseWriter, r *http.Request) stackongo.User {
 	if err != nil {
 		code, err := r.Cookie("code")
 		if err != nil {
-			log.Printf("Returning Guest user")
+			burgers.Errorf(ctx, "Returning Guest user, %v", err.Error())
 			return guest
 		}
 		access_tokens, err := backend.ObtainAccessToken(code.Value)
 		if err != nil {
-			log.Printf(err.Error())
+			burgers.Errorf(ctx, "access token not obtained: %v", err.Error())
 			return guest
 		}
-		log.Printf("Setting cookie: access_token")
+
+		burgers.Infof(ctx, "Setting cookie: access_token")
 		token = access_tokens["access_token"]
 		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: token})
 	} else {
 		token = cookie.Value
 	}
+	burgers.Infof(ctx, "accessToken = %v", token)
 	user, err := backend.AuthenticatedUser(map[string]string{}, token)
 	if err != nil {
 		log.Printf(err.Error())
