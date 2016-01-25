@@ -52,9 +52,10 @@ type genReply struct {
 }
 
 type queryReply struct {
-	User stackongo.User
-	Page int
-	Data interface{}
+	User     stackongo.User
+	Page     int
+	LastPage int
+	Data     interface{}
 }
 
 // Info on the various caches
@@ -420,10 +421,14 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 	page := template.Must(template.ParseFiles("public/viewTags.html"))
 	first := (pageNum - 1) * 5
 	last := pageNum * 5
+	lastPage := len(tagArray) / 5
+	if len(tagArray)%5 != 0 {
+		lastPage++
+	}
 	if last > len(tagArray) {
 		last = len(tagArray)
 	}
-	if err := page.Execute(w, queryReply{user, pageNum, tagArray[first:last]}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, lastPage, tagArray[first:last]}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 
@@ -452,9 +457,8 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 			tempQueryArray = nil
 		}
 	}
-
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, queryArray}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, 0, queryArray}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }
@@ -481,7 +485,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 	if n > 0 {
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
-	if err := page.Execute(w, queryReply{user, pageNum, query}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, 0, query}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }
@@ -491,7 +495,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 
 func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, data}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
 		log.Fatalf("%v", err.Error())
 	}
 }

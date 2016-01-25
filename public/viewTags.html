@@ -80,7 +80,7 @@
 
       <div class="container-fluid">
       	<div class="row">
-      		<p>Select tags to view questions...</p>
+      	    <p>Select tags to view questions...</p>
       	</div><!--/.row -->
 		<div class="row tag-browser">
 		    <div class="table-responsive">
@@ -106,7 +106,11 @@
 				</table><!--END TABLE-->
 			</div><!-- /.table-responsive -->
 		</div>
-        <div><a href="/viewTags?page={{$reply.PagePlus 1}}">Next</a></div>
+        <div>
+          {{if gt ($reply.PagePlus -1) 0}}<a href="/viewTags?page={{$reply.PagePlus -1}}">Prev</a>{{end}}
+          {{if lt $reply.Page $reply.LastPage}}  <a href="/viewTags?page={{$reply.PagePlus 1}}">Next</a>{{end}}
+        </div>
+      </div>
 	</body>
 
 	<!-- JAVASCRIPT, BOOTSTRAP, JQUERY -->
