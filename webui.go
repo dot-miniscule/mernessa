@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"reflect"
 	"sort"
@@ -22,7 +21,7 @@ import (
 	"golang.org/x/net/context"
 
 	"google.golang.org/appengine"
-	burgers "google.golang.org/appengine/log"
+	"google.golang.org/appengine/log"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
@@ -109,6 +108,7 @@ const timeout = 6 * time.Hour
 
 // Global variable with cache info
 var data = newWebData()
+var ctx context.Context
 
 // Standard guest user
 var guest = stackongo.User{
@@ -143,7 +143,6 @@ func init() {
 	// Initialising stackongo session
 	backend.NewSession()
 
-	log.Println("Initial cache download")
 	initCacheDownload()
 
 	http.HandleFunc("/_ah/warmup", warmup)
@@ -161,6 +160,7 @@ func init() {
 }
 
 func warmup(w http.ResponseWriter, r *http.Request) {
+	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
 
 	// goroutine to collect the questions from SO and add them to the database
@@ -170,23 +170,23 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 			toDate := time.Now()
 			fromDate := toDate.Add(-1 * timeout)
 			// Collect new questions from SO
-			log.Println("Getting new questions")
+			log.Infof(ctx, "Getting new questions")
 			questions, err := backend.GetNewQns(fromDate, toDate)
 			if err != nil {
-				log.Printf("Error getting new questions: %v", err.Error())
+				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
 				continue
 			}
 
-			log.Println("Adding new questions to db")
+			log.Infof(ctx, "Adding new questions to db")
 			// Add new questions to database
 			if err = backend.AddQuestions(db, questions); err != nil {
-				log.Printf("Error adding new questions: %v", err.Error())
+				log.Warningf(ctx, "Error adding new questions: %v", err.Error())
 				continue
 			}
 
-			log.Println("Removing deleted questions from db")
+			log.Infof(ctx, "Removing deleted questions from db")
 			if err = backend.RemoveDeletedQuestions(db); err != nil {
-				log.Printf("Error removing deleted questions: %v", err.Error())
+				log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
 				continue
 			}
 		}
@@ -197,7 +197,7 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 	go func(count int) {
 		for {
 			if checkDBUpdateTime("questions", mostRecentUpdate) {
-				log.Printf("Refreshing cache %v", count)
+				log.Infof(ctx, "Refreshing cache %v", count)
 				refreshLocalCache()
 				count++
 			}
@@ -207,7 +207,7 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 
 // Handler for authorizing user
 func authHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Redirecting to SO login")
+	log.Infof(ctx, "Redirecting to SO login")
 	auth_url := backend.AuthURL()
 	header := w.Header()
 	header.Add("Location", auth_url)
@@ -230,7 +230,6 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 // Handler for main information to be read and written from
 func handler(w http.ResponseWriter, r *http.Request) {
 
-	ctx := appengine.NewContext(r)
 	backend.SetTransport(r)
 	// get the current user
 	user := getUser(w, r, ctx)
@@ -246,7 +245,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if cookie != nil && cookie.Value == "true" {
 		err := updatingCache_User(r, user)
 		if err != nil {
-			log.Printf(err.Error())
+			log.Warningf(ctx, err.Error())
 		}
 		http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 	}
@@ -278,7 +277,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		// WriteResponse creates a new response with the various caches
 		if err := page.Execute(w, writeResponse(user, data, pageNum, pageQuery)); err != nil {
-			log.Fatalf("%v", err.Error())
+			log.Errorf(ctx, "%v", err.Error())
 		}
 	}
 }
@@ -296,9 +295,8 @@ func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 	var qns stackongo.Questions
 	qns.Items = qnArray
 	if err := backend.AddQuestions(db, &qns); err != nil {
-		log.Println("Error adding new question to db:\t", err)
+		log.Warningf(ctx, "Error adding new question to db:\t", err)
 	}
-
 }
 
 // Handler for keywords, tags, users in the search box
@@ -332,7 +330,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request, pageNum int, user sta
 	}
 
 	if err := page.Execute(w, writeResponse(user, tempData, pageNum, pageQuery)); err != nil {
-		log.Fatalf("%v", err.Error())
+		log.Errorf(ctx, "%v", err.Error())
 	}
 
 }
@@ -362,7 +360,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stacko
 		tag,
 	}
 	if err := page.Execute(w, writeResponse(user, tempData, pageNum, tagQuery)); err != nil {
-		log.Fatalf("%v", err.Error())
+		log.Warningf(ctx, "%v", err.Error())
 	}
 }
 
@@ -394,7 +392,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stack
 		query.User_info.Display_name,
 	}
 	if err := page.Execute(w, writeResponse(user, tempData, pageNum, userQuery)); err != nil {
-		log.Fatalf("%v", err.Error())
+		log.Warningf(ctx, "%v", err.Error())
 	}
 }
 
@@ -429,7 +427,7 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 		last = len(tagArray)
 	}
 	if err := page.Execute(w, queryReply{user, pageNum, lastPage, tagArray[first:last]}); err != nil {
-		log.Fatalf("%v", err.Error())
+		log.Warningf(ctx, "%v", err.Error())
 	}
 
 }
@@ -459,7 +457,7 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 	}
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, 0, queryArray}); err != nil {
-		log.Fatalf("%v", err.Error())
+		log.Errorf(ctx, "%v", err.Error())
 	}
 }
 
@@ -486,7 +484,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
 	if err := page.Execute(w, queryReply{user, pageNum, 0, query}); err != nil {
-		log.Fatalf("%v", err.Error())
+		log.Errorf(ctx, "%v", err.Error())
 	}
 }
 
@@ -496,7 +494,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
-		log.Fatalf("%v", err.Error())
+		log.Warningf(ctx, "%v", err.Error())
 	}
 }
 
@@ -509,17 +507,17 @@ func newQnHandler(w http.ResponseWriter, r *http.Request) {
 	intArray := []int{id}
 	questions, err := backend.GetQuestions(intArray)
 	if err != nil {
-		log.Println(err)
+		log.Warningf(ctx, err.Error())
 	}
 	pageText := " \"Title\" : \"{{.Title}}\""
-	log.Println(pageText)
+	log.Infof(ctx, pageText)
 	for _, question := range recentChangedQns {
 		pageText += question + "\n"
 	}
 	questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
 	qnJson, err := json.Marshal(questions.Items[0])
 	if err != nil {
-		log.Println(err)
+		log.Warningf(ctx, err.Error())
 	}
 
 	w.Write(qnJson)
@@ -534,25 +532,24 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	if err != nil {
 		code, err := r.Cookie("code")
 		if err != nil {
-			burgers.Errorf(ctx, "Returning Guest user, %v", err.Error())
+			log.Warningf(ctx, "Returning Guest user, %v", err.Error())
 			return guest
 		}
 		access_tokens, err := backend.ObtainAccessToken(code.Value)
 		if err != nil {
-			burgers.Errorf(ctx, "access token not obtained: %v", err.Error())
+			log.Warningf(ctx, "access token not obtained: %v", err.Error())
 			return guest
 		}
 
-		burgers.Infof(ctx, "Setting cookie: access_token")
+		log.Infof(ctx, "Setting cookie: access_token")
 		token = access_tokens["access_token"]
 		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: token})
 	} else {
 		token = cookie.Value
 	}
-	burgers.Infof(ctx, "accessToken = %v", token)
 	user, err := backend.AuthenticatedUser(map[string]string{}, token)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Warningf(ctx, err.Error())
 		return guest
 	}
 	data.CacheLock.Lock()

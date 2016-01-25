@@ -3,13 +3,13 @@ package webui
 import (
 	"backend"
 	"database/sql"
-	"log"
 	"net/http"
 	"sort"
 	"strconv"
 	"time"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
+	"google.golang.org/appengine/log"
 )
 
 func initCacheDownload() {
@@ -35,7 +35,9 @@ func refreshLocalCache() {
 
 func readFromDb(queries string) webData {
 	//Reading from database
-	log.Println("Refreshing database read")
+	if ctx != nil {
+		log.Infof(ctx, "Refreshing database read")
+	}
 	tempData := newWebData()
 	var (
 		url            string
@@ -57,13 +59,21 @@ func readFromDb(queries string) webData {
 	}
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal("query failed:\t", err)
+		if ctx != nil {
+			log.Errorf(ctx, "query failed: %v", err.Error())
+		}
+		return tempData
 	}
 
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
 		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &last_edit_time, &owner, &name, &pic, &link)
+		if err != nil {
+			if ctx != nil {
+				log.Errorf(ctx, "query failed: %v", err)
+			}
+		}
 		currentQ := stackongo.Question{
 			Question_id:   id,
 			Title:         title,
@@ -74,21 +84,24 @@ func readFromDb(queries string) webData {
 		if last_edit_time.Valid {
 			currentQ.Last_edit_date = last_edit_time.Int64
 		}
-		if err != nil {
-			log.Fatal("query failed:\t", err)
-		}
 
 		var tagToAdd string
 		//Get tags for that question, based on the ID
 		tagRows, err := db.Query("SELECT tag from question_tag where question_id = ?", currentQ.Question_id)
 		if err != nil {
-			log.Fatal("Tag retrieval failed!\t", err)
+			if ctx != nil {
+				log.Errorf(ctx, "Tag retrieval failed: %v", err.Error())
+			}
+			continue
 		}
 		defer tagRows.Close()
 		for tagRows.Next() {
 			err := tagRows.Scan(&tagToAdd)
 			if err != nil {
-				log.Fatal("Could not scan for tag!\t", err)
+				if ctx != nil {
+					log.Errorf(ctx, "Could not scan for tag: %v", err.Error())
+				}
+				continue
 			}
 			currentQ.Tags = append(currentQ.Tags, tagToAdd)
 		}
@@ -127,16 +140,17 @@ func readTagsFromDb() []tagData {
 		count sql.NullInt64
 	)
 
-	rows, err := db.Query("SELECT tag, COUNT(tag) FROM question_tag GROUP BY tag;")
+	rows, err := db.Query("SELECT tag, COUNT(tag) FROM question_tag GROUP BY tag")
 	if err != nil {
-		log.Println("Tag query failed, ln 127:", err)
+		log.Warningf(ctx, "Tag query failed: %v", err.Error())
+		return tempData
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&tag, &count)
 		if err != nil {
-			log.Println("Scan failed, ln 134:", err)
+			log.Warningf(ctx, "Scan failed: %v", err.Error())
 		}
 		currentTag := tagData{tag.String, int(count.Int64)}
 		tempData = append(tempData, currentTag)
@@ -149,7 +163,9 @@ func readTagsFromDb() []tagData {
 //Retrieves all users data
 func readUsersFromDb() map[int]userData {
 
-	log.Println("Retrieving users from db")
+	if ctx != nil {
+		log.Infof(ctx, "Retrieving users from db")
+	}
 
 	tempData := make(map[int]userData)
 
@@ -162,14 +178,20 @@ func readUsersFromDb() map[int]userData {
 
 	rows, err := db.Query("SELECT * FROM user")
 	if err != nil {
-		log.Println("User query failed, ln 163:", err)
+		if ctx != nil {
+			log.Warningf(ctx, "User query failed: %v", err.Error())
+		}
+		return tempData
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&id, &name, &pic, &link)
 		if err != nil {
-			log.Println("User scan failed, ln 170:", err)
+			if ctx != nil {
+				log.Warningf(ctx, "User scan failed:", err.Error())
+			}
+			continue
 		}
 
 		currentUser := stackongo.User{
@@ -201,24 +223,22 @@ func checkDBUpdateTime(tableName string, lastUpdate int64) bool {
 	)
 	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'")
 	if err != nil {
-		log.Fatal("Query failed:\t", err)
+		log.Errorf(ctx, "Query failed: %v", err.Error())
+		return true
 	}
 	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&last_updated)
 		if err != nil {
-			log.Fatal(err)
+			log.Errorf(ctx, err.Error())
 		}
-	}
-	if err != nil {
-		log.Fatal(err)
 	}
 	return last_updated > lastUpdate
 }
 
 func readUserFromDb(id string) stackongo.User {
 	//Reading from database
-	log.Println("Refreshing database read")
+	log.Infof(ctx, "Refreshing database read")
 	var (
 		owner sql.NullInt64
 		name  sql.NullString
@@ -228,7 +248,8 @@ func readUserFromDb(id string) stackongo.User {
 	//Select all questions in the database and read into a new data object
 	rows, err := db.Query("SELECT * FROM user WHERE id=" + id)
 	if err != nil {
-		log.Fatal("query failed:\t", err)
+		log.Errorf(ctx, "query failed: %v", err.Error())
+		return stackongo.User{}
 	}
 
 	defer rows.Close()
@@ -236,7 +257,8 @@ func readUserFromDb(id string) stackongo.User {
 	for rows.Next() {
 		err := rows.Scan(&owner, &name, &image, &link)
 		if err != nil {
-			log.Fatal("query failed:\t", err)
+			log.Errorf(ctx, "query failed: %v", err.Error())
+			continue
 		}
 
 		if owner.Valid {
@@ -255,18 +277,19 @@ func addUserToDB(newUser stackongo.User) {
 
 	stmts, err := db.Prepare("INSERT IGNORE INTO user (id, name, pic) VALUES (?, ?, ?)")
 	if err != nil {
-		log.Println("Prepare failed:\t", err)
+		log.Infof(ctx, "Prepare failed: %v", err.Error())
+		return
 	}
 
 	_, err = stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image)
 	if err != nil {
-		log.Fatal("Insertion of new user failed:\t", err)
+		log.Errorf(ctx, "Insertion of new user failed: %v", err.Error())
 	}
 }
 
 // updating the caches based on input from the appi
 func updatingCache_User(r *http.Request, user stackongo.User) error {
-	log.Printf("updating cache")
+	log.Infof(ctx, "updating cache")
 
 	mostRecentUpdate = time.Now().Unix()
 
