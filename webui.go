@@ -18,12 +18,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/laktek/Stack-on-Go/stackongo"
 	"golang.org/x/net/context"
-
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
-
-	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
 // Functions for sorting
@@ -163,12 +161,13 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
 
+	log.Infof(ctx, "starting warmup")
 	// goroutine to collect the questions from SO and add them to the database
 	go func(db *sql.DB) {
 		// Iterate over ([SPECIFIED DURATION])
-		for _ = range time.NewTicker(timeout).C {
+		for _ = range time.NewTicker(30 * time.Second).C {
 			toDate := time.Now()
-			fromDate := toDate.Add(-1 * timeout)
+			fromDate := toDate.Add(-48 * timeout)
 			// Collect new questions from SO
 			log.Infof(ctx, "Getting new questions")
 			questions, err := backend.GetNewQns(fromDate, toDate)
@@ -203,6 +202,7 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}(count)
+	log.Infof(ctx, "warmup complete")
 }
 
 // Handler for authorizing user
@@ -230,6 +230,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 // Handler for main information to be read and written from
 func handler(w http.ResponseWriter, r *http.Request) {
 
+	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
 	// get the current user
 	user := getUser(w, r, ctx)
@@ -508,11 +509,7 @@ func newQnHandler(w http.ResponseWriter, r *http.Request) {
 	questions, err := backend.GetQuestions(intArray)
 	if err != nil {
 		log.Warningf(ctx, err.Error())
-	}
-	pageText := " \"Title\" : \"{{.Title}}\""
-	log.Infof(ctx, pageText)
-	for _, question := range recentChangedQns {
-		pageText += question + "\n"
+		return
 	}
 	questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
 	qnJson, err := json.Marshal(questions.Items[0])

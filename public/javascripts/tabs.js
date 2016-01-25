@@ -9,7 +9,7 @@ $(".nav a").on("click", function(){
 
 $(function() {
   $('.navigation a').on('click', function() {
-    var tab = $(this).attr("href");
+    var tab = $(this).attr("href").substring(1);
     var subpage = window.location.href.slice(window.location.href.lastIndexOf('/'));
     var url = removeQuery('tab', subpage)
     url = addQuery('tab', tab, url);
@@ -57,7 +57,7 @@ function setActiveTab(sourceURL) {
   for (var i = 0; i < queries.length; i++) {
     var urlparam = queries[i].split('=');
     if (urlparam[0] == 'tab') {
-      param = urlparam[1];
+      param = '#' + urlparam[1];
       break;
     }
   }
@@ -170,7 +170,7 @@ $(document).ready(function() {
   if (window.location.search.indexOf('tab') == -1 &&
       subpage.indexOf('userPage') == -1 && subpage.indexOf('viewTags') == -1 &&
       subpage.indexOf('viewUsers') == -1) {
-      var addedPath = subpage + addQuery('tab', '#unanswered', window.location.search);
+      var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
     window.history.pushState('', document.title, addedPath);
   } else if (window.location.search.indexOf('page') == -1 && (subpage.indexOf('viewTags') != -1 ||
              subpage.indexOf('viewUsers') != -1)) {
