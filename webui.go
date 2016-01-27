@@ -114,11 +114,12 @@ var guest = stackongo.User{
 }
 
 // Pointer to database connection to communicate with Cloud SQL
-var db = backend.SqlInit()
+var db *sql.DB
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
 var mostRecentUpdate int64
+var lastPull int64
 var recentChangedQns []string
 
 func (r genReply) CacheUpdated() bool {
@@ -140,10 +141,10 @@ func init() {
 
 	// Initialising stackongo session
 	backend.NewSession()
-
+	db = backend.SqlInit()
+	lastPull = time.Now().Add(-1 * time.Hour * 24 * 7).Unix()
 	initCacheDownload()
 
-	http.HandleFunc("/_ah/warmup", warmup)
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
@@ -155,54 +156,6 @@ func init() {
 	http.HandleFunc("/search", handler)
 	http.HandleFunc("/addQuestion", handler)
 	http.HandleFunc("/pullNewQn", newQnHandler)
-}
-
-func warmup(w http.ResponseWriter, r *http.Request) {
-	ctx = appengine.NewContext(r)
-	backend.SetTransport(r)
-
-	log.Infof(ctx, "starting warmup")
-	// goroutine to collect the questions from SO and add them to the database
-	go func(db *sql.DB) {
-		// Iterate over ([SPECIFIED DURATION])
-		for _ = range time.NewTicker(30 * time.Second).C {
-			toDate := time.Now()
-			fromDate := toDate.Add(-48 * timeout)
-			// Collect new questions from SO
-			log.Infof(ctx, "Getting new questions")
-			questions, err := backend.GetNewQns(fromDate, toDate)
-			if err != nil {
-				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
-				continue
-			}
-
-			log.Infof(ctx, "Adding new questions to db")
-			// Add new questions to database
-			if err = backend.AddQuestions(db, questions); err != nil {
-				log.Warningf(ctx, "Error adding new questions: %v", err.Error())
-				continue
-			}
-
-			log.Infof(ctx, "Removing deleted questions from db")
-			if err = backend.RemoveDeletedQuestions(db); err != nil {
-				log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
-				continue
-			}
-		}
-	}(db)
-
-	// goroutine to update local cache if there has been any change to database
-	count := 1
-	go func(count int) {
-		for {
-			if checkDBUpdateTime("questions", mostRecentUpdate) {
-				log.Infof(ctx, "Refreshing cache %v", count)
-				refreshLocalCache()
-				count++
-			}
-		}
-	}(count)
-	log.Infof(ctx, "warmup complete")
 }
 
 // Handler for authorizing user
@@ -232,6 +185,42 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
+
+	for {
+		if lastPull < time.Now().Add(-1*timeout).Unix() {
+			log.Infof(ctx, "Pulling new questions")
+			toDate := time.Now()
+			fromDate := time.Unix(lastPull, 0)
+			// Collect new questions from SO
+			questions, err := backend.GetNewQns(fromDate, toDate)
+			if err != nil {
+				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
+			} else {
+
+				log.Infof(ctx, "Adding new questions to db")
+				// Add new questions to database
+				if err = backend.AddQuestions(db, questions); err != nil {
+					log.Warningf(ctx, "Error adding new questions: %v", err.Error())
+				} else {
+
+					log.Infof(ctx, "Removing deleted questions from db")
+					if err = backend.RemoveDeletedQuestions(db); err != nil {
+						log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
+					} else {
+						lastPull = time.Now().Unix()
+						log.Infof(ctx, "New questions added")
+					}
+				}
+			}
+		}
+
+		if checkDBUpdateTime("questions", mostRecentUpdate) {
+			log.Infof(ctx, "Refreshing cache")
+			refreshLocalCache()
+		}
+		break
+	}
+
 	// get the current user
 	user := getUser(w, r, ctx)
 
