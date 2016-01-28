@@ -30,12 +30,12 @@ type ByDisplayName []userData
 
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
+func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date < a[j].Creation_date }
 
 func (a ByDisplayName) Len() int      { return len(a) }
 func (a ByDisplayName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a ByDisplayName) Less(i, j int) bool {
-	return a[i].User_info.Display_name > a[j].User_info.Display_name
+	return a[i].User_info.Display_name < a[j].User_info.Display_name
 }
 
 // Reply to send to template
@@ -186,41 +186,41 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
 
-	for {
-		if lastPull < time.Now().Add(-1*timeout).Unix() {
-			log.Infof(ctx, "Pulling new questions")
-			toDate := time.Now()
-			fromDate := time.Unix(lastPull, 0)
-			// Collect new questions from SO
-			questions, err := backend.GetNewQns(fromDate, toDate)
-			if err != nil {
-				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
-			} else {
-
-				log.Infof(ctx, "Adding new questions to db")
-				// Add new questions to database
-				if err = backend.AddQuestions(db, questions); err != nil {
-					log.Warningf(ctx, "Error adding new questions: %v", err.Error())
+	/*	for {
+			if lastPull < time.Now().Add(-1*timeout).Unix() {
+				log.Infof(ctx, "Pulling new questions")
+				toDate := time.Now()
+				fromDate := time.Unix(lastPull, 0)
+				// Collect new questions from SO
+				questions, err := backend.GetNewQns(fromDate, toDate)
+				if err != nil {
+					log.Warningf(ctx, "Error getting new questions: %v", err.Error())
 				} else {
 
-					log.Infof(ctx, "Removing deleted questions from db")
-					if err = backend.RemoveDeletedQuestions(db); err != nil {
-						log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
+					log.Infof(ctx, "Adding new questions to db")
+					// Add new questions to database
+					if err = backend.AddQuestions(db, questions); err != nil {
+						log.Warningf(ctx, "Error adding new questions: %v", err.Error())
 					} else {
-						lastPull = time.Now().Unix()
-						log.Infof(ctx, "New questions added")
+
+						log.Infof(ctx, "Removing deleted questions from db")
+						if err = backend.RemoveDeletedQuestions(db); err != nil {
+							log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
+						} else {
+							lastPull = time.Now().Unix()
+							log.Infof(ctx, "New questions added")
+						}
 					}
 				}
 			}
-		}
 
-		if checkDBUpdateTime("questions", mostRecentUpdate) {
-			log.Infof(ctx, "Refreshing cache")
-			refreshLocalCache()
+			if checkDBUpdateTime("questions", mostRecentUpdate) {
+				log.Infof(ctx, "Refreshing cache")
+				refreshLocalCache()
+			}
+			break
 		}
-		break
-	}
-
+	*/
 	// get the current user
 	user := getUser(w, r, ctx)
 
@@ -429,8 +429,10 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	query := data.Users
 	var querySorted []userData
-	for _, i := range query {
-		querySorted = append(querySorted, i)
+	for id, i := range query {
+		if id != user.User_id {
+			querySorted = append(querySorted, i)
+		}
 	}
 	sort.Sort(ByDisplayName(querySorted))
 
@@ -439,14 +441,23 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 
 	for i, u := range querySorted {
 		tempQueryArray = append(tempQueryArray, u)
-		if i%4 == 0 || i == len(query) {
+		log.Infof(ctx, "%v", len(queryArray))
+		if (i != 0 && i%4 == 0) || i+1 == len(querySorted) {
 			queryArray = append(queryArray, tempQueryArray)
 			//clear temp array
 			tempQueryArray = nil
 		}
 	}
+	final := struct {
+		User   userData
+		Others [][]userData
+	}{
+		query[user.User_id],
+		queryArray,
+	}
+	log.Infof(ctx, "length: %v", len(queryArray))
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, 0, queryArray}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
@@ -518,12 +529,12 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	if err != nil {
 		code, err := r.Cookie("code")
 		if err != nil {
-			log.Warningf(ctx, "Returning Guest user, %v", err.Error())
+			log.Infof(ctx, "Returning Guest user, %v", err.Error())
 			return guest
 		}
 		access_tokens, err := backend.ObtainAccessToken(code.Value)
 		if err != nil {
-			log.Warningf(ctx, "access token not obtained: %v", err.Error())
+			log.Warningf(ctx, "Access token not obtained: %v", err.Error())
 			return guest
 		}
 

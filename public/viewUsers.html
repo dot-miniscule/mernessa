@@ -90,17 +90,19 @@
 							<div class="card-block">
 								<h4 class="card-title"><a href="/userPage?userId={{$reply.User.User_id}}">{{$reply.User.Display_name}}</a></h4>
 							</div>
-							<small class="text-muted"> caches here
+							<small class="text-muted">
+                                <p class="card-text">{{len ($reply.Data.User.Caches.answered)}} answered questions</p>
+                                <p class="card-text">{{len ($reply.Data.User.Caches.pending)}} questions marked as pending.</p>
+								<p class="card-text">{{len ($reply.Data.User.Caches.answered)}} waiting for update.</p>
 							</small>
 						</div>
 					{{end}}
 				</div><!--/.col -->
 			</div><!--/.user-row-->
 			<div class="row">
-				{{range $userArray := $reply.Data}}
+				{{range $userArray := $reply.Data.Others}}
 				<div class="row-fluid row-centered">
 					{{range $user := $userArray}}
-						{{if ne $user.User_info.User_id $reply.User.User_id}}
 							<div class="card col-lg-3 col-md-4 col-sm-6 col-xs-12 col-centered">
 								<div class="content">
 									<a href="/userPage?userId={{$user.User_info.User_id}}"><img class="card-img-left" src="{{$user.User_info.Profile_image}}" alt="profile picture missing"></a>
@@ -114,7 +116,6 @@
 									</small>
 								</div>
 							</div>
-						{{end}}
 					{{end}}
 				</div>
 				{{end}}
