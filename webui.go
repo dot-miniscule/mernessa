@@ -304,10 +304,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request, pageNum int, user sta
 		for _, question := range cache {
 			if question.Question_id == id || question.Link == search || contains(question.Tags, search) ||
 				strings.Contains(question.Body, search) || strings.Contains(question.Title, search) {
+
 				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
-			}
-			if len(tempData.Caches[cacheType]) >= 25 {
-				break
+			} else if owner, ok := data.Qns[question.Question_id]; ok {
+				if (id != 0 && owner.User_id == id) || strings.Contains(owner.Display_name, search) {
+					tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
+				}
 			}
 		}
 	}
