@@ -186,41 +186,41 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
 
-	/*	for {
-			if lastPull < time.Now().Add(-1*timeout).Unix() {
-				log.Infof(ctx, "Pulling new questions")
-				toDate := time.Now()
-				fromDate := time.Unix(lastPull, 0)
-				// Collect new questions from SO
-				questions, err := backend.GetNewQns(fromDate, toDate)
-				if err != nil {
-					log.Warningf(ctx, "Error getting new questions: %v", err.Error())
+	for {
+		if lastPull < time.Now().Add(-1*timeout).Unix() {
+			log.Infof(ctx, "Pulling new questions")
+			toDate := time.Now()
+			fromDate := time.Unix(lastPull, 0)
+			// Collect new questions from SO
+			questions, err := backend.GetNewQns(fromDate, toDate)
+			if err != nil {
+				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
+			} else {
+
+				log.Infof(ctx, "Adding new questions to db")
+				// Add new questions to database
+				if err = backend.AddQuestions(db, questions); err != nil {
+					log.Warningf(ctx, "Error adding new questions: %v", err.Error())
 				} else {
 
-					log.Infof(ctx, "Adding new questions to db")
-					// Add new questions to database
-					if err = backend.AddQuestions(db, questions); err != nil {
-						log.Warningf(ctx, "Error adding new questions: %v", err.Error())
+					log.Infof(ctx, "Removing deleted questions from db")
+					if err = backend.RemoveDeletedQuestions(db); err != nil {
+						log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
 					} else {
-
-						log.Infof(ctx, "Removing deleted questions from db")
-						if err = backend.RemoveDeletedQuestions(db); err != nil {
-							log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
-						} else {
-							lastPull = time.Now().Unix()
-							log.Infof(ctx, "New questions added")
-						}
+						lastPull = time.Now().Unix()
+						log.Infof(ctx, "New questions added")
 					}
 				}
 			}
-
-			if checkDBUpdateTime("questions", mostRecentUpdate) {
-				log.Infof(ctx, "Refreshing cache")
-				refreshLocalCache()
-			}
-			break
 		}
-	*/
+
+		if checkDBUpdateTime("questions", mostRecentUpdate) {
+			log.Infof(ctx, "Refreshing cache")
+			refreshLocalCache()
+		}
+		break
+	}
+
 	// get the current user
 	user := getUser(w, r, ctx)
 
