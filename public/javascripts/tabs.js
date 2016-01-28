@@ -168,8 +168,8 @@ $(document).ready(function() {
 
   var subpage = window.location.href.split('?')[0].slice(window.location.href.lastIndexOf('/'));
   if (window.location.search.indexOf('tab') == -1 &&
-      subpage.indexOf('userPage') == -1 && subpage.indexOf('viewTags') == -1 &&
-      subpage.indexOf('viewUsers') == -1) {
+      subpage.indexOf('viewTags') == -1 && subpage.indexOf('viewUsers') == -1 &&
+      subpage.indexOf('addQuestion') == -1) {
       var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
     window.history.pushState('', document.title, addedPath);
   } else if (window.location.search.indexOf('page') == -1 && (subpage.indexOf('viewTags') != -1 ||
