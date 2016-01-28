@@ -441,7 +441,6 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 
 	for i, u := range querySorted {
 		tempQueryArray = append(tempQueryArray, u)
-		log.Infof(ctx, "%v", len(queryArray))
 		if (i != 0 && i%4 == 0) || i+1 == len(querySorted) {
 			queryArray = append(queryArray, tempQueryArray)
 			//clear temp array
@@ -455,7 +454,6 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 		query[user.User_id],
 		queryArray,
 	}
-	log.Infof(ctx, "length: %v", len(queryArray))
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
