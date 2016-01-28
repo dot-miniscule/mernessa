@@ -1,6 +1,20 @@
 /* ====================== MAINPAGE  ===================== */
 /* THIS IS THE JAVASCRIPT FOR THE MAIN PAGE */
 
+function checkUser(username) {
+  console.log('checking');
+    return username === "Guest";
+}
+
+function submitForm(username, type, updateTime) {
+  if (checkUser(username)) {
+    alert('Must be logged in to submit');
+    return false;
+  }
+  return checkDB(type, updateTime);
+}
+
+
 //Nav bar active state
 $(".nav a").on("click", function(){
    $(".nav").find(".active").removeClass("active");
@@ -108,41 +122,155 @@ function checkDB(buttonPressed, updateTime) {
   });
 }
 
+// Function to remove any content from the question table
+// If the user has previewed a question, and either cancelled its submission
+// or if they have previewed a question and want to preview a new one the table needs to be
+// cleared so content doesn't stack on top of itself
+
+function clearTextPreserveChildren(element) {
+  element.contents().filter(function() {
+    return(this.nodeType == 3);
+  }).remove();
+}
+
+
 // Function to manually pull a question from StackOverflow using it's ID or URL
+// Checks that the input from the form is either a URL or an id number
 // Parses the incoming string to isolate the question ID from the URL
 // Uses the result as a parameter in a call to Stack Exchange API
 // The response is returned as a JSON object, which is then inserted into the page
-// The JSON is saved in local storage, so that if that question is submitted into the database
-// the question information is still available
-
 function pullQuestionFromStackOverflow() {
   var query = $('input#searchTerm').val();
+
   if(!$.isNumeric(query)) {
-    query = query.split("http://stackoverflow.com/questions/")[1].split("/")[0];
+    var check1 = canSplit(query, "http://stackoverflow.com/questions/");
+
+    if(check1) {
+      var queryA = query.split("http://stackoverflow.com/questions/");
+      var check2 = canSplit(query.split("http://stackoverflow.com/questions/")[1], "/");
+
+      if(check2) {
+        queryB = query.split("http://stackoverflow.com/questions/")[1].split("/")[0];
+
+        if($.isNumeric(queryB)) {
+          pullNewQn(queryB);   
+        }
+      } else {
+        alert("Not a valid question URL or ID. Please try again");
+      }
+    }
+  } else {
+    pullNewQn(query);
   }
+}
+
+function pullNewQn(query) {
   $.post('/pullNewQn?id='+query, function( data ) {
-    var question = JSON.parse(data);
-    localStorage["newQuestion"] = JSON.stringify(question);
-    $('table').removeClass('hidden');
-    $('a.question_title').attr("href", question.Link).children('h4').html(((question.Title)));
-    $('table td.question .bodySnippet').html(question.Body);
-    $.each(question.Tags, function(i, item) {
-      $('.tagContainer ul.tags').append('<a href="#"><li class="tag">'+item+'</li></a>');
+            //Clear the text from the table
+            var table = $('table');
+            clearTextPreserveChildren(table);
+            displayNewQuestion(data);
+          });
+}
+
+
+// Parses a JSON object and displays it in the table for viewing
+// First, it determines if the data is a new or existing question
+// new/existing require different button functionality and different naming
+// A previously existing question has an extra field called Message, which 
+// basically says that this is an existing question.
+// This means this question must have some sort of state assigned to it
+// It needs to display this state, and the appropriate buttons for usage
+// The select menu is only shown on questions marked as unanswered, pending or
+// updating. The answered state only has a single button marked Reopen.
+// 
+// The JSON is saved in local storage, so that if that question is submitted 
+// into the database the question information is still available
+function displayNewQuestion(data) {
+  var question = JSON.parse(data);
+  var type = question.Message;
+  var btn = $('.function-button');
+  var menu = $('.new_state_menu');
+  var cancel = $('.cancel-button');
+  menu.empty();
+
+  btn.attr('name', 'unanswered_'+ question.Question_id);
+  //btn.click().addClass('clicked');
+  btn.attr('value', 'Pending');
+
+  if(type == undefined) {
+    menu.removeClass('hidden');
+    cancel.removeClass('hidden');
+    options = {
+      "unanswered":"Unanswered", 
+      "answered":"Answered",
+      "pending":"Pending",
+      "updating":"Updating"
+    };
+    btn.click(function() {
+      addQuestionToStackTracker(data, btn.attr('value').toLowerCase());
     });
+    //menu.change(addQuestionToStackTracker(data));
+}
+  // } else {
+  //   cancel.addClass('hidden');
+  //   btn.attr('name', type+'_'+ question.Question_id);
+  //   if(type == "unanswered") {
+  //     menu.removeClass('hidden');
+  //     options = {"answered":"Answered", "updating":"Updating"};
+    
+  //   } else if(type == "answered") {
+  //     menu.addClass('hidden');
+  //   } else {
+  //     menu.removeClass('hidden');
+  //     options = {"updating":"Updating"};
+  //     btn.attr('value', 'Answered');
+  //   }
+  // }
+
+  // $.each(options, function(value, key) {
+  //     menu.append($("<option></option>").attr("value", value).text(key));
+  //   });
+  // menu.change(function() {
+
+  // });
+  $('.questionExists').html(question.Message);
+  $('table').removeClass('hidden');
+  $('a.question_title').attr("href", question.Link).children('h4').html(((question.Title)));
+  $('table td.question .bodySnippet').html(question.Body);
+  $('ul.tags').empty();
+  $.each(question.Tags, function(i, item) {
+    $('.tagContainer ul.tags').append('<a href="/tag?tagSearch='+item+'"><li class="tag">'+item+'</li></a>');
   });
+}
+
+// Function to save aspects of the reply in local storage to use in jquery
+// TODO: add update time
+function saveState(user) {
+  localStorage["currentUser"] = user;
+  localStorage["lastUpdateTime"] = $.now();
+  console.log("saved state of", user, ", ", localStorage["lastUpdateTime"]);
+}
+
+
+// Helper function to ensure input validation on the add question field
+// If the user enters something that cannot be recognised, it should return false
+ function canSplit(str, token) {
+  return(str || '').split(token).length > 1;
  }
 
 // Function to post to server to add the new question to StackTrackers database
 // newQuestion is the stringified JSON data that is cached in localStorage
-function addQuestionToStackTracker(newQuestion) {
+function addQuestionToStackTracker(newQuestion, newState) {
+  var data = {"question": newQuestion, "state": newState};
   $.ajax({
     type: "POST",
     url: "/addNewQuestion",
     processData: false,
     contentType: 'application/json',
-    data: newQuestion,
+    data: JSON.stringify([newQuestion, newState]),
     success: function( data ) {
-      alert('success!');
+      
     }
   });
 }

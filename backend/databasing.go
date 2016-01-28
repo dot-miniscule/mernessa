@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"encoding/json"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -35,10 +37,12 @@ func SqlInit() *sql.DB {
 		"password",
 		"tcp(173.194.225.82:3306)",
 	} */
+	// log.Println(appengine.VersionID(ctx))
 	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
 	//		Also, update logging for appengine context.
-	db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
-	//db, err := sql.Open("mysql", "root:password@tcp(173.194.225.82:3306)/mernessa")
+	//db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
+	dbString := os.Getenv("DB_STRING")
+	db, err := sql.Open("mysql", dbString)
 	if err != nil {
 		log.Println("Open fail: \t", err)
 	}
@@ -61,34 +65,124 @@ func SqlInit() *sql.DB {
 	return db
 }
 
-func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
+
+// This function checks if an existing question is already present in the database, based on ID
+// If so, doing a call to the StackExchange API is useless, and a waste of our daily quota
+// SELECT EXIST returns a single row with a 1 or 0 depending on whether or not a record exists
+func CheckForExistingQuestion(db *sql.DB, id int) (int, error) {
+	res := 0
+	rows, err := db.Query("SELECT EXISTS(SELECT * FROM questions where question_id=?)", id)
+	if err != nil {
+		return res, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&res)
+		if err != nil {
+			return res, err
+		}
+	}
+	err = rows.Err()
+	if err != nil {
+		return res, err
+	}
+
+	return res, nil
+}
+
+
+// Given a question ID, it pulls that from the database
+// Marshalls the result as JSON data to be returned in a reply
+func PullQnByID(db *sql.DB, id int) ([]byte) {
+
+	type newQ struct {
+		Message		   string
+
+		Question_id    int
+		Creation_date  int64
+		Link           string
+		Body           string
+		Title          string
+		Tags 		   []string
+		
+		State          string
+		Owner		   string
+		Time 		   sql.NullInt64
+	}
+
+	rows, err := db.Query("SELECT * FROM questions where question_id=?", id)
+	if err != nil {
+		log.Println(err)
+	}
+	defer rows.Close()
+	var n newQ
+	n.Message = "Question already exists in database. See below."
+	for rows.Next() {
+		err := rows.Scan(&n.Question_id, &n.Title, &n.Link, &n.State, &n.Owner, &n.Body, &n.Creation_date, &n.Time)
+		if err != nil {
+			log.Println(err)
+		}
+
+		tagRows, err := db.Query("SELECT tag from question_tag where question_id = ?", id)
+		if err != nil {
+			log.Println(err)
+		}
+		defer tagRows.Close()
+		var currentTag string
+		for tagRows.Next() {
+			err := tagRows.Scan(&currentTag)
+			if err != nil {
+				log.Println(err)
+			}
+			n.Tags = append(n.Tags, currentTag)
+		}
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Println(err)
+	}
+	b, err := json.Marshal(n)
+	if err != nil {
+		log.Println(b, err)
+	}
+	log.Println(n)
+	return b
+}
+
+
+func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string) error {
 
 	defer UpdateTableTimes(db, "questions")
-	for _, item := range newQns.Items {
-		//INSERT IGNORE ensures that the same question won't be added again
-		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date) VALUES (?, ?, ?, ?, ?)")
+	//INSERT IGNORE ensures that the same question won't be added again
+	stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date, state) VALUES (?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(item.Question_id, html.UnescapeString(item.Title), item.Link, html.UnescapeString(StripTags(item.Body)), item.Creation_date, state)
+	if err != nil {
+		log.Println("Exec insertion for question failed!:\t", err)
+		return err
+	}
+	for _, tag := range item.Tags {
+		stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
 		if err != nil {
+			log.Println("question_tag insertion failed!:\t", err)
 			return err
 		}
-		_, err = stmt.Exec(item.Question_id, html.UnescapeString(item.Title), item.Link, html.UnescapeString(StripTags(item.Body)), item.Creation_date)
+
+		_, err = stmt.Exec(item.Question_id, tag)
 		if err != nil {
-			log.Println("Exec insertion for question failed!:\t", err)
-			continue
+			log.Println("Exec insertion for question_tag failed!:\t", err)
+			return err
 		}
+	}
+	return nil
+}
 
-		for _, tag := range item.Tags {
-			stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
-			if err != nil {
-				log.Println("question_tag insertion failed!:\t", err)
-				continue
-			}
+func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
 
-			_, err = stmt.Exec(item.Question_id, tag)
-			if err != nil {
-				log.Println("Exec insertion for question_tag failed!:\t", err)
-				continue
-			}
-		}
+	for _, item := range newQns.Items {
+		AddSingleQuestion(db, item, "unanswered") 
 	}
 	return nil
 }

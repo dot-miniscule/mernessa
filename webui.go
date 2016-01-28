@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"os"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 	"golang.org/x/net/context"
@@ -141,7 +142,7 @@ func init() {
 	// Initialising stackongo session
 	backend.NewSession()
 
-	initCacheDownload()
+	//initCacheDownload()
 
 	http.HandleFunc("/_ah/warmup", warmup)
 	http.HandleFunc("/login", authHandler)
@@ -160,7 +161,7 @@ func init() {
 func warmup(w http.ResponseWriter, r *http.Request) {
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
-
+	log.Infof(ctx, "DATABASE: %v", os.Getenv("DB_STRING"))
 	log.Infof(ctx, "starting warmup")
 	// goroutine to collect the questions from SO and add them to the database
 	go func(db *sql.DB) {
@@ -192,16 +193,16 @@ func warmup(w http.ResponseWriter, r *http.Request) {
 	}(db)
 
 	// goroutine to update local cache if there has been any change to database
-	count := 1
-	go func(count int) {
-		for {
-			if checkDBUpdateTime("questions", mostRecentUpdate) {
-				log.Infof(ctx, "Refreshing cache %v", count)
-				refreshLocalCache()
-				count++
-			}
-		}
-	}(count)
+	// count := 1
+	// go func(count int) {
+	// 	for {
+	// 		if checkDBUpdateTime("questions", mostRecentUpdate) {
+	// 			log.Infof(ctx, "Refreshing cache %v", count)
+	// 			refreshLocalCache()
+	// 			count++
+	// 		}
+	// 	}
+	// }(count)
 	log.Infof(ctx, "warmup complete")
 }
 
@@ -283,21 +284,70 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Handler for adding new question page
+func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
+	page := template.Must(template.ParseFiles("public/addQuestion.html"))
+	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
+		log.Warningf(ctx, "%v", err.Error())
+	}
+}
+
+// Handler for pulling questions from Stack Overflow manually, based on a given ID
+// Request is parsed to find the supplied ID
+// A check is completed to see if the question is already in the system
+// If so, it retrieves that question, and returns it to be viewed, along with a message
+// Makes a new backend request to retrieve new questions
+// Parses the returned data into a new page, which can be inserted into the template.
+func newQnHandler(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.FormValue("id"))
+
+	res, err := backend.CheckForExistingQuestion(db, id)
+	if err != nil {
+		log.Infof(ctx, "QUERY FAILED, %v",err)
+	}
+
+	if res == 1 {
+
+		existingQn:= backend.PullQnByID(db, id)
+		if err != nil {
+			log.Warningf(ctx, err.Error())
+		}
+		w.Write(existingQn)
+		return
+	}
+
+	intArray := []int{id}
+	questions, err := backend.GetQuestions(intArray)
+	if err != nil {
+		log.Warningf(ctx, err.Error())
+		return
+	}
+	questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
+	qnJson, err := json.Marshal(questions.Items[0])
+	if err != nil {
+		log.Warningf(ctx, err.Error())
+	}
+	w.Write(qnJson)
+}
+
 // Handler for adding a new question to the database upon submission
 // It is returned as a stringified JSON object in the request body
 // The string is unmarshalled into a stackongo.Question type, and added to an array
 // to be added into the database using the AddQuestions function in backend/databasing.go
 func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
-	body, _ := ioutil.ReadAll(r.Body)
-	var qn stackongo.Question
-	json.Unmarshal([]byte(body), &qn)
-	var qnArray []stackongo.Question
-	qnArray = append(qnArray, qn)
-	var qns stackongo.Questions
-	qns.Items = qnArray
-	if err := backend.AddQuestions(db, &qns); err != nil {
-		log.Warningf(ctx, "Error adding new question to db:\t", err)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Infof(ctx, "%v", err)
 	}
+	var f interface {}
+	err = json.Unmarshal(body, &f)
+	if err != nil {
+		log.Infof(ctx, "%v", err)
+	}
+	log.Infof(ctx, "%s", f)
+	// if err := backend.AddSingleQuestion(db, newQuestion["question"], newQuestion["state"]); err != nil {
+	// 	log.Warningf(ctx, "Error adding new question to db:\t", err)
+	// }
 }
 
 // Handler for keywords, tags, users in the search box
@@ -487,37 +537,6 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 	if err := page.Execute(w, queryReply{user, pageNum, 0, query}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
-}
-
-// Handler for when the user needs to find a question that hasn't been pulled from Stack Exchange
-// Allows them to input a URL or question ID, and manually add it to the database.
-
-func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
-	page := template.Must(template.ParseFiles("public/addQuestion.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
-		log.Warningf(ctx, "%v", err.Error())
-	}
-}
-
-// Handler for pulling questions from Stack Overflow manually, based on a given ID
-// Request is parsed to find the supplied ID
-// Makes a new backend request to retrieve new questions
-// Parses the returned data into a new page, which can be inserted into the template.
-func newQnHandler(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(r.FormValue("id"))
-	intArray := []int{id}
-	questions, err := backend.GetQuestions(intArray)
-	if err != nil {
-		log.Warningf(ctx, err.Error())
-		return
-	}
-	questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
-	qnJson, err := json.Marshal(questions.Items[0])
-	if err != nil {
-		log.Warningf(ctx, err.Error())
-	}
-
-	w.Write(qnJson)
 }
 
 func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stackongo.User {

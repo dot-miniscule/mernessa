@@ -203,19 +203,4 @@
     <!-- Latest compiled and minified JavaScript -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
   </body>
-
-  <script>
-    function checkUser(username) {
-    console.log('checking');
-      return username === "Guest";
-    }
-
-    function submitForm(username, type, updateTime) {
-      if (checkUser(username)) {
-        alert('Must be logged in to submit');
-        return false;
-      }
-      return checkDB(type, updateTime);
-    }
-  </script>
 </html>

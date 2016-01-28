@@ -38,9 +38,9 @@
             <a href="/"><img src="images/stacktracker-banner.jpg"></a>
           </div>
           <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12 userDiv">
-            <p id="welcomeSentence">Welcome,
+            <p id="welcomeSentence">Welcome,<p id="username">
               {{if eq $reply.User.Display_name "Guest"}}
-                {{$reply.User.Display_name}}</p>
+                {{$reply.User.Display_name}}</p></p>
                 <p id="welcomeSentence"><a href="/login">Login</a> with your StackOverflow account...</p>
               {{else}}
                 <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
@@ -88,11 +88,13 @@
 		        </div><!-- END CONTENT -->
 		        <br>
 		        <div class="row">
+              <div class="questionExists">
+              </div>
 		        	<table class="table table-striped hidden">
                     	<thead>
                       	<tr>
                         	<th class="col-xs-9 qHead">Question</th>
-                          	<th class="col-xs-3">Action</th>
+                          <th class="col-xs-3">Action</th>
                       	</tr>
                     	</thead>
                     	<tbody>
@@ -108,11 +110,16 @@
 		                            </div>
 		                        </td>
 		                    	<td>
-		                    		<div class="btn-group">
-                                		<input type="button" class="btn btn-default btn-sm" value="Track!" onclick='addQuestionToStackTracker(localStorage["newQuestion"])'>
-                                		<input type="button" class="btn btn-default btn-sm" value="Cancel">
-                                	</div>
-                                </td>
+		                    		<div class="input-group">
+                              <div class="input-group-btn">
+                            		<input type="button" class="btn btn-default btn-sm function-button">
+                              </div>
+                              <select class="form-control input-sm new_state_menu"></select>
+                              <div class="input-group-btn">
+                                <input type="button" class="btn btn-default btn-sm cancel-button hidden" onclick ="clearTextPreserveChildren()" value="Cancel">
+                              </div>
+                            </div>
+                          </td>
                     		</tr>
                     	</tbody>
 		        	</table>
@@ -120,5 +127,9 @@
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
 	<script type="text/javascript" src="/javascripts/tabs.js"></script>
+    <script>
+      //Need to add the update time to this function
+      $( document ).ready(saveState({{$reply.User.Display_name}}));
+    </script>
 	</body>
 </html>

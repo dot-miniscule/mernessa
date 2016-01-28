@@ -8,9 +8,10 @@
 #This is why we have called http.HandleFunc inside the init function to associate our handler with the web root ("/")
 
 application: stacktracker-1184
-version: 1
+version: live
 runtime: go
 api_version: go1
+module: default
 automatic_scaling:
   min_idle_instances: 1
   max_idle_instances: 5  # default value
@@ -34,5 +35,5 @@ handlers:
 inbound_services:
   - warmup
 
-env variables:
-  - DB_STRING: 'meredithl:mernessa@tcp([2001:4860:4864:1:aebb:124d:884e:3108]:3306)/mernessa' 
+env_variables:
+  DB_STRING: 'meredithl:mernessa@tcp([2001:4860:4864:1:69b2:7db8:61d3:bb75]:3306)/stacktrackerdb' 
