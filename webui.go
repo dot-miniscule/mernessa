@@ -257,7 +257,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		addQuestionHandler(w, r, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
 		addNewQuestionToDatabaseHandler(w, r)
-	} else {
+	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" {
 
 		page := template.Must(template.ParseFiles("public/template.html"))
 		pageQuery := []string{
@@ -269,6 +269,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if err := page.Execute(w, writeResponse(user, data, pageNum, pageQuery)); err != nil {
 			log.Errorf(ctx, "%v", err.Error())
 		}
+	} else {
+		errorHandler(w, r, http.StatusNotFound, "")
 	}
 }
 
@@ -600,6 +602,8 @@ func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string
 			errorHandler(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
+	case http.StatusInternalServerError:
+		w.Write([]byte("Internal error: " + err))
 	}
 }
 
