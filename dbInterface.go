@@ -163,10 +163,6 @@ func readTagsFromDb() []tagData {
 //Retrieves all users data
 func readUsersFromDb() map[int]userData {
 
-	if ctx != nil {
-		log.Infof(ctx, "Retrieving users from db")
-	}
-
 	tempData := make(map[int]userData)
 
 	var (
@@ -178,9 +174,6 @@ func readUsersFromDb() map[int]userData {
 
 	rows, err := db.Query("SELECT * FROM user")
 	if err != nil {
-		if ctx != nil {
-			log.Warningf(ctx, "User query failed: %v", err.Error())
-		}
 		return tempData
 	}
 
@@ -188,9 +181,6 @@ func readUsersFromDb() map[int]userData {
 	for rows.Next() {
 		err := rows.Scan(&id, &name, &pic, &link)
 		if err != nil {
-			if ctx != nil {
-				log.Warningf(ctx, "User scan failed:", err.Error())
-			}
 			continue
 		}
 
@@ -204,7 +194,6 @@ func readUsersFromDb() map[int]userData {
 	}
 
 	return tempData
-
 }
 
 //Function to retrieve list of questions relating to particular user when a /userPage?xxx is made
