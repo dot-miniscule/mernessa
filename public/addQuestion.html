@@ -38,9 +38,9 @@
             <a href="/"><img src="images/stacktracker-banner.jpg"></a>
           </div>
           <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12 userDiv">
-            <p id="welcomeSentence">Welcome,<p id="username">
+            <p id="welcomeSentence">Welcome,
               {{if eq $reply.User.Display_name "Guest"}}
-                {{$reply.User.Display_name}}</p></p>
+                {{$reply.User.Display_name}}</p>
                 <p id="welcomeSentence"><a href="/login">Login</a> with your StackOverflow account...</p>
               {{else}}
                 <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>

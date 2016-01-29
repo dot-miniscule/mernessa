@@ -1,7 +1,7 @@
 package webui
 
 import (
-	"backend"
+	_"backend"
 	"database/sql"
 	"net/http"
 	"sort"
@@ -343,9 +343,9 @@ func updatingCache_User(r *http.Request, user stackongo.User) error {
 	data.CacheLock.Unlock()
 
 	// Update the database
-	go func(db *sql.DB, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
-		recentChangedQns = qnsTitles
-		backend.UpdateDb(db, qns, userId, lastUpdate)
-	}(db, changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
+	// go func(db *sql.DB, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
+	// 	recentChangedQns = qnsTitles
+	// 	backend.UpdateDb(db, qns, userId, lastUpdate)
+	// }(db, changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
 	return nil
 }

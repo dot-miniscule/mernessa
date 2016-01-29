@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
+	
 	"net/http"
 	"reflect"
 	"sort"
@@ -143,7 +144,7 @@ func init() {
 	backend.NewSession()
 	db = backend.SqlInit()
 	lastPull = time.Now().Add(-1 * time.Hour * 24 * 7).Unix()
-	//initCacheDownload()
+	initCacheDownload()
 
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
@@ -185,7 +186,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
-
+	//dbString := os.Getenv("DB_STRING")
+	//log.Infof(ctx, "%v", dbString)
 	for {
 		if lastPull < time.Now().Add(-1*timeout).Unix() {
 			log.Infof(ctx, "Pulling new questions")
@@ -344,7 +346,10 @@ func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal([]byte(question.(string)), &qn)
 	log.Infof(ctx, "%v", qn)
 
-	if err := backend.AddSingleQuestion(db, qn, state.(string)); err != nil {
+	user := getUser(w, r, ctx)
+	log.Infof(ctx, "%v", user.User_id)
+
+	if err := backend.AddSingleQuestion(db, qn, state.(string), user.User_id); err != nil {
 		log.Warningf(ctx, "Error adding new question to db:\t", err)
 	}
 }

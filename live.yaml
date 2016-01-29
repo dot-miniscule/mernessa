@@ -2,13 +2,13 @@
 #Application identifier is hellovanessa
 #This code runs in go environment, with API version go1
 #Every request to a URL whos path matches the regular expression /.* (which is all URLS) should be handled by the Go program.
-#The _go_app value is a string recognized by the development web server and is ignored by the production App Engine servers. 
+#The _go_app value is a string recognized by the development web server and is ignored by the production App Engine servers.
 
-#All Go packages for a given app are built into a single executable, and request dispatch is handled by the Go program itself. 
+#All Go packages for a given app are built into a single executable, and request dispatch is handled by the Go program itself.
 #This is why we have called http.HandleFunc inside the init function to associate our handler with the web root ("/")
 
 application: stacktracker-1184
-version: live
+version: 1
 runtime: go
 api_version: go1
 module: default
@@ -35,5 +35,5 @@ handlers:
 inbound_services:
   - warmup
 
-env_variables:
-  DB_STRING: 'meredithl:mernessa@tcp([2001:4860:4864:1:69b2:7db8:61d3:bb75]:3306)/stacktrackerdb' 
+# env_variables:
+#   DB_STRING: 'meredithl:mernessa@tcp([2001:4860:4864:1:69b2:7db8:61d3:bb75]:3306)/stacktrackerdb'
