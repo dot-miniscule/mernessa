@@ -17,7 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"os"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
 	"golang.org/x/net/context"
@@ -31,12 +30,12 @@ type ByDisplayName []userData
 
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
+func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date < a[j].Creation_date }
 
 func (a ByDisplayName) Len() int      { return len(a) }
 func (a ByDisplayName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a ByDisplayName) Less(i, j int) bool {
-	return a[i].User_info.Display_name > a[j].User_info.Display_name
+	return a[i].User_info.Display_name < a[j].User_info.Display_name
 }
 
 // Reply to send to template
@@ -115,11 +114,12 @@ var guest = stackongo.User{
 }
 
 // Pointer to database connection to communicate with Cloud SQL
-var db = backend.SqlInit()
+var db *sql.DB
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
 var mostRecentUpdate int64
+var lastPull int64
 var recentChangedQns []string
 
 func (r genReply) CacheUpdated() bool {
@@ -141,10 +141,10 @@ func init() {
 
 	// Initialising stackongo session
 	backend.NewSession()
-
+	db = backend.SqlInit()
+	lastPull = time.Now().Add(-1 * time.Hour * 24 * 7).Unix()
 	//initCacheDownload()
 
-	http.HandleFunc("/_ah/warmup", warmup)
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
@@ -156,54 +156,6 @@ func init() {
 	http.HandleFunc("/search", handler)
 	http.HandleFunc("/addQuestion", handler)
 	http.HandleFunc("/pullNewQn", newQnHandler)
-}
-
-func warmup(w http.ResponseWriter, r *http.Request) {
-	ctx = appengine.NewContext(r)
-	backend.SetTransport(r)
-	log.Infof(ctx, "DATABASE: %v", os.Getenv("DB_STRING"))
-	log.Infof(ctx, "starting warmup")
-	// goroutine to collect the questions from SO and add them to the database
-	go func(db *sql.DB) {
-		// Iterate over ([SPECIFIED DURATION])
-		for _ = range time.NewTicker(30 * time.Second).C {
-			toDate := time.Now()
-			fromDate := toDate.Add(-48 * timeout)
-			// Collect new questions from SO
-			log.Infof(ctx, "Getting new questions")
-			questions, err := backend.GetNewQns(fromDate, toDate)
-			if err != nil {
-				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
-				continue
-			}
-
-			log.Infof(ctx, "Adding new questions to db")
-			// Add new questions to database
-			if err = backend.AddQuestions(db, questions); err != nil {
-				log.Warningf(ctx, "Error adding new questions: %v", err.Error())
-				continue
-			}
-
-			log.Infof(ctx, "Removing deleted questions from db")
-			if err = backend.RemoveDeletedQuestions(db); err != nil {
-				log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
-				continue
-			}
-		}
-	}(db)
-
-	// goroutine to update local cache if there has been any change to database
-	// count := 1
-	// go func(count int) {
-	// 	for {
-	// 		if checkDBUpdateTime("questions", mostRecentUpdate) {
-	// 			log.Infof(ctx, "Refreshing cache %v", count)
-	// 			refreshLocalCache()
-	// 			count++
-	// 		}
-	// 	}
-	// }(count)
-	log.Infof(ctx, "warmup complete")
 }
 
 // Handler for authorizing user
@@ -233,6 +185,42 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
+
+	/*	for {
+			if lastPull < time.Now().Add(-1*timeout).Unix() {
+				log.Infof(ctx, "Pulling new questions")
+				toDate := time.Now()
+				fromDate := time.Unix(lastPull, 0)
+				// Collect new questions from SO
+				questions, err := backend.GetNewQns(fromDate, toDate)
+				if err != nil {
+					log.Warningf(ctx, "Error getting new questions: %v", err.Error())
+				} else {
+
+					log.Infof(ctx, "Adding new questions to db")
+					// Add new questions to database
+					if err = backend.AddQuestions(db, questions); err != nil {
+						log.Warningf(ctx, "Error adding new questions: %v", err.Error())
+					} else {
+
+						log.Infof(ctx, "Removing deleted questions from db")
+						if err = backend.RemoveDeletedQuestions(db); err != nil {
+							log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
+						} else {
+							lastPull = time.Now().Unix()
+							log.Infof(ctx, "New questions added")
+						}
+					}
+				}
+			}
+
+			if checkDBUpdateTime("questions", mostRecentUpdate) {
+				log.Infof(ctx, "Refreshing cache")
+				refreshLocalCache()
+			}
+			break
+		}
+	*/
 	// get the current user
 	user := getUser(w, r, ctx)
 
@@ -303,12 +291,12 @@ func newQnHandler(w http.ResponseWriter, r *http.Request) {
 
 	res, err := backend.CheckForExistingQuestion(db, id)
 	if err != nil {
-		log.Infof(ctx, "QUERY FAILED, %v",err)
+		log.Infof(ctx, "QUERY FAILED, %v", err)
 	}
 
 	if res == 1 {
 
-		existingQn:= backend.PullQnByID(db, id)
+		existingQn := backend.PullQnByID(db, id)
 		if err != nil {
 			log.Warningf(ctx, err.Error())
 		}
@@ -339,15 +327,24 @@ func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Infof(ctx, "%v", err)
 	}
-	var f interface {}
+	var f interface{}
 	err = json.Unmarshal(body, &f)
 	if err != nil {
 		log.Infof(ctx, "%v", err)
 	}
-	log.Infof(ctx, "%s", f)
-	// if err := backend.AddSingleQuestion(db, newQuestion["question"], newQuestion["state"]); err != nil {
-	// 	log.Warningf(ctx, "Error adding new question to db:\t", err)
-	// }
+	m := f.(map[string]interface{})
+	question := m["Question"]
+	state := m["State"]
+	if err != nil {
+		log.Infof(ctx, "%v", err)
+	}
+	var qn stackongo.Question
+	json.Unmarshal([]byte(question.(string)), &qn)
+	log.Infof(ctx, "%v", qn)
+
+	if err := backend.AddSingleQuestion(db, qn, state.(string)); err != nil {
+		log.Warningf(ctx, "Error adding new question to db:\t", err)
+	}
 }
 
 // Handler for keywords, tags, users in the search box
@@ -490,8 +487,10 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
 	query := data.Users
 	var querySorted []userData
-	for _, i := range query {
-		querySorted = append(querySorted, i)
+	for id, i := range query {
+		if id != user.User_id {
+			querySorted = append(querySorted, i)
+		}
 	}
 	sort.Sort(ByDisplayName(querySorted))
 
@@ -500,14 +499,21 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 
 	for i, u := range querySorted {
 		tempQueryArray = append(tempQueryArray, u)
-		if i%4 == 0 || i == len(query) {
+		if (i != 0 && i%4 == 0) || i+1 == len(querySorted) {
 			queryArray = append(queryArray, tempQueryArray)
 			//clear temp array
 			tempQueryArray = nil
 		}
 	}
+	final := struct {
+		User   userData
+		Others [][]userData
+	}{
+		query[user.User_id],
+		queryArray,
+	}
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, 0, queryArray}); err != nil {
+	if err := page.Execute(w, queryReply{user, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
@@ -548,12 +554,12 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	if err != nil {
 		code, err := r.Cookie("code")
 		if err != nil {
-			log.Warningf(ctx, "Returning Guest user, %v", err.Error())
+			log.Infof(ctx, "Returning Guest user, %v", err.Error())
 			return guest
 		}
 		access_tokens, err := backend.ObtainAccessToken(code.Value)
 		if err != nil {
-			log.Warningf(ctx, "access token not obtained: %v", err.Error())
+			log.Warningf(ctx, "Access token not obtained: %v", err.Error())
 			return guest
 		}
 
