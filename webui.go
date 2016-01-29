@@ -186,41 +186,41 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
 
-	/*	for {
-			if lastPull < time.Now().Add(-1*timeout).Unix() {
-				log.Infof(ctx, "Pulling new questions")
-				toDate := time.Now()
-				fromDate := time.Unix(lastPull, 0)
-				// Collect new questions from SO
-				questions, err := backend.GetNewQns(fromDate, toDate)
-				if err != nil {
-					log.Warningf(ctx, "Error getting new questions: %v", err.Error())
+	for {
+		if lastPull < time.Now().Add(-1*timeout).Unix() {
+			log.Infof(ctx, "Pulling new questions")
+			toDate := time.Now()
+			fromDate := time.Unix(lastPull, 0)
+			// Collect new questions from SO
+			questions, err := backend.GetNewQns(fromDate, toDate)
+			if err != nil {
+				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
+			} else {
+
+				log.Infof(ctx, "Adding new questions to db")
+				// Add new questions to database
+				if err = backend.AddQuestions(db, questions); err != nil {
+					log.Warningf(ctx, "Error adding new questions: %v", err.Error())
 				} else {
 
-					log.Infof(ctx, "Adding new questions to db")
-					// Add new questions to database
-					if err = backend.AddQuestions(db, questions); err != nil {
-						log.Warningf(ctx, "Error adding new questions: %v", err.Error())
+					log.Infof(ctx, "Removing deleted questions from db")
+					if err = backend.RemoveDeletedQuestions(db); err != nil {
+						log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
 					} else {
-
-						log.Infof(ctx, "Removing deleted questions from db")
-						if err = backend.RemoveDeletedQuestions(db); err != nil {
-							log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
-						} else {
-							lastPull = time.Now().Unix()
-							log.Infof(ctx, "New questions added")
-						}
+						lastPull = time.Now().Unix()
+						log.Infof(ctx, "New questions added")
 					}
 				}
 			}
-
-			if checkDBUpdateTime("questions", mostRecentUpdate) {
-				log.Infof(ctx, "Refreshing cache")
-				refreshLocalCache()
-			}
-			break
 		}
-	*/
+
+		if checkDBUpdateTime("questions", mostRecentUpdate) {
+			log.Infof(ctx, "Refreshing cache")
+			refreshLocalCache()
+		}
+		break
+	}
+
 	// get the current user
 	user := getUser(w, r, ctx)
 
@@ -257,7 +257,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		addQuestionHandler(w, r, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
 		addNewQuestionToDatabaseHandler(w, r)
-	} else {
+	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" {
 
 		page := template.Must(template.ParseFiles("public/template.html"))
 		pageQuery := []string{
@@ -269,6 +269,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if err := page.Execute(w, writeResponse(user, data, pageNum, pageQuery)); err != nil {
 			log.Errorf(ctx, "%v", err.Error())
 		}
+	} else {
+		errorHandler(w, r, http.StatusNotFound, "")
 	}
 }
 
@@ -360,10 +362,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request, pageNum int, user sta
 		for _, question := range cache {
 			if question.Question_id == id || question.Link == search || contains(question.Tags, search) ||
 				strings.Contains(question.Body, search) || strings.Contains(question.Title, search) {
+
 				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
-			}
-			if len(tempData.Caches[cacheType]) >= 25 {
-				break
+			} else if owner, ok := data.Qns[question.Question_id]; ok {
+				if (id != 0 && owner.User_id == id) || strings.Contains(owner.Display_name, search) {
+					tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
+				}
 			}
 		}
 	}
@@ -627,6 +631,8 @@ func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string
 			errorHandler(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
+	case http.StatusInternalServerError:
+		w.Write([]byte("Internal error: " + err))
 	}
 }
 

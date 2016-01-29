@@ -27,7 +27,7 @@ $(function() {
     var subpage = window.location.href.slice(window.location.href.lastIndexOf('/'));
     var url = removeQuery('tab', subpage)
     url = addQuery('tab', tab, url);
-    window.history.pushState('', document.title, url);
+    window.history.replaceState('', document.title, url);
     setActiveTab(window.location.href);
     setWindowHeight();
   });
@@ -299,11 +299,11 @@ $(document).ready(function() {
       subpage.indexOf('viewTags') == -1 && subpage.indexOf('viewUsers') == -1 &&
       subpage.indexOf('addQuestion') == -1) {
       var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
-    window.history.pushState('', document.title, addedPath);
+    window.history.replaceState('', document.title, addedPath);
   } else if (window.location.search.indexOf('page') == -1 && (subpage.indexOf('viewTags') != -1 ||
              subpage.indexOf('viewUsers') != -1)) {
     var addedPath = subpage + addQuery('page', '1', window.location.search);
-    window.history.pushState('', document.title, addedPath);
+    window.history.replaceState('', document.title, addedPath);
   }
   setActiveTab(window.location.href);
 });
@@ -315,7 +315,7 @@ function setCookies() {
     document.cookie = 'code=' + code;
   }
   var url = removeQuery('code', window.location.href);
-  window.history.pushState("", document.title, url);
+  window.history.replaceState("", document.title, url);
 }
 
 //-------- Removing queries ---------//
@@ -336,7 +336,7 @@ function clearEmptyQueries() {
     }
     newURL += '?' + params_arr.join('&');
   }
-  window.history.pushState('', document.title, newURL);
+  window.history.replaceState('', document.title, newURL);
 }
 
 // returns path including modified query assuming sourceURL does not
