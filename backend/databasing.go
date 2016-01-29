@@ -3,13 +3,13 @@ package backend
 import (
 	"dataCollect"
 	"database/sql"
+	"encoding/json"
 	"html"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
-	"encoding/json"
-	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -23,7 +23,7 @@ type databaseInfo struct {
 }
 
 func returnDBString() {
-	
+
 }
 
 //Create database connection & connection pool
@@ -68,7 +68,6 @@ func SqlInit() *sql.DB {
 	return db
 }
 
-
 // This function checks if an existing question is already present in the database, based on ID
 // If so, doing a call to the StackExchange API is useless, and a waste of our daily quota
 // SELECT EXIST returns a single row with a 1 or 0 depending on whether or not a record exists
@@ -93,24 +92,23 @@ func CheckForExistingQuestion(db *sql.DB, id int) (int, error) {
 	return res, nil
 }
 
-
 // Given a question ID, it pulls that from the database
 // Marshalls the result as JSON data to be returned in a reply
-func PullQnByID(db *sql.DB, id int) ([]byte) {
+func PullQnByID(db *sql.DB, id int) []byte {
 
 	type newQ struct {
-		Message		   string
+		Message string
 
-		Question_id    int
-		Creation_date  int64
-		Link           string
-		Body           string
-		Title          string
-		Tags 		   []string
-		
-		State          string
-		Owner		   string
-		Time 		   sql.NullInt64
+		Question_id   int
+		Creation_date int64
+		Link          string
+		Body          string
+		Title         string
+		Tags          []string
+
+		State string
+		Owner string
+		Time  sql.NullInt64
 	}
 
 	rows, err := db.Query("SELECT * FROM questions where question_id=?", id)
@@ -152,7 +150,6 @@ func PullQnByID(db *sql.DB, id int) ([]byte) {
 	return b
 }
 
-
 func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string, user int) error {
 
 	//INSERT IGNORE ensures that the same question won't be added again
@@ -184,8 +181,9 @@ func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string, user i
 func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
 
 	for _, item := range newQns.Items {
-		AddSingleQuestion(db, item, "unanswered", 0) 
+		AddSingleQuestion(db, item, "unanswered", 0)
 	}
+	UpdateTableTimes(db, "question")
 	return nil
 }
 
