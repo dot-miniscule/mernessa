@@ -32,8 +32,5 @@ handlers:
 - url: /.*
   script: _go_app
 
-inbound_services:
-  - warmup
-
 env_variables:
   DB_STRING: 'meredithl:mernessa@tcp([2001:4860:4864:1:aebb:124d:884e:3108]:3306)/mernessa' 

@@ -32,8 +32,5 @@ handlers:
 - url: /.*
   script: _go_app
 
-inbound_services:
-  - warmup
-
 env_variables:
   DB_STRING: 'meredithl:mernessa@tcp([2001:4860:4864:1:69b2:7db8:61d3:bb75]:3306)/stacktrackerdb' 
