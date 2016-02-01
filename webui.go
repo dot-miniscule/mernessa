@@ -194,7 +194,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Set context for logging
 	ctx = appengine.NewContext(r)
-	backend.SetTransport(r)
+	backend.SetTransport(ctx)
 
 	// Pull any new questions added to StackOverflow
 	lastPull = pullNewQuestions(db, ctx, lastPull)
