@@ -1,7 +1,7 @@
 package webui
 
 import (
-	_"backend"
+	"backend"
 	"database/sql"
 	"net/http"
 	"sort"
@@ -16,13 +16,13 @@ import (
 
 func initCacheDownload() {
 	data.CacheLock.Lock()
-	data.Users = readUsersFromDb()
+	data.Users = readUsersFromDb(nil)
 	data.CacheLock.Unlock()
-	refreshLocalCache()
+	refreshLocalCache(nil)
 }
 
-func refreshLocalCache() {
-	tempData := readFromDb("")
+func refreshLocalCache(ctx context.Context) {
+	tempData := readFromDb(ctx, "")
 
 	data.CacheLock.Lock()
 	for cacheType, _ := range tempData.Caches {
@@ -35,7 +35,7 @@ func refreshLocalCache() {
 	data.CacheLock.Unlock()
 }
 
-func readFromDb(queries string) webData {
+func readFromDb(ctx context.Context, queries string) webData {
 	//Reading from database
 	if ctx != nil {
 		log.Infof(ctx, "Refreshing database read")
@@ -134,7 +134,7 @@ func readFromDb(queries string) webData {
 
 //Function called when the /viewTags request is made
 //Retrieves all distinct tags and the number of questions saved in the db with that tag
-func readTagsFromDb() []tagData {
+func readTagsFromDb(ctx context.Context) []tagData {
 	var tempData []tagData
 
 	var (
@@ -152,7 +152,8 @@ func readTagsFromDb() []tagData {
 	for rows.Next() {
 		err := rows.Scan(&tag, &count)
 		if err != nil {
-			log.Warningf(ctx, "Scan failed: %v", err.Error())
+			log.Warningf(ctx, "Tag Scan failed: %v", err.Error())
+			continue
 		}
 		currentTag := tagData{tag.String, int(count.Int64)}
 		tempData = append(tempData, currentTag)
@@ -163,7 +164,7 @@ func readTagsFromDb() []tagData {
 
 //Function to read all user data from the database when a /viewUsers request is made
 //Retrieves all users data
-func readUsersFromDb() map[int]userData {
+func readUsersFromDb(ctx context.Context) map[int]userData {
 
 	tempData := make(map[int]userData)
 
@@ -176,6 +177,9 @@ func readUsersFromDb() map[int]userData {
 
 	rows, err := db.Query("SELECT * FROM user")
 	if err != nil {
+		if ctx != nil {
+			log.Warningf(ctx, "User query failed: %v", err.Error())
+		}
 		return tempData
 	}
 
@@ -183,6 +187,9 @@ func readUsersFromDb() map[int]userData {
 	for rows.Next() {
 		err := rows.Scan(&id, &name, &pic, &link)
 		if err != nil {
+			if ctx != nil {
+				log.Warningf(ctx, "User Scan failed: %v", err.Error())
+			}
 			continue
 		}
 
@@ -198,36 +205,29 @@ func readUsersFromDb() map[int]userData {
 	return tempData
 }
 
-//Function to retrieve list of questions relating to particular user when a /userPage?xxx is made
-func getUserQnsFromDb(userId string) []userInfo {
-	var tempData []userInfo
-
-	return tempData
-}
-
 /* Function to check if the DB has been updated since we last queried it
 Returns true if our cache needs to be refreshed
 False if is all g */
-func checkDBUpdateTime(c context.Context, tableName string, lastUpdate int64) bool {
+func checkDBUpdateTime(ctx context.Context, tableName string, lastUpdate int64) bool {
 	var (
 		last_updated int64
 	)
 	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'")
 	if err != nil {
-		log.Errorf(c, "Query failed: %v", err.Error())
+		log.Errorf(ctx, "Query failed: %v", err.Error())
 		return true
 	}
 	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&last_updated)
 		if err != nil {
-			log.Errorf(c, err.Error())
+			log.Errorf(ctx, "Update time scan failed: %v", err.Error())
 		}
 	}
 	return last_updated > lastUpdate
 }
 
-func readUserFromDb(id string) stackongo.User {
+func readUserFromDb(ctx context.Context, id string) stackongo.User {
 	//Reading from database
 	log.Infof(ctx, "Refreshing database read")
 	var (
@@ -239,7 +239,7 @@ func readUserFromDb(id string) stackongo.User {
 	//Select all questions in the database and read into a new data object
 	rows, err := db.Query("SELECT * FROM user WHERE id=" + id)
 	if err != nil {
-		log.Errorf(ctx, "query failed: %v", err.Error())
+		log.Errorf(ctx, "User query failed: %v", err.Error())
 		return stackongo.User{}
 	}
 
@@ -248,7 +248,7 @@ func readUserFromDb(id string) stackongo.User {
 	for rows.Next() {
 		err := rows.Scan(&owner, &name, &image, &link)
 		if err != nil {
-			log.Errorf(ctx, "query failed: %v", err.Error())
+			log.Errorf(ctx, "User Scan failed: %v", err.Error())
 			continue
 		}
 
@@ -264,7 +264,7 @@ func readUserFromDb(id string) stackongo.User {
 }
 
 // Write user data into the database
-func addUserToDB(newUser stackongo.User) {
+func addUserToDB(ctx context.Context, newUser stackongo.User) {
 
 	stmts, err := db.Prepare("INSERT IGNORE INTO user (id, name, pic) VALUES (?, ?, ?)")
 	if err != nil {
@@ -279,7 +279,7 @@ func addUserToDB(newUser stackongo.User) {
 }
 
 // updating the caches based on input from the appi
-func updatingCache_User(r *http.Request, user stackongo.User) error {
+func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.User) error {
 	log.Infof(ctx, "updating cache")
 
 	mostRecentUpdate = time.Now().Unix()
@@ -345,9 +345,9 @@ func updatingCache_User(r *http.Request, user stackongo.User) error {
 	data.CacheLock.Unlock()
 
 	// Update the database
-	// go func(db *sql.DB, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
-	// 	recentChangedQns = qnsTitles
-	// 	backend.UpdateDb(db, qns, userId, lastUpdate)
-	// }(db, changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
+	go func(db *sql.DB, ctx context.Context, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
+		recentChangedQns = qnsTitles
+		backend.UpdateDb(db, ctx, qns, userId, lastUpdate)
+	}(db, ctx, changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
 	return nil
 }
