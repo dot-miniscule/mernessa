@@ -255,6 +255,7 @@ func UpdateTableTimes(db *sql.DB, tableName string) {
 	stmts, err := db.Prepare("UPDATE update_times SET last_updated=? WHERE table_name=?")
 	if err != nil {
 		log.Println("Prepare failed:\t", err)
+		return
 	}
 
 	timeNow := time.Now().Unix()
