@@ -8,10 +8,10 @@
 #This is why we have called http.HandleFunc inside the init function to associate our handler with the web root ("/")
 
 application: stacktracker-1184
+module: default
 version: test
 runtime: go
 api_version: go1
-module: default
 automatic_scaling:
   min_idle_instances: 1
   max_idle_instances: 5  # default value
@@ -33,4 +33,4 @@ handlers:
   script: _go_app
 
 env_variables:
-  DB_STRING: 'meredithl:mernessa@tcp([2001:4860:4864:1:aebb:124d:884e:3108]:3306)/mernessa' 
+  DB_STRING: 'root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa'

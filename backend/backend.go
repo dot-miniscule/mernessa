@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"google.golang.org/appengine"
+	"golang.org/x/net/context"
+
 	"google.golang.org/appengine/urlfetch"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -34,8 +35,7 @@ var (
 	session = new(stackongo.Session)
 )
 
-func SetTransport(r *http.Request) {
-	c := appengine.NewContext(r)
+func SetTransport(c context.Context) {
 	ut := &urlfetch.Transport{Context: c}
 	stackongo.SetTransport(ut)
 }
@@ -57,7 +57,7 @@ func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, erro
 
 	questions, err := dataCollect.Collect(session, appInfo, params)
 	if err != nil {
-		return nil, errors.New("Error collecting questions\t" + err.Error())
+		return nil, err
 	}
 	return questions, nil
 }
@@ -93,7 +93,7 @@ func GetUser(user_id int, params map[string]string) (stackongo.User, error) {
 // Function to make a fresh request to the Stack Exchange API to return questions relating to set of ID's
 // Initiates parameters required to make the request.
 // The returning data is then sent back to the webui handler to be parsed into the page
-func GetQuestions (ids []int) (*stackongo.Questions, error) {
+func GetQuestions(ids []int) (*stackongo.Questions, error) {
 	params := make(stackongo.Params)
 	params.Pagesize(100)
 	params.Sort("creation")

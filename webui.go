@@ -138,13 +138,18 @@ func (r queryReply) PagePlus(num int) int {
 func init() {
 
 	recentChangedQns = []string{}
+	lastPull = time.Now().Add(-1 * time.Hour * 24 * 7).Unix()
 
 	// Initialising stackongo session
 	backend.NewSession()
-	db = backend.SqlInit()
-	lastPull = time.Now().Add(-1 * time.Hour * 24 * 7).Unix()
-	//initCacheDownload()
 
+	// Initialising sql database
+	db = backend.SqlInit()
+
+	// Downloading cache from sql
+	initCacheDownload()
+
+	// Handlers for pages
 	http.HandleFunc("/login", authHandler)
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/tag", handler)
@@ -170,6 +175,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 // Handler for checking if the database has been updated
 func updateHandler(w http.ResponseWriter, r *http.Request) {
 	time, _ := strconv.ParseInt(r.FormValue("time"), 10, 64)
+
+	// Writing the page to JSON format
 	pageText := "{\"Updated\": " + strconv.FormatBool(mostRecentUpdate > time) + ","
 	pageText += "\"Questions\": ["
 	for _, question := range recentChangedQns {
@@ -177,48 +184,25 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	pageText = strings.TrimSuffix(pageText, ",")
 	pageText += "]}"
+
+	// Write text into response
 	w.Write([]byte(pageText))
 }
 
 // Handler for main information to be read and written from
 func handler(w http.ResponseWriter, r *http.Request) {
 
+	// Set context for logging
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(r)
 
-	for {
-		if lastPull < time.Now().Add(-1*timeout).Unix() {
-			log.Infof(ctx, "Pulling new questions")
-			toDate := time.Now()
-			fromDate := time.Unix(lastPull, 0)
-			// Collect new questions from SO
-			questions, err := backend.GetNewQns(fromDate, toDate)
-			if err != nil {
-				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
-			} else {
+	// Pull any new questions added to StackOverflow
+	lastPull = pullNewQuestions(db, ctx, lastPull)
 
-				log.Infof(ctx, "Adding new questions to db")
-				// Add new questions to database
-				if err = backend.AddQuestions(db, questions); err != nil {
-					log.Warningf(ctx, "Error adding new questions: %v", err.Error())
-				} else {
-
-					log.Infof(ctx, "Removing deleted questions from db")
-					if err = backend.RemoveDeletedQuestions(db); err != nil {
-						log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
-					} else {
-						lastPull = time.Now().Unix()
-						log.Infof(ctx, "New questions added")
-					}
-				}
-			}
-		}
-
-		if checkDBUpdateTime("questions", mostRecentUpdate) {
-			log.Infof(ctx, "Refreshing cache")
-			refreshLocalCache()
-		}
-		break
+	// Refresh local cache if the database has been changed
+	if checkDBUpdateTime(ctx, "questions", mostRecentUpdate) {
+		log.Infof(ctx, "Refreshing cache")
+		refreshLocalCache()
 	}
 
 	// get the current user
@@ -240,7 +224,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 	}
 
-	// Send to tag subpage
+	// Send to valid subpages otherwise errorHandler
 	if strings.HasPrefix(r.URL.Path, "/tag") && r.FormValue("tagSearch") != "" {
 		tagHandler(w, r, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/user") {
@@ -258,7 +242,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
 		addNewQuestionToDatabaseHandler(w, r)
 	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" {
-
+		// Parse the html template to serve to the page
 		page := template.Must(template.ParseFiles("public/template.html"))
 		pageQuery := []string{
 			"",
@@ -551,7 +535,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 
 func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stackongo.User {
 	// Collect access token from browswer cookie
-	// If cookie does not exist, obtain token using code from URL and set as cookie
+	// If cookie does not exist, obtain token using code from cookie
 	// If code does not exist, redirect to login page for authorization
 	cookie, err := r.Cookie("access_token")
 	var token string
@@ -585,6 +569,36 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	}
 	data.CacheLock.Unlock()
 	return user
+}
+
+// Pulls new questions if the lastPullTime more than 6 hours before the current time
+func pullNewQuestions(db *sql.DB, ctx context.Context, lastPullTime int64) int64 {
+	if lastPull < time.Now().Add(-1*timeout).Unix() {
+		log.Infof(ctx, "Pulling new questions")
+		toDate := time.Now()
+		fromDate := time.Unix(lastPull, 0)
+		// Collect new questions from SO
+		questions, err := backend.GetNewQns(fromDate, toDate)
+		if err != nil {
+			log.Warningf(ctx, "Error getting new questions: %v", err.Error())
+			return lastPullTime
+		}
+
+		log.Infof(ctx, "Adding new questions to db")
+		// Add new questions to database
+		if err = backend.AddQuestions(db, questions); err != nil {
+			log.Warningf(ctx, "Error adding new questions: %v", err.Error())
+			return lastPullTime
+		}
+
+		log.Infof(ctx, "Removing deleted questions from db")
+		if err = backend.RemoveDeletedQuestions(db); err != nil {
+			log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
+		}
+		lastPullTime = time.Now().Unix()
+		log.Infof(ctx, "New questions added")
+	}
+	return lastPullTime
 }
 
 // Write a genReply struct with the inputted Question slices

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/laktek/Stack-on-Go/stackongo"
 	"google.golang.org/appengine/log"
 )
@@ -206,20 +208,20 @@ func getUserQnsFromDb(userId string) []userInfo {
 /* Function to check if the DB has been updated since we last queried it
 Returns true if our cache needs to be refreshed
 False if is all g */
-func checkDBUpdateTime(tableName string, lastUpdate int64) bool {
+func checkDBUpdateTime(c context.Context, tableName string, lastUpdate int64) bool {
 	var (
 		last_updated int64
 	)
 	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'")
 	if err != nil {
-		log.Errorf(ctx, "Query failed: %v", err.Error())
+		log.Errorf(c, "Query failed: %v", err.Error())
 		return true
 	}
 	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&last_updated)
 		if err != nil {
-			log.Errorf(ctx, err.Error())
+			log.Errorf(c, err.Error())
 		}
 	}
 	return last_updated > lastUpdate
