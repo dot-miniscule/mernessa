@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
+	
 	"net/http"
 	"reflect"
 	"sort"
@@ -196,6 +197,37 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	ctx = appengine.NewContext(r)
 	backend.SetTransport(ctx)
 
+    //dbString := os.Getenv("DB_STRING")
+	//log.Infof(ctx, "%v", dbString)
+	for {
+		if lastPull < time.Now().Add(-1*timeout).Unix() {
+			log.Infof(ctx, "Pulling new questions")
+			toDate := time.Now()
+			fromDate := time.Unix(lastPull, 0)
+			// Collect new questions from SO
+			questions, err := backend.GetNewQns(fromDate, toDate)
+			if err != nil {
+				log.Warningf(ctx, "Error getting new questions: %v", err.Error())
+			} else {
+
+				log.Infof(ctx, "Adding new questions to db")
+				// Add new questions to database
+				if err = backend.AddQuestions(db, questions); err != nil {
+					log.Warningf(ctx, "Error adding new questions: %v", err.Error())
+				} else {
+
+					log.Infof(ctx, "Removing deleted questions from db")
+					if err = backend.RemoveDeletedQuestions(db); err != nil {
+						log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
+					} else {
+						lastPull = time.Now().Unix()
+						log.Infof(ctx, "New questions added")
+					}
+				}
+			}
+		}
+>>>>>>> a961068ab0025aba25c238905244106552b8d732
+
 	// Pull any new questions added to StackOverflow
 	lastPull = pullNewQuestions(db, ctx, lastPull)
 
@@ -328,7 +360,10 @@ func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal([]byte(question.(string)), &qn)
 	log.Infof(ctx, "%v", qn)
 
-	if err := backend.AddSingleQuestion(db, qn, state.(string)); err != nil {
+	user := getUser(w, r, ctx)
+	log.Infof(ctx, "%v", user.User_id)
+
+	if err := backend.AddSingleQuestion(db, qn, state.(string), user.User_id); err != nil {
 		log.Warningf(ctx, "Error adding new question to db:\t", err)
 	}
 }

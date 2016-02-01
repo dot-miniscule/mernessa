@@ -22,6 +22,10 @@ type databaseInfo struct {
 	IP       string
 }
 
+func returnDBString() {
+
+}
+
 //Create database connection & connection pool
 //Once opened this does not need to be called again
 //sql.DB ISNT A DATABASE CONNECTION, its an abstraction of the interface.
@@ -40,7 +44,6 @@ func SqlInit() *sql.DB {
 	// log.Println(appengine.VersionID(ctx))
 	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
 	//		Also, update logging for appengine context.
-	//db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
 	dbString := os.Getenv("DB_STRING")
 	db, err := sql.Open("mysql", dbString)
 	if err != nil {
@@ -147,14 +150,14 @@ func PullQnByID(db *sql.DB, id int) []byte {
 	return b
 }
 
-func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string) error {
+func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string, user int) error {
 
 	//INSERT IGNORE ensures that the same question won't be added again
-	stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date, state) VALUES (?, ?, ?, ?, ?, ?)")
+	stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date, state, user) VALUES (?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec(item.Question_id, html.UnescapeString(item.Title), item.Link, html.UnescapeString(StripTags(item.Body)), item.Creation_date, state)
+	_, err = stmt.Exec(item.Question_id, html.UnescapeString(item.Title), item.Link, html.UnescapeString(StripTags(item.Body)), item.Creation_date, state, user)
 	if err != nil {
 		log.Println("Exec insertion for question failed!:\t", err)
 		return err
@@ -178,7 +181,7 @@ func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string) error 
 func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
 
 	for _, item := range newQns.Items {
-		AddSingleQuestion(db, item, "unanswered")
+		AddSingleQuestion(db, item, "unanswered", 0)
 	}
 	UpdateTableTimes(db, "question")
 	return nil

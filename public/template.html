@@ -148,8 +148,10 @@
                           {{if eq $cache.CacheType "unanswered"}}
                             <td>
                               <div class="input-group">
-                                <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Pending" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'pending', {{$reply.UpdateTime}});">
-                                <select class="form-control-sm new_state_menu" name="{{$cache.CacheType}}_{{$question.Question_id}}" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
+                                <div class="input-group-btn">
+                                  <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Pending" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'pending', {{$reply.UpdateTime}});">
+                                </div>
+                                <select class="form-control input-sm new_state_menu" name="{{$cache.CacheType}}_{{$question.Question_id}}" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
                                   <option value="no_change"></option>
                                   <option value="answered">Answered</a></option>
                                   <option value="updating">Updating</a></option>
@@ -160,8 +162,10 @@
                           {{else if eq $cache.CacheType "answered"}}
                             <td>
                               <div class="input-group">
-                                <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Reopen" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'pending', {{$reply.UpdateTime}});">
-                                <select class="form-control-sm new_state_menu" name="{{$cache.CacheType}}_{{$question.Question_id}}"  style="display:none" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
+                                <div class="input-group-btn">
+                                  <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Reopen" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'pending', {{$reply.UpdateTime}});">
+                                </div>
+                                <select class="form-control input-sm new_state_menu" name="{{$cache.CacheType}}_{{$question.Question_id}}"  style="display:none" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
                                   <option value="no_change"></option>
                                   <option value="pending"></option>
                                 </select>
@@ -170,8 +174,10 @@
                           {{else}}
                             <td>
                               <div class="input-group">
-                                <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Answered" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'answered', {{$reply.UpdateTime}});">
-                                <select class="form-control-sm new_state_menu dropdown" name="{{$cache.CacheType}}_{{$question.Question_id}}" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
+                                <div class="input-group-btn">
+                                  <input type="button" class="btn btn-default btn-sm one-click" name="{{$cache.CacheType}}_{{$question.Question_id}}" value="Answered" onclick="$(this).addClass('clicked'); return submitForm({{$reply.User.Display_name}}, 'answered', {{$reply.UpdateTime}});">
+                                </div>
+                                <select class="form-control input-sm new_state_menu dropdown" name="{{$cache.CacheType}}_{{$question.Question_id}}" onchange="return submitForm({{$reply.User.Display_name}}, 'submit', {{$reply.UpdateTime}});">
                                   <option value="no_change"></option>
                                   {{if eq $cache.CacheType "updating"}}
                                     <option value="pending">Pending</option>

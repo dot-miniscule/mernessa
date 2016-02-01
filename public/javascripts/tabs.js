@@ -195,7 +195,7 @@ function displayNewQuestion(data) {
   menu.empty();
 
   btn.attr('name', 'unanswered_'+ question.Question_id);
-  //btn.click().addClass('clicked');
+  btn.click().addClass('clicked');
   btn.attr('value', 'Pending');
 
   if(type == undefined) {
@@ -211,29 +211,8 @@ function displayNewQuestion(data) {
       addQuestionToStackTracker(data, btn.attr('value').toLowerCase());
     });
     //menu.change(addQuestionToStackTracker(data));
-}
-  // } else {
-  //   cancel.addClass('hidden');
-  //   btn.attr('name', type+'_'+ question.Question_id);
-  //   if(type == "unanswered") {
-  //     menu.removeClass('hidden');
-  //     options = {"answered":"Answered", "updating":"Updating"};
-    
-  //   } else if(type == "answered") {
-  //     menu.addClass('hidden');
-  //   } else {
-  //     menu.removeClass('hidden');
-  //     options = {"updating":"Updating"};
-  //     btn.attr('value', 'Answered');
-  //   }
-  // }
+  }
 
-  // $.each(options, function(value, key) {
-  //     menu.append($("<option></option>").attr("value", value).text(key));
-  //   });
-  // menu.change(function() {
-
-  // });
   $('.questionExists').html(question.Message);
   $('table').removeClass('hidden');
   $('a.question_title').attr("href", question.Link).children('h4').html(((question.Title)));
