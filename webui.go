@@ -127,7 +127,7 @@ func (r genReply) CacheUpdated() bool {
 	return mostRecentUpdate > r.UpdateTime
 }
 func (r genReply) Timestamp(timeUnix int64) string {
-	return time.Unix(timeUnix, 0).Format("Jan 2 at 2:15")
+	return time.Unix(timeUnix, 0).Format("Jan 2 at 15:04")
 }
 func (r queryReply) PagePlus(num int) int {
 	return r.Page + num
@@ -161,7 +161,7 @@ func init() {
 	http.HandleFunc("/dbUpdated", updateHandler)
 	http.HandleFunc("/search", handler)
 	http.HandleFunc("/addQuestion", handler)
-	http.HandleFunc("/pullNewQn", newQnHandler)
+	http.HandleFunc("/pullNewQn", handler)
 }
 
 // Handler for authorizing user
@@ -201,7 +201,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	//log.Infof(ctx, "%v", dbString)
 
 	// Pull any new questions added to StackOverflow
-	lastPull = pullNewQuestions(db, ctx, lastPull)
+	lastPull = pullNewQuestions(db, r, lastPull)
 
 	// Refresh local cache if the database has been changed
 	if checkDBUpdateTime(ctx, "questions", mostRecentUpdate) {
@@ -245,6 +245,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		addQuestionHandler(w, r, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
 		addNewQuestionToDatabaseHandler(w, r)
+	} else if strings.HasPrefix(r.URL.Path, "/pullNewQn") {
+		newQnHandler(w, r)
 	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" {
 		// Parse the html template to serve to the page
 		page := template.Must(template.ParseFiles("public/template.html"))
@@ -277,6 +279,7 @@ func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, use
 // Makes a new backend request to retrieve new questions
 // Parses the returned data into a new page, which can be inserted into the template.
 func newQnHandler(w http.ResponseWriter, r *http.Request) {
+
 	id, _ := strconv.Atoi(r.FormValue("id"))
 
 	res, err := backend.CheckForExistingQuestion(db, id)
@@ -287,25 +290,26 @@ func newQnHandler(w http.ResponseWriter, r *http.Request) {
 	if res == 1 {
 
 		existingQn := backend.PullQnByID(db, id)
+		
 		if err != nil {
 			log.Warningf(ctx, err.Error())
 		}
 		w.Write(existingQn)
-		return
-	}
+	} else {
 
-	intArray := []int{id}
-	questions, err := backend.GetQuestions(intArray)
-	if err != nil {
-		log.Warningf(ctx, err.Error())
-		return
+		intArray := []int{id}
+		questions, err := backend.GetQuestions(r, intArray)
+		if err != nil {
+			log.Warningf(ctx, err.Error())
+		} else { 
+			questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
+			qnJson, err := json.Marshal(questions.Items[0])
+			if err != nil {
+				log.Warningf(ctx, err.Error())
+			}
+			w.Write(qnJson)
+		}
 	}
-	questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
-	qnJson, err := json.Marshal(questions.Items[0])
-	if err != nil {
-		log.Warningf(ctx, err.Error())
-	}
-	w.Write(qnJson)
 }
 
 // Handler for adding a new question to the database upon submission
@@ -338,6 +342,7 @@ func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 	if err := backend.AddSingleQuestion(db, qn, state.(string), user.User_id); err != nil {
 		log.Warningf(ctx, "Error adding new question to db:\t", err)
 	}
+	backend.UpdateTableTimes(db, "question")
 }
 
 // Handler for keywords, tags, users in the search box
@@ -579,7 +584,8 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 }
 
 // Pulls new questions if the lastPullTime more than 6 hours before the current time
-func pullNewQuestions(db *sql.DB, ctx context.Context, lastPullTime int64) int64 {
+func pullNewQuestions(db *sql.DB, req *http.Request, lastPullTime int64) int64 {
+	ctx = appengine.NewContext(req)
 	if lastPull < time.Now().Add(-1*timeout).Unix() {
 		log.Infof(ctx, "Pulling new questions")
 		toDate := time.Now()
@@ -599,7 +605,7 @@ func pullNewQuestions(db *sql.DB, ctx context.Context, lastPullTime int64) int64
 		}
 
 		log.Infof(ctx, "Removing deleted questions from db")
-		if err = backend.RemoveDeletedQuestions(db); err != nil {
+		if err = backend.RemoveDeletedQuestions(req, db); err != nil {
 			log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
 		}
 		lastPullTime = time.Now().Unix()

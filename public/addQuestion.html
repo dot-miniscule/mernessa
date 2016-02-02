@@ -79,17 +79,27 @@
         </nav><!-- END NAVBAR -->
       </div><!-- END HEADER -->
 
-		<div class="container-fluid wrap">
-		        <div class="row content">
-		        	<h4>Search for a question on StackOverflow by id or question URL</h4>
-		        	<input type="text" id="searchTerm">
-		        	<button id="search-for-question" onclick="pullQuestionFromStackOverflow()">Search</button>
-		        	<div class="newQuestion"></div>
-		        </div><!-- END CONTENT -->
-		        <br>
-		        <div class="row">
-              <div class="questionExists">
+		<div class="container-fluid">
+		        <div class="row-fluid content">
+              <div class="container-fluid">
+                <div class="col-xs-11">
+                  <form class="form">
+                    <div class="form-group">
+                      
+                      <input class="form-control" type="text" id="searchTerm" placeholder="Search for a StackOverflow question by URL or ID...">
+                      </div>
+                  </form>
+                </div>
+                <div class="col-xs-1">
+                  <button type="submit" id="search-for-question" onclick="pullQuestionFromStackOverflow()" class="btn btn-default">Search</button>
+                </div>
               </div>
+		        <br>
+            <div class="row questionExists">
+              </div>
+              <br>
+		        <div class="row">
+              <form name="change_state" id="stateForm" method="POST">
 		        	<table class="table table-striped hidden">
                     	<thead>
                       	<tr>
@@ -100,19 +110,21 @@
                     	<tbody>
                     		<tr>
                     			<td class="question">
-		                            <a target="_blank" class="question_title"><h4></h4></a>
-		                            <br>
-		                            <div class="bodySnippet">
-		                            </div><!--END OF BODY SNIPPET-->
-		                            <div class="tagContainer">
-		                              <ul class="tags">
-		                              </ul>
-		                            </div>
-		                        </td>
+                            <a target="_blank" class="question_title"><h4></h4></a>
+                            <br>
+                            <div class="bodySnippet">
+                            </div><!--END OF BODY SNIPPET-->
+                            <div class="tagContainer">
+                              <ul class="tags">
+                              </ul>
+                            </div>
+                              <p class="questionOwner">
+                              </p>
+	                        </td>
 		                    	<td>
 		                    		<div class="input-group">
                               <div class="input-group-btn">
-                            		<input type="button" class="btn btn-default btn-sm function-button">
+                            		<input type="button" class="one-click btn btn-default btn-sm function-button">
                               </div>
                               <select class="form-control input-sm new_state_menu"></select>
                               <div class="input-group-btn">
@@ -123,13 +135,14 @@
                     		</tr>
                     	</tbody>
 		        	</table>
+            </form>
 		        </div><!--/.row -->
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
 	<script type="text/javascript" src="/javascripts/tabs.js"></script>
     <script>
       //Need to add the update time to this function
-      $( document ).ready(saveState({{$reply.User.Display_name}}));
+      $( document ).ready(saveState({{$reply.User.Display_name}}, {{$reply.UpdateTime}}));
     </script>
 	</body>
 </html>

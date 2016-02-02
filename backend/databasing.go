@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"html"
 	"log"
-	"os"
+	"net/http"
+	//"os"
 	"strconv"
 	"strings"
 	"time"
@@ -44,8 +45,8 @@ func SqlInit() *sql.DB {
 	// log.Println(appengine.VersionID(ctx))
 	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
 	//		Also, update logging for appengine context.
-	dbString := os.Getenv("DB_STRING")
-	db, err := sql.Open("mysql", dbString)
+	//dbString := os.Getenv("DB_STRING")
+	db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
 	if err != nil {
 		log.Println("Open fail: \t", err)
 	}
@@ -94,21 +95,24 @@ func CheckForExistingQuestion(db *sql.DB, id int) (int, error) {
 
 // Given a question ID, it pulls that from the database
 // Marshalls the result as JSON data to be returned in a reply
+// Checks if a question is unanswered, if not it pulls the display name for that user
+
 func PullQnByID(db *sql.DB, id int) []byte {
 
 	type newQ struct {
 		Message string
 
-		Question_id   int
-		Creation_date int64
-		Link          string
-		Body          string
-		Title         string
-		Tags          []string
+		Question_id   	int
+		Creation_date 	int64
+		Link          	string
+		Body          	string
+		Title         	string
+		Tags          	[]string
 
-		State string
-		Owner string
-		Time  sql.NullInt64
+		State 			string
+		UserID 			string
+		UserDisplayName string
+		Time 			string
 	}
 
 	rows, err := db.Query("SELECT * FROM questions where question_id=?", id)
@@ -119,9 +123,37 @@ func PullQnByID(db *sql.DB, id int) []byte {
 	var n newQ
 	n.Message = "Question already exists in database. See below."
 	for rows.Next() {
-		err := rows.Scan(&n.Question_id, &n.Title, &n.Link, &n.State, &n.Owner, &n.Body, &n.Creation_date, &n.Time)
+		var sqlTime sql.NullInt64
+		var t int64
+		err := rows.Scan(&n.Question_id, &n.Title, &n.Link, &n.State, &n.UserID, &n.Body, &n.Creation_date, &sqlTime)
 		if err != nil {
 			log.Println(err)
+		}
+		if(sqlTime.Valid) { 
+			t = sqlTime.Int64
+			n.Time = time.Unix(t, 0).Format("Jan 2 at 15:04")
+		} else {
+			n.Time = ""
+		}
+		if(n.State != "unanswered") {
+			userRows, err := db.Query("SELECT name FROM user WHERE id=?", n.UserID)
+			if err != nil {
+				log.Println(err)
+			}
+			defer userRows.Close()
+			for userRows.Next() {
+				err := userRows.Scan(&n.UserDisplayName)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+			err = userRows.Err()
+			if err != nil {
+				log.Println(err)
+			}
+
+		} else {
+			n.UserDisplayName = ""
 		}
 
 		tagRows, err := db.Query("SELECT tag from question_tag where question_id = ?", id)
@@ -146,24 +178,39 @@ func PullQnByID(db *sql.DB, id int) []byte {
 	if err != nil {
 		log.Println(b, err)
 	}
-	log.Println(n)
 	return b
 }
 
+// Adds a single question into the database, accepting a question, the questions state
+// and the users id. The state will determine whether or not it needs to be timestamped.
+// Returns an error on fail
 func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string, user int) error {
-
-	//INSERT IGNORE ensures that the same question won't be added again
-	stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date, state, user) VALUES (?, ?, ?, ?, ?, ?, ?)")
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec(item.Question_id, html.UnescapeString(item.Title), item.Link, html.UnescapeString(StripTags(item.Body)), item.Creation_date, state, user)
-	if err != nil {
-		log.Println("Exec insertion for question failed!:\t", err)
-		return err
+	
+	if(state == "pending" || state == "answered" || state == "updating") { 
+		//INSERT IGNORE ensures that the same question won't be added again
+		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date, state, user, time_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+		if err != nil {
+			return err
+		}
+		_, err = stmt.Exec(item.Question_id, html.UnescapeString(item.Title), item.Link, html.UnescapeString(StripTags(item.Body)), item.Creation_date, state, user, time.Now().Unix())
+		if err != nil {
+			log.Println("Exec insertion for question failed!:\t", err)
+			return err
+		}
+	} else {
+		//INSERT IGNORE ensures that the same question won't be added again
+		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date, state, user) VALUES (?, ?, ?, ?, ?, ?, ?)")
+		if err != nil {
+			return err
+		}
+		_, err = stmt.Exec(item.Question_id, html.UnescapeString(item.Title), item.Link, html.UnescapeString(StripTags(item.Body)), item.Creation_date, state, user)
+		if err != nil {
+			log.Println("Exec insertion for question failed!:\t", err)
+			return err
+		}
 	}
 	for _, tag := range item.Tags {
-		stmt, err = db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
+		stmt, err := db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
 		if err != nil {
 			log.Println("question_tag insertion failed!:\t", err)
 			return err
@@ -178,6 +225,9 @@ func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string, user i
 	return nil
 }
 
+
+// Adds a set of questions into the database, by calling the AddSingleQuestions function
+// Default state for new questions is unanswered, with a user ID of 0.
 func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
 
 	for _, item := range newQns.Items {
@@ -187,7 +237,7 @@ func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
 	return nil
 }
 
-func RemoveDeletedQuestions(db *sql.DB) error {
+func RemoveDeletedQuestions(req *http.Request, db *sql.DB) error {
 	defer UpdateTableTimes(db, "questions")
 	ids := []int{}
 	rows, err := db.Query("SELECT question_id FROM questions")
@@ -210,7 +260,7 @@ func RemoveDeletedQuestions(db *sql.DB) error {
 	params.Sort("creation")
 	params.AddVectorized("tagged", tags)
 
-	questions, err := dataCollect.GetQuestionsByIDs(session, ids, appInfo, params)
+	questions, err := dataCollect.GetQuestionsByIDs(req, session, ids, appInfo, params)
 	if err != nil {
 		return err
 	}

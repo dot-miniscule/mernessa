@@ -7,11 +7,48 @@ function checkUser(username) {
 }
 
 function submitForm(username, type, updateTime) {
+  console.log("submitting form");
   if (checkUser(username)) {
     alert('Must be logged in to submit');
     return false;
   }
   return checkDB(type, updateTime);
+}
+
+
+function checkDB(buttonPressed, updateTime) {
+  console.log(buttonPressed, updateTime);
+  $.post('/dbUpdated?time='+updateTime, function( dataJSON ) {
+    var title;
+    if (buttonPressed == 'submit') {
+      title = $('.new_state_menu option[value!="no_change"]:selected').parent().parent().parent().siblings('.question').children('.question_title').text();
+    } else if (buttonPressed != '') {
+      title = $('.one-click.clicked').parent().parent().parent().siblings('.question').children('.question_title').text();
+      $('.new_state_menu').val('no_change');
+      $('.one-click.clicked').siblings('.new_state_menu').val(buttonPressed);
+    }
+
+    var data = JSON.parse(dataJSON);
+    if (data.Updated) {
+      // Writing the text to display in the confirm dialog box
+      confirm_text = 'Database has been updated\nChanges:\n';
+      for (i = 0; i < data.Questions.length; i++) {
+        if (data.Questions[i] === title) {
+          confirm_text += '\t* ' + title + '\n';
+          break;
+        }
+      }
+
+      confirm_text += '\nDo you wish to continue submit?';
+      if (confirm_text.indexOf('*') > -1) {
+        if (!confirm(confirm_text)) {
+          $('form select').val('no_change');
+          return;
+        }
+      }
+    }
+    $('#stateForm').submit();
+  });
 }
 
 
@@ -47,6 +84,22 @@ function setWindowHeight() {
     $(window).resize(function(){
       $('.container.wrap').css({ height: $(window).innerHeight() });
     });
+  }
+}
+
+//
+
+function setWindowHeights2() {
+  var container = $('.wrap');
+  var maxHeight = -1;
+  container.children().each(function() {
+    if($(this).height() > maxHeight) {
+      maxHeight = $(this).height();
+    }
+  });
+
+  if(maxHeight > container.height()) {
+    container.height(maxHeight);
   }
 }
 
@@ -87,40 +140,6 @@ $(function() {
   });
 });
 
-//---------- SUBMIT BUTTON RELOAD PAGE ----------- //
-function checkDB(buttonPressed, updateTime) {
-  $.post('/dbUpdated?time='+updateTime, function( dataJSON ) {
-    var title;
-    if (buttonPressed == 'submit') {
-      title = $('.new_state_menu option[value!="no_change"]:selected').parent().parent().parent().siblings('.question').children('.question_title').text();
-    } else if (buttonPressed != '') {
-      title = $('.one-click.clicked').parent().siblings('.question').children('.question_title').text();
-      $('.new_state_menu').val('no_change');
-      $('.one-click.clicked').siblings('.new_state_menu').val(buttonPressed);
-    }
-
-    var data = JSON.parse(dataJSON);
-    if (data.Updated) {
-      // Writing the text to display in the confirm dialog box
-      confirm_text = 'Database has been updated\nChanges:\n';
-      for (i = 0; i < data.Questions.length; i++) {
-        if (data.Questions[i] === title) {
-          confirm_text += '\t* ' + title + '\n';
-          break;
-        }
-      }
-
-      confirm_text += '\nDo you wish to continue submit?';
-      if (confirm_text.indexOf('*') > -1) {
-        if (!confirm(confirm_text)) {
-          $('form select').val('no_change');
-          return;
-        }
-      }
-    }
-    $('#stateForm').submit();
-  });
-}
 
 // Function to remove any content from the question table
 // If the user has previewed a question, and either cancelled its submission
@@ -164,13 +183,22 @@ function pullQuestionFromStackOverflow() {
   }
 }
 
+// Formats a post request to the server to pull the question from Stack Overflow
+// Once a response is received, the relevant elements are cleared to be refilled with 
+// fresh data. If the response is empty or undefined, an error is displayed to the user.
+// Otherwise, a display function is called to read the data into the page.
 function pullNewQn(query) {
   $.post('/pullNewQn?id='+query, function( data ) {
-            //Clear the text from the table
-            var table = $('table');
-            clearTextPreserveChildren(table);
-            displayNewQuestion(data);
-          });
+    var table = $('table');
+    var info = $('.questionExists');
+    clearTextPreserveChildren(table);
+    clearTextPreserveChildren(info);
+    if(data == undefined || data == "") {
+      info.html("Question was unable to be pulled from the database. Sorry.")
+    } else {
+    displayNewQuestion(data);
+    }
+  });
 }
 
 
@@ -191,27 +219,68 @@ function displayNewQuestion(data) {
   var type = question.Message;
   var btn = $('.function-button');
   var menu = $('.new_state_menu');
+  var options = {}
   var cancel = $('.cancel-button');
   menu.empty();
-
+  menu.off('change');
+  btn.off('click');
+  menu.append($("<option disabled selected></option>").text('Choose an option...'))
   btn.attr('name', 'unanswered_'+ question.Question_id);
   btn.click().addClass('clicked');
   btn.attr('value', 'Pending');
-
+  clearTextPreserveChildren($('.questionOwner'));
   if(type == undefined) {
     menu.removeClass('hidden');
     cancel.removeClass('hidden');
     options = {
       "unanswered":"Unanswered", 
       "answered":"Answered",
-      "pending":"Pending",
       "updating":"Updating"
     };
-    btn.click(function() {
+    btn.off('click');
+    btn.on('click', function() {
       addQuestionToStackTracker(data, btn.attr('value').toLowerCase());
     });
-    //menu.change(addQuestionToStackTracker(data));
+    // menu.on('change', function() { 
+    //   addQuestionToStackTracker(data, menu.val());
+    // });
+  } else { 
+    type = question.State;
+    if(type == "pending") {
+      menu.removeClass('hidden');
+      options = {
+        "updating":"Updating"
+      }
+      btn.attr('value', 'Answered');
+    } else if(type == "updating") {
+      menu.removeClass('hidden');
+      options = {
+        "pending":"Pending"
+      };
+      btn.attr('value', 'Answered');
+    } else if(type == "answered") {
+      menu.addClass('hidden');
+      btn.attr('value', 'Reopen');
+    } else {
+      menu.removeClass('hidden');
+      options = { 
+        "answered":"Answered",
+        "updating":"Updating"
+      };
+      btn.attr('value', 'Pending');
+    }
+
+    btn.attr('name', btn.prop('value').toLowerCase() + '_' + question.Question_id);
+    btn.off('click');
+    btn.on('click', function() { 
+      submitForm(question.UserDisplayName, btn.prop('value').toLowerCase(), 
+      localStorage["lastUpdateTime"]);
+    });
   }
+
+  $.each(options, function(value, key) {
+      menu.append($("<option></option>").attr("value", value).text(key));
+  });
 
   $('.questionExists').html(question.Message);
   $('table').removeClass('hidden');
@@ -221,13 +290,21 @@ function displayNewQuestion(data) {
   $.each(question.Tags, function(i, item) {
     $('.tagContainer ul.tags').append('<a href="/tag?tagSearch='+item+'"><li class="tag">'+item+'</li></a>');
   });
+  if(question.UserDisplayName != undefined || question.UserDisplayName != "") {
+    $('.questionOwner').html(
+      // 'href':'/user?id='+question.UserID, 
+      'Question marked as '+question.State+' by '+question.UserDisplayName+' on '+
+      question.Time);
+  } else {
+    $('.questionOwner').html('Question is unanswered.');
+  }
 }
 
 // Function to save aspects of the reply in local storage to use in jquery
 // TODO: add update time
-function saveState(user) {
+function saveState(user, lastUpdateTime) {
   localStorage["currentUser"] = user;
-  localStorage["lastUpdateTime"] = $.now();
+  localStorage["lastUpdateTime"] = lastUpdateTime;
   console.log("saved state of", user, ", ", localStorage["lastUpdateTime"]);
 }
 
@@ -249,17 +326,14 @@ function addQuestionToStackTracker(newQuestion, newState) {
     contentType: 'application/json',
     data: JSON.stringify({"Question":newQuestion, "State":newState}),
     success: function( data ) {
-      
+      alert("yey");
     }
   });
 }
 
 $(function() {
   $('#stateForm').submit(function() {
-    $('#submitButton').prop('value', 'Submitting');
-    $('#submitButton').prop('disabled', true);
     document.cookie = 'submitting=true';
-
     // Intercept form submission and redirect back to the original page
     $.post( '/', $('#stateForm').serialize()).done(function( data ) {
       window.location = window.location.href.split('#')[0];
@@ -275,9 +349,9 @@ $(document).ready(function() {
 
   var subpage = window.location.href.split('?')[0].slice(window.location.href.lastIndexOf('/'));
   if (window.location.search.indexOf('tab') == -1 &&
-      subpage.indexOf('viewTags') == -1 && subpage.indexOf('viewUsers') == -1 &&
-      subpage.indexOf('addQuestion') == -1) {
-      var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
+    subpage.indexOf('viewTags') == -1 && subpage.indexOf('viewUsers') == -1 &&
+    subpage.indexOf('addQuestion') == -1) {
+    var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
     window.history.replaceState('', document.title, addedPath);
   } else if (window.location.search.indexOf('page') == -1 && (subpage.indexOf('viewTags') != -1 ||
              subpage.indexOf('viewUsers') != -1)) {
