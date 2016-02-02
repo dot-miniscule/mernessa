@@ -126,7 +126,7 @@ func (r genReply) CacheUpdated() bool {
 	return mostRecentUpdate > r.UpdateTime
 }
 func (r genReply) Timestamp(timeUnix int64) string {
-	return time.Unix(timeUnix, 0).Format("Jan 2 at 2:15")
+	return time.Unix(timeUnix, 0).Format("Jan 2 at 15:04")
 }
 func (r queryReply) PagePlus(num int) int {
 	return r.Page + num
@@ -201,9 +201,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		newQnHandler(w, r)
 		return
 	}
-
-	//dbString := os.Getenv("DB_STRING")
-	//log.Infof(ctx, "%v", dbString)
 
 	// Pull any new questions added to StackOverflow
 	lastPull = pullNewQuestions(db, ctx, lastPull)
