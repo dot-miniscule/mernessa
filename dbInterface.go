@@ -1,7 +1,7 @@
 package webui
 
 import (
-	_"backend"
+	"backend"
 	"database/sql"
 	"net/http"
 	"sort"
@@ -128,7 +128,7 @@ func readFromDb(queries string) webData {
 		sort.Sort(byCreationDate(tempData.Caches[cacheType]))
 	}
 
-	mostRecentUpdate = time.Now().Unix()
+	data.MostRecentUpdate = time.Now().Unix()
 	return tempData
 }
 
@@ -282,7 +282,7 @@ func addUserToDB(newUser stackongo.User) {
 func updatingCache_User(r *http.Request, user stackongo.User) error {
 	log.Infof(ctx, "updating cache")
 
-	mostRecentUpdate = time.Now().Unix()
+	data.MostRecentUpdate = time.Now().Unix()
 
 	// required to collect post form data
 	r.ParseForm()
@@ -306,9 +306,12 @@ func updatingCache_User(r *http.Request, user stackongo.User) error {
 			questionID := cacheType + "_" + strconv.Itoa(question.Question_id)
 			// Collect form from Request
 			form_input := r.PostFormValue(questionID)
+			if(question.Question_id == 7312562) {
+				log.Infof(ctx, "%s", form_input)
+			}
 			// Add the question to the appropriate cache, updating the state
 			if _, ok := newData.Caches[form_input]; ok {
-				question.Last_edit_date = mostRecentUpdate
+				question.Last_edit_date = data.MostRecentUpdate
 				newData.Caches[form_input] = append(newData.Caches[form_input], question)
 				for i := 0; i < len(newData.Caches[cacheType]); i++ {
 					if newData.Caches[cacheType][i].Question_id == question.Question_id {
@@ -343,11 +346,11 @@ func updatingCache_User(r *http.Request, user stackongo.User) error {
 		data.Caches[cacheType] = newData.Caches[cacheType]
 	}
 	data.CacheLock.Unlock()
-
+	log.Infof(ctx, "Titles: %v", changedQnsTitles)
 	// Update the database
-	// go func(db *sql.DB, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
-	// 	recentChangedQns = qnsTitles
-	// 	backend.UpdateDb(db, qns, userId, lastUpdate)
-	// }(db, changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
+	go func(db *sql.DB, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
+		recentChangedQns = qnsTitles
+		backend.UpdateDb(db, qns, userId, lastUpdate)
+	}(db, changedQns, changedQnsTitles, user.User_id, data.MostRecentUpdate)
 	return nil
 }

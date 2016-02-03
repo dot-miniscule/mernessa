@@ -21,7 +21,7 @@
     <!-- Optional theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     
     <link rel="stylesheet" type="text/css" href="stylesheets/styles.css">
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
@@ -128,7 +128,7 @@
                               </div>
                               <select class="form-control input-sm new_state_menu"></select>
                               <div class="input-group-btn">
-                                <input type="button" class="btn btn-default btn-sm cancel-button hidden" onclick ="clearTextPreserveChildren()" value="Cancel">
+                                <input type="button" class="btn btn-default btn-sm cancel-button hidden" value="Cancel">
                               </div>
                             </div>
                           </td>
@@ -140,9 +140,9 @@
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
 	<script type="text/javascript" src="/javascripts/tabs.js"></script>
-    <script>
-      //Need to add the update time to this function
-      $( document ).ready(saveState({{$reply.User.Display_name}}, {{$reply.UpdateTime}}));
-    </script>
+  <script>
+  //Saving the current user name and last db update time into local storage
+  $(document).ready(saveState({{$reply.User.Display_name}}, {{$reply.Data.MostRecentUpdate}}));
+  </script>
 	</body>
 </html>

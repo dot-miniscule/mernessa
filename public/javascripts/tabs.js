@@ -7,16 +7,20 @@ function checkUser(username) {
 }
 
 function submitForm(username, type, updateTime) {
-  console.log("submitting form");
+  console.log("checking user");
   if (checkUser(username)) {
     alert('Must be logged in to submit');
     return false;
   }
+  console.log("")
   return checkDB(type, updateTime);
 }
 
 
 function checkDB(buttonPressed, updateTime) {
+  if(buttonPressed == 'reopen') {
+    buttonPressed = 'pending';
+  }
   console.log(buttonPressed, updateTime);
   $.post('/dbUpdated?time='+updateTime, function( dataJSON ) {
     var title;
@@ -25,7 +29,7 @@ function checkDB(buttonPressed, updateTime) {
     } else if (buttonPressed != '') {
       title = $('.one-click.clicked').parent().parent().parent().siblings('.question').children('.question_title').text();
       $('.new_state_menu').val('no_change');
-      $('.one-click.clicked').siblings('.new_state_menu').val(buttonPressed);
+      $('.one-click.clicked').parent().siblings('.new_state_menu').val(buttonPressed);
     }
 
     var data = JSON.parse(dataJSON);
@@ -224,11 +228,13 @@ function displayNewQuestion(data) {
   menu.empty();
   menu.off('change');
   btn.off('click');
+  cancel.addClass('hidden');
   menu.append($("<option disabled selected></option>").text('Choose an option...'))
   btn.attr('name', 'unanswered_'+ question.Question_id);
   btn.click().addClass('clicked');
   btn.attr('value', 'Pending');
   clearTextPreserveChildren($('.questionOwner'));
+
   if(type == undefined) {
     menu.removeClass('hidden');
     cancel.removeClass('hidden');
@@ -241,71 +247,102 @@ function displayNewQuestion(data) {
     btn.on('click', function() {
       addQuestionToStackTracker(data, btn.attr('value').toLowerCase());
     });
-    // menu.on('change', function() { 
-    //   addQuestionToStackTracker(data, menu.val());
-    // });
+    cancel.on('click', function() {
+      clearNewQuestionTable();
+    })
+    menu.on('change', function() { 
+      addQuestionToStackTracker(data, menu.val());
+    });
   } else { 
     type = question.State;
     if(type == "pending") {
       menu.removeClass('hidden');
       options = {
-        "updating":"Updating"
+        "updating":"Updating", 
+        "answered":""
       }
       btn.attr('value', 'Answered');
     } else if(type == "updating") {
       menu.removeClass('hidden');
       options = {
-        "pending":"Pending"
+        "pending":"Pending",
+        "answered":""
       };
       btn.attr('value', 'Answered');
     } else if(type == "answered") {
       menu.addClass('hidden');
+      options = {
+        "pending":""
+      }
       btn.attr('value', 'Reopen');
     } else {
       menu.removeClass('hidden');
       options = { 
         "answered":"Answered",
-        "updating":"Updating"
+        "updating":"Updating",
+        "pending":""
       };
       btn.attr('value', 'Pending');
     }
 
-    btn.attr('name', btn.prop('value').toLowerCase() + '_' + question.Question_id);
+    btn.attr('name', type + '_' + question.Question_id);
+    menu.attr('name', type + '_' + question.Question_id);
     btn.off('click');
     btn.on('click', function() { 
-      submitForm(question.UserDisplayName, btn.prop('value').toLowerCase(), 
+      submitForm(localStorage["currentUser"], btn.prop('value').toLowerCase(), 
       localStorage["lastUpdateTime"]);
+    });
+    menu.off('change');
+    menu.on('change', function() {
+      submitForm(localStorage["currentUser"], menu.prop('value').toLowerCase(),
+        localStorage["lastUpdateTime"])
     });
   }
 
   $.each(options, function(value, key) {
       menu.append($("<option></option>").attr("value", value).text(key));
   });
-
-  $('.questionExists').html(question.Message);
-  $('table').removeClass('hidden');
-  $('a.question_title').attr("href", question.Link).children('h4').html(((question.Title)));
+  menu.children().last().hide();
+  if(question.Message != undefined && question.Message != "") {
+    $('.questionExists').html(question.Message);
+  } else {
+    $('.questionExists').html('New question with ID '+question.Question_id);
+  }
+  $('a.question_title').attr("href", question.Link).children('h4').html(question.Title);
   $('table td.question .bodySnippet').html(question.Body);
   $('ul.tags').empty();
   $.each(question.Tags, function(i, item) {
-    $('.tagContainer ul.tags').append('<a href="/tag?tagSearch='+item+'"><li class="tag">'+item+'</li></a>');
+    $('.tagContainer ul.tags').append('<a href="/tag?tagSearch='+item
+      +'"><li class="tag">'+item+'</li></a>');
   });
-  if(question.UserDisplayName != undefined || question.UserDisplayName != "") {
-    $('.questionOwner').html(
-      // 'href':'/user?id='+question.UserID, 
-      'Question marked as '+question.State+' by '+question.UserDisplayName+' on '+
-      question.Time);
-  } else {
-    $('.questionOwner').html('Question is unanswered.');
+
+  if(question.UserDisplayName != undefined && question.UserDisplayName != "") {
+    $('.questionOwner').html('Question marked as '+question.State
+      +' by <a href=\"/user?id='+question.UserID+'\">'+question.UserDisplayName
+      +'</a> on '+ question.Time);
   }
+  $('table').removeClass('hidden');
 }
 
-// Function to save aspects of the reply in local storage to use in jquery
-// TODO: add update time
+
+// If the user chooses to cancel their question rather than add it to the database
+// This function will clear the table of any content, as well as remove anything
+// in local storage.
+function clearNewQuestionTable() {
+  var table = $('table');
+  clearTextPreserveChildren(table);
+  table.addClass('hidden');
+  $('.questionExists').empty();
+  $('.questionExists').html("That's fine. We didn't want that question anyway.")
+}
+
+
+// Function to save aspects of the reply in local storage to post updated question state
+// to the backend when the user selects an action.
+
 function saveState(user, lastUpdateTime) {
   localStorage["currentUser"] = user;
   localStorage["lastUpdateTime"] = lastUpdateTime;
-  console.log("saved state of", user, ", ", localStorage["lastUpdateTime"]);
 }
 
 
@@ -318,17 +355,22 @@ function saveState(user, lastUpdateTime) {
 // Function to post to server to add the new question to StackTrackers database
 // newQuestion is the stringified JSON data that is cached in localStorage
 function addQuestionToStackTracker(newQuestion, newState) {
-  var data = {"question": newQuestion, "state": newState};
-  $.ajax({
-    type: "POST",
-    url: "/addNewQuestion",
-    processData: false,
-    contentType: 'application/json',
-    data: JSON.stringify({"Question":newQuestion, "State":newState}),
-    success: function( data ) {
-      alert("yey");
-    }
-  });
+  if (checkUser(localStorage["currentUser"])) {
+    alert('Must be logged in to submit');
+  } else {
+    console.log("Adding question to stacktracker.")
+    var data = {"question": newQuestion, "state": newState};
+    $.ajax({
+      type: "POST",
+      url: "/addNewQuestion",
+      processData: false,
+      contentType: 'application/json',
+      data: JSON.stringify({"Question":newQuestion, "State":newState}),
+      success: function( data ) {
+        
+      }
+    });
+  }
 }
 
 $(function() {
