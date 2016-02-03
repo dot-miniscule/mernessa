@@ -2,6 +2,7 @@ package dataCollect
 
 import (
 	"fmt"
+
 	"time"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
@@ -49,7 +50,7 @@ func GetQuestionsByIDs(session *stackongo.Session, ids []int, appInfo AppDetails
 	params = addParams(appInfo, params)
 	questions, err := session.GetQuestions(ids, params)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed at ln 57 of dataCollect: %v", err.Error())
 	}
 	if questions.Error_id != 0 {
 		return nil, fmt.Errorf("%v: %v", questions.Error_name, questions.Error_message)
@@ -58,7 +59,7 @@ func GetQuestionsByIDs(session *stackongo.Session, ids []int, appInfo AppDetails
 		params.Page(questions.Page + 1)
 		nextPage, err := session.GetQuestions(ids, params)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Failed at ln 66 of dataCollect: %v", err)
 		}
 		if questions.Error_id != 0 {
 			return nil, fmt.Errorf("%v: %v", nextPage.Error_name, nextPage.Error_message)

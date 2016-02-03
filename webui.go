@@ -160,7 +160,7 @@ func init() {
 	http.HandleFunc("/dbUpdated", updateHandler)
 	http.HandleFunc("/search", handler)
 	http.HandleFunc("/addQuestion", handler)
-	http.HandleFunc("/pullNewQn", newQnHandler)
+	http.HandleFunc("/pullNewQn", handler)
 }
 
 // Handler for authorizing user
@@ -198,7 +198,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	backend.SetTransport(ctx)
 
 	if strings.HasPrefix(r.URL.Path, "/pullNewQn") {
-		newQnHandler(w, r)
+		newQnHandler(w, r, ctx)
 		return
 	}
 
@@ -278,9 +278,7 @@ func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Cont
 // If so, it retrieves that question, and returns it to be viewed, along with a message
 // Makes a new backend request to retrieve new questions
 // Parses the returned data into a new page, which can be inserted into the template.
-func newQnHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	backend.SetTransport(ctx)
+func newQnHandler(w http.ResponseWriter, r *http.Request, ctx context.Context) {
 	id, _ := strconv.Atoi(r.FormValue("id"))
 
 	res, err := backend.CheckForExistingQuestion(db, id)
@@ -295,21 +293,21 @@ func newQnHandler(w http.ResponseWriter, r *http.Request) {
 			log.Warningf(ctx, err.Error())
 		}
 		w.Write(existingQn)
-		return
-	}
+	} else {
 
-	intArray := []int{id}
-	questions, err := backend.GetQuestions(intArray)
-	if err != nil {
-		log.Warningf(ctx, err.Error())
-		return
+		intArray := []int{id}
+		questions, err := backend.GetQuestions(ctx, intArray)
+		if err != nil {
+			log.Warningf(ctx, err.Error())
+		} else {
+			questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
+			qnJson, err := json.Marshal(questions.Items[0])
+			if err != nil {
+				log.Warningf(ctx, err.Error())
+			}
+			w.Write(qnJson)
+		}
 	}
-	questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
-	qnJson, err := json.Marshal(questions.Items[0])
-	if err != nil {
-		log.Warningf(ctx, err.Error())
-	}
-	w.Write(qnJson)
 }
 
 // Handler for adding a new question to the database upon submission
@@ -342,6 +340,7 @@ func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request, ctx
 	if err := backend.AddSingleQuestion(db, qn, state.(string), user.User_id); err != nil {
 		log.Warningf(ctx, "Error adding new question to db:\t", err)
 	}
+	backend.UpdateTableTimes(db, ctx, "question")
 }
 
 // Handler for keywords, tags, users in the search box
