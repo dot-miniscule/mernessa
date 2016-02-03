@@ -31,7 +31,7 @@ type ByDisplayName []userData
 
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date < a[j].Creation_date }
+func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
 
 func (a ByDisplayName) Len() int      { return len(a) }
 func (a ByDisplayName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -588,6 +588,14 @@ func pullNewQuestions(db *sql.DB, ctx context.Context, lastPullTime int64) int64
 		log.Infof(ctx, "Pulling new questions")
 		toDate := time.Now()
 		fromDate := time.Unix(lastPull, 0)
+
+		// Remove deleted questions from the database
+		log.Infof(ctx, "Removing deleted questions from db")
+		if err := backend.RemoveDeletedQuestions(db, ctx); err != nil {
+			log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
+			return lastPullTime
+		}
+
 		// Collect new questions from SO
 		questions, err := backend.GetNewQns(fromDate, toDate)
 		if err != nil {
@@ -597,15 +605,11 @@ func pullNewQuestions(db *sql.DB, ctx context.Context, lastPullTime int64) int64
 
 		log.Infof(ctx, "Adding new questions to db")
 		// Add new questions to database
-		if err = backend.AddQuestions(db, ctx, questions); err != nil {
+		if err := backend.AddQuestions(db, ctx, questions); err != nil {
 			log.Warningf(ctx, "Error adding new questions: %v", err.Error())
 			return lastPullTime
 		}
 
-		log.Infof(ctx, "Removing deleted questions from db")
-		if err = backend.RemoveDeletedQuestions(db, ctx); err != nil {
-			log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
-		}
 		lastPullTime = time.Now().Unix()
 		log.Infof(ctx, "New questions added")
 	}
