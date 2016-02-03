@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"html"
 	"log"
-	"net/http"
 	//"os"
 	"strconv"
 	"strings"
@@ -14,6 +13,8 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/laktek/Stack-on-Go/stackongo"
+	"golang.org/x/net/context"
+	applog "google.golang.org/appengine/log"
 )
 
 type databaseInfo struct {
@@ -44,11 +45,14 @@ func SqlInit() *sql.DB {
 	} */
 	// log.Println(appengine.VersionID(ctx))
 	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
-	//		Also, update logging for appengine context.
+	//		Also, update applog.ing for appengine context.
+	//dbString := os.Getenv("DB_STRING")
+	//db, err := sql.Open("mysql", dbString)
 	//dbString := os.Getenv("DB_STRING")
 	db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
 	if err != nil {
 		log.Println("Open fail: \t", err)
+		return nil
 	}
 
 	//Usually would defer the closing of the database connection from here
@@ -96,29 +100,30 @@ func CheckForExistingQuestion(db *sql.DB, id int) (int, error) {
 // Given a question ID, it pulls that from the database
 // Marshalls the result as JSON data to be returned in a reply
 // Checks if a question is unanswered, if not it pulls the display name for that user
-
-func PullQnByID(db *sql.DB, id int) []byte {
+func PullQnByID(db *sql.DB, ctx context.Context, id int) []byte {
 
 	type newQ struct {
 		Message string
 
-		Question_id   	int
-		Creation_date 	int64
-		Link          	string
-		Body          	string
-		Title         	string
-		Tags          	[]string
+		Question_id   int
+		Creation_date int64
+		Link          string
+		Body          string
+		Title         string
+		Tags          []string
 
-		State 			string
-		UserID 			string
+		State           string
+		UserID          string
 		UserDisplayName string
-		Time 			string
+		Time            string
 	}
 
 	rows, err := db.Query("SELECT * FROM questions where question_id=?", id)
 	if err != nil {
-		log.Println(err)
+		applog.Warningf(ctx, "Question query failed: %v", err.Error())
+		return []byte{}
 	}
+
 	defer rows.Close()
 	var n newQ
 	n.Message = "Question already exists in database. See below."
@@ -127,15 +132,16 @@ func PullQnByID(db *sql.DB, id int) []byte {
 		var t int64
 		err := rows.Scan(&n.Question_id, &n.Title, &n.Link, &n.State, &n.UserID, &n.Body, &n.Creation_date, &sqlTime)
 		if err != nil {
-			log.Println(err)
+			applog.Errorf(ctx, "Question scan failed: %v", err.Error())
+			continue
 		}
-		if(sqlTime.Valid) { 
+		if sqlTime.Valid {
 			t = sqlTime.Int64
 			n.Time = time.Unix(t, 0).Format("Jan 2 at 15:04")
 		} else {
 			n.Time = ""
 		}
-		if(n.State != "unanswered") {
+		if n.State != "unanswered" {
 			userRows, err := db.Query("SELECT name FROM user WHERE id=?", n.UserID)
 			if err != nil {
 				log.Println(err)
@@ -158,25 +164,28 @@ func PullQnByID(db *sql.DB, id int) []byte {
 
 		tagRows, err := db.Query("SELECT tag from question_tag where question_id = ?", id)
 		if err != nil {
-			log.Println(err)
+			applog.Errorf(ctx, "Tag query failed: %v", err.Error())
+			continue
 		}
 		defer tagRows.Close()
 		var currentTag string
 		for tagRows.Next() {
 			err := tagRows.Scan(&currentTag)
 			if err != nil {
-				log.Println(err)
+				applog.Errorf(ctx, "Tag scan failed: %v", err.Error())
+				continue
 			}
 			n.Tags = append(n.Tags, currentTag)
 		}
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Println(err)
+		applog.Errorf(ctx, "Error during row iteration: %v", err.Error())
 	}
 	b, err := json.Marshal(n)
 	if err != nil {
-		log.Println(b, err)
+		applog.Errorf(ctx, "Marshaling failed: %v", err.Error())
+		return []byte{}
 	}
 	return b
 }
@@ -185,8 +194,7 @@ func PullQnByID(db *sql.DB, id int) []byte {
 // and the users id. The state will determine whether or not it needs to be timestamped.
 // Returns an error on fail
 func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string, user int) error {
-	
-	if(state == "pending" || state == "answered" || state == "updating") { 
+	if state == "pending" || state == "answered" || state == "updating" {
 		//INSERT IGNORE ensures that the same question won't be added again
 		stmt, err := db.Prepare("INSERT IGNORE INTO questions(question_id, question_title, question_URL, body, creation_date, state, user, time_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
@@ -212,33 +220,33 @@ func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string, user i
 	for _, tag := range item.Tags {
 		stmt, err := db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
 		if err != nil {
-			log.Println("question_tag insertion failed!:\t", err)
 			return err
 		}
 
 		_, err = stmt.Exec(item.Question_id, tag)
 		if err != nil {
-			log.Println("Exec insertion for question_tag failed!:\t", err)
 			return err
 		}
 	}
 	return nil
 }
 
-
 // Adds a set of questions into the database, by calling the AddSingleQuestions function
 // Default state for new questions is unanswered, with a user ID of 0.
-func AddQuestions(db *sql.DB, newQns *stackongo.Questions) error {
+func AddQuestions(db *sql.DB, ctx context.Context, newQns *stackongo.Questions) error {
 
 	for _, item := range newQns.Items {
-		AddSingleQuestion(db, item, "unanswered", 0)
+		err := AddSingleQuestion(db, item, "unanswered", 0)
+		if err != nil {
+			applog.Errorf(ctx, "Error adding question %v: %v", item.Question_id, err.Error())
+		}
 	}
-	UpdateTableTimes(db, "question")
+	UpdateTableTimes(db, ctx, "question")
 	return nil
 }
 
-func RemoveDeletedQuestions(req *http.Request, db *sql.DB) error {
-	defer UpdateTableTimes(db, "questions")
+func RemoveDeletedQuestions(db *sql.DB, ctx context.Context) error {
+	defer UpdateTableTimes(db, ctx, "questions")
 	ids := []int{}
 	rows, err := db.Query("SELECT question_id FROM questions")
 	if err != nil {
@@ -260,7 +268,7 @@ func RemoveDeletedQuestions(req *http.Request, db *sql.DB) error {
 	params.Sort("creation")
 	params.AddVectorized("tagged", tags)
 
-	questions, err := dataCollect.GetQuestionsByIDs(req, session, ids, appInfo, params)
+	questions, err := dataCollect.GetQuestionsByIDs(session, ids, appInfo, params)
 	if err != nil {
 		return err
 	}
@@ -304,25 +312,25 @@ func RemoveDeletedQuestions(req *http.Request, db *sql.DB) error {
 
 //A crude way to find out if the working cache needs to be refreshed from the database.
 //Stores the current Unix time in update_times table on Cloud SQL */
-func UpdateTableTimes(db *sql.DB, tableName string) {
+func UpdateTableTimes(db *sql.DB, ctx context.Context, tableName string) {
 	stmts, err := db.Prepare("UPDATE update_times SET last_updated=? WHERE table_name=?")
 	if err != nil {
-		log.Println("Prepare failed:\t", err)
+		applog.Errorf(ctx, "Prepare failed: %v", err)
 		return
 	}
 
 	timeNow := time.Now().Unix()
 	_, err = stmts.Exec(timeNow, tableName)
 	if err != nil {
-		log.Println("Could not update time for", tableName+":\t", err)
+		applog.Errorf(ctx, "Could not update time for %v: %v", tableName, err)
 	} else {
-		log.Printf("Update time for %v successfully updated to %v!", tableName, timeNow)
+		applog.Infof(ctx, "Update time for %v successfully updated to %v!", tableName, timeNow)
 	}
 }
 
 // Fucntion to update the questions in qns in the database
-func UpdateDb(db *sql.DB, qns map[int]string, userId int, lastUpdate int64) {
-	log.Println("Updating database")
+func UpdateDb(db *sql.DB, ctx context.Context, qns map[int]string, userId int, lastUpdate int64) {
+	applog.Infof(ctx, "Updating database")
 
 	if len(qns) == 0 {
 		return
@@ -338,10 +346,11 @@ func UpdateDb(db *sql.DB, qns map[int]string, userId int, lastUpdate int64) {
 	// Pull the required questions from the database
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Printf("query failed:\t%v", err)
+		applog.Errorf(ctx, "query failed: %v", err)
+		return
 	}
 	defer func() {
-		log.Println("closing rows: updating")
+		applog.Infof(ctx, "closing rows: updating")
 		rows.Close()
 	}()
 
@@ -350,13 +359,15 @@ func UpdateDb(db *sql.DB, qns map[int]string, userId int, lastUpdate int64) {
 	for rows.Next() {
 		err := rows.Scan(&id)
 		if err != nil {
-			log.Printf("rows.Scan: %v", err.Error())
+			applog.Errorf(ctx, "Question_id scan failed: %v", err.Error())
+			continue
 		}
 
 		//Update the database, setting the state and the new user/owner of that question.
 		stmts, err := db.Prepare("UPDATE questions SET state=?,user=?,time_updated=? where question_id=?")
 		if err != nil {
-			log.Printf("%v", err.Error())
+			applog.Errorf(ctx, "Update prepare failed: %v", err.Error())
+			continue
 		}
 		if qns[id] == "unanswered" {
 			userId = 0
@@ -364,11 +375,11 @@ func UpdateDb(db *sql.DB, qns map[int]string, userId int, lastUpdate int64) {
 
 		_, err = stmts.Exec(qns[id], userId, lastUpdate, id)
 		if err != nil {
-			log.Printf("Update query failed:\t%v", err.Error())
+			applog.Errorf(ctx, "Update execution failed:\t%v", err.Error())
 		}
 	}
 
 	//Update the table on SQL keeping track of table modifications
-	UpdateTableTimes(db, "questions")
-	log.Println("Database updated")
+	UpdateTableTimes(db, ctx, "questions")
+	applog.Infof(ctx, "Database updated")
 }

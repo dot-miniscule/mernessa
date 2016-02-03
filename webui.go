@@ -31,7 +31,7 @@ type ByDisplayName []userData
 
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date < a[j].Creation_date }
+func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
 
 func (a ByDisplayName) Len() int      { return len(a) }
 func (a ByDisplayName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -50,10 +50,10 @@ type genReply struct {
 }
 
 type queryReply struct {
-	User     	stackongo.User
-	Page     	int
-	LastPage 	int
-	Data     	interface{}
+	User     stackongo.User
+	Page     int
+	LastPage int
+	Data     interface{}
 }
 
 // Info on the various caches
@@ -65,12 +65,12 @@ type cacheInfo struct {
 
 // Data struct with SO information, caches, user information
 type webData struct {
-	Wrapper   			*stackongo.Questions            // Request information
-	Caches    			map[string][]stackongo.Question // Caches by question states
-	Qns       			map[int]stackongo.User          // Map of users by question ids
-	Users     			map[int]userData                // Map of users by user ids
-	CacheLock 			sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
-	MostRecentUpdate 	int64
+	Wrapper          *stackongo.Questions            // Request information
+	Caches           map[string][]stackongo.Question // Caches by question states
+	Qns              map[int]stackongo.User          // Map of users by question ids
+	Users            map[int]userData                // Map of users by user ids
+	CacheLock        sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
+	MostRecentUpdate int64
 }
 
 type userData struct {
@@ -108,7 +108,6 @@ const timeout = 6 * time.Hour
 
 // Global variable with cache info
 var data = newWebData()
-var ctx context.Context
 
 // Standard guest user
 var guest = stackongo.User{
@@ -172,6 +171,7 @@ func init() {
 
 // Handler for authorizing user
 func authHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
 	log.Infof(ctx, "Redirecting to SO login")
 	auth_url := backend.AuthURL()
 	header := w.Header()
@@ -200,19 +200,21 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Set context for logging
-	ctx = appengine.NewContext(r)
+	ctx := appengine.NewContext(r)
 	backend.SetTransport(ctx)
 
-	//dbString := os.Getenv("DB_STRING")
-	//log.Infof(ctx, "%v", dbString)
+	if strings.HasPrefix(r.URL.Path, "/pullNewQn") {
+		newQnHandler(w, r, ctx)
+		return
+	}
 
 	// Pull any new questions added to StackOverflow
-	lastPull = pullNewQuestions(db, r, lastPull)
+	lastPull = pullNewQuestions(db, ctx, lastPull)
 
 	// Refresh local cache if the database has been changed
 	if checkDBUpdateTime(ctx, "questions", data.MostRecentUpdate) {
 		log.Infof(ctx, "Refreshing cache")
-		refreshLocalCache()
+		refreshLocalCache(ctx)
 	}
 
 	// get the current user
@@ -227,7 +229,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// update the new cache on submit
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
-		err := updatingCache_User(r, user)
+		err := updatingCache_User(ctx, r, user)
 		if err != nil {
 			log.Warningf(ctx, err.Error())
 		}
@@ -236,23 +238,21 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Send to valid subpages otherwise errorHandler
 	if strings.HasPrefix(r.URL.Path, "/tag") && r.FormValue("tagSearch") != "" {
-		tagHandler(w, r, pageNum, user)
+		tagHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/user") {
-		userHandler(w, r, pageNum, user)
+		userHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/viewTags") {
-		viewTagsHandler(w, r, pageNum, user)
+		viewTagsHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/viewUsers") {
-		viewUsersHandler(w, r, pageNum, user)
+		viewUsersHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/userPage") {
-		userPageHandler(w, r, pageNum, user)
+		userPageHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/search") {
-		searchHandler(w, r, pageNum, user)
+		searchHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addQuestion") {
-		addQuestionHandler(w, r, pageNum, user)
+		addQuestionHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
-		addNewQuestionToDatabaseHandler(w, r)
-	} else if strings.HasPrefix(r.URL.Path, "/pullNewQn") {
-		newQnHandler(w, r)
+		addNewQuestionToDatabaseHandler(w, r, ctx)
 	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" {
 		// Parse the html template to serve to the page
 		page := template.Must(template.ParseFiles("public/template.html"))
@@ -266,12 +266,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			log.Errorf(ctx, "%v", err.Error())
 		}
 	} else {
-		errorHandler(w, r, http.StatusNotFound, "")
+		errorHandler(w, r, ctx, http.StatusNotFound, "")
 	}
 }
 
 // Handler for adding new question page
-func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
+func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
@@ -284,8 +284,7 @@ func addQuestionHandler(w http.ResponseWriter, r *http.Request, pageNum int, use
 // If so, it retrieves that question, and returns it to be viewed, along with a message
 // Makes a new backend request to retrieve new questions
 // Parses the returned data into a new page, which can be inserted into the template.
-func newQnHandler(w http.ResponseWriter, r *http.Request) {
-
+func newQnHandler(w http.ResponseWriter, r *http.Request, ctx context.Context) {
 	id, _ := strconv.Atoi(r.FormValue("id"))
 
 	res, err := backend.CheckForExistingQuestion(db, id)
@@ -295,8 +294,7 @@ func newQnHandler(w http.ResponseWriter, r *http.Request) {
 
 	if res == 1 {
 
-		existingQn := backend.PullQnByID(db, id)
-		
+		existingQn := backend.PullQnByID(db, ctx, id)
 		if err != nil {
 			log.Warningf(ctx, err.Error())
 		}
@@ -304,10 +302,10 @@ func newQnHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		intArray := []int{id}
-		questions, err := backend.GetQuestions(r, intArray)
+		questions, err := backend.GetQuestions(ctx, intArray)
 		if err != nil {
 			log.Warningf(ctx, err.Error())
-		} else { 
+		} else {
 			questions.Items[0].Body = backend.StripTags(questions.Items[0].Body)
 			qnJson, err := json.Marshal(questions.Items[0])
 			if err != nil {
@@ -322,7 +320,7 @@ func newQnHandler(w http.ResponseWriter, r *http.Request) {
 // It is returned as a stringified JSON object in the request body
 // The string is unmarshalled into a stackongo.Question type, and added to an array
 // to be added into the database using the AddQuestions function in backend/databasing.go
-func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
+func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request, ctx context.Context) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Infof(ctx, "%v", err)
@@ -348,12 +346,12 @@ func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 	if err := backend.AddSingleQuestion(db, qn, state.(string), user.User_id); err != nil {
 		log.Warningf(ctx, "Error adding new question to db:\t", err)
 	}
-	backend.UpdateTableTimes(db, "question")
+	backend.UpdateTableTimes(db, ctx, "question")
 }
 
 // Handler for keywords, tags, users in the search box
 // Checks input against fields in the question/user caches and returns any matches
-func searchHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
+func searchHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 
 	search := r.FormValue("search")
 	id, _ := strconv.Atoi(search)
@@ -390,7 +388,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request, pageNum int, user sta
 }
 
 // Handler to find all questions with specific tags
-func tagHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
+func tagHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 	// Collect query
 	tag := r.FormValue("tagSearch")
 	// Create and fill in a new webData struct
@@ -419,7 +417,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stacko
 }
 
 // Handler to find all questions answered/being answered by the user in URL
-func userHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
+func userHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 	userID, _ := strconv.Atoi(r.FormValue("id"))
 	query := userData{}
 
@@ -454,8 +452,8 @@ func userHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stack
 //User can either click on a tag to view any questions containing that tag
 //Format array of tags into another array, to be easier formatted on the page into a table in the template
 //An array of tagData arrays of size 4
-func viewTagsHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
-	query := readTagsFromDb()
+func viewTagsHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
+	query := readTagsFromDb(ctx)
 	var tagArray [][]tagData
 	var tempTagArray []tagData
 	i := 0
@@ -490,7 +488,7 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, pageNum int, user s
 // Formats the response into an array of userData maps, for easier formatting onto the page.
 // User data is stored as a map, which gives no guarantee as to the order of iteration
 // It is first read into an array, and that array sorted lexicographically by the users Display name.
-func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
+func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 	query := data.Users
 	var querySorted []userData
 	for id, i := range query {
@@ -524,7 +522,7 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, pageNum int, user 
 	}
 }
 
-func userPageHandler(w http.ResponseWriter, r *http.Request, pageNum int, user stackongo.User) {
+func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/userPage.html"))
 	usr, _ := strconv.Atoi(r.FormValue("userId"))
 	currentUser := data.Users[usr]
@@ -583,19 +581,26 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	data.CacheLock.Lock()
 	if _, ok := data.Users[user.User_id]; !ok {
 		data.Users[user.User_id] = newUser(user, token)
-		addUserToDB(user)
+		addUserToDB(ctx, user)
 	}
 	data.CacheLock.Unlock()
 	return user
 }
 
 // Pulls new questions if the lastPullTime more than 6 hours before the current time
-func pullNewQuestions(db *sql.DB, req *http.Request, lastPullTime int64) int64 {
-	ctx = appengine.NewContext(req)
+func pullNewQuestions(db *sql.DB, ctx context.Context, lastPullTime int64) int64 {
 	if lastPull < time.Now().Add(-1*timeout).Unix() {
 		log.Infof(ctx, "Pulling new questions")
 		toDate := time.Now()
 		fromDate := time.Unix(lastPull, 0)
+
+		// Remove deleted questions from the database
+		log.Infof(ctx, "Removing deleted questions from db")
+		if err := backend.RemoveDeletedQuestions(db, ctx); err != nil {
+			log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
+			return lastPullTime
+		}
+
 		// Collect new questions from SO
 		questions, err := backend.GetNewQns(fromDate, toDate)
 		if err != nil {
@@ -605,15 +610,11 @@ func pullNewQuestions(db *sql.DB, req *http.Request, lastPullTime int64) int64 {
 
 		log.Infof(ctx, "Adding new questions to db")
 		// Add new questions to database
-		if err = backend.AddQuestions(db, questions); err != nil {
+		if err := backend.AddQuestions(db, ctx, questions); err != nil {
 			log.Warningf(ctx, "Error adding new questions: %v", err.Error())
 			return lastPullTime
 		}
 
-		log.Infof(ctx, "Removing deleted questions from db")
-		if err = backend.RemoveDeletedQuestions(req, db); err != nil {
-			log.Warningf(ctx, "Error removing deleted questions: %v", err.Error())
-		}
 		lastPullTime = time.Now().Unix()
 		log.Infof(ctx, "New questions added")
 	}
@@ -655,13 +656,13 @@ func writeResponse(user stackongo.User, writeData webData, pageNum int, query []
 }
 
 // Handler for errors
-func errorHandler(w http.ResponseWriter, r *http.Request, status int, err string) {
+func errorHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, status int, err string) {
 	w.WriteHeader(status)
 	switch status {
 	case http.StatusNotFound:
 		page := template.Must(template.ParseFiles("public/404.html"))
 		if err := page.Execute(w, nil); err != nil {
-			errorHandler(w, r, http.StatusInternalServerError, err.Error())
+			errorHandler(w, r, ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
 	case http.StatusInternalServerError:

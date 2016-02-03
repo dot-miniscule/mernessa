@@ -2,14 +2,10 @@ package dataCollect
 
 import (
 	"fmt"
-	"net/http"
 
 	"time"
 
 	"github.com/laktek/Stack-on-Go/stackongo"
-
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine"
 )
 
 type AppDetails struct {
@@ -50,13 +46,11 @@ func Collect(session *stackongo.Session, appInfo AppDetails, params stackongo.Pa
 	return questions, nil
 }
 
-func GetQuestionsByIDs(req *http.Request, session *stackongo.Session, ids []int, appInfo AppDetails, params stackongo.Params) (*stackongo.Questions, error) {
+func GetQuestionsByIDs(session *stackongo.Session, ids []int, appInfo AppDetails, params stackongo.Params) (*stackongo.Questions, error) {
 	params = addParams(appInfo, params)
-	c := appengine.NewContext(req)
 	questions, err := session.GetQuestions(ids, params)
 	if err != nil {
-		log.Errorf(c, "Failed at ln 58 of dataCollect:\t", err)
-		return nil, err
+		return nil, fmt.Errorf("Failed at ln 57 of dataCollect: %v", err.Error())
 	}
 	if questions.Error_id != 0 {
 		return nil, fmt.Errorf("%v: %v", questions.Error_name, questions.Error_message)
@@ -65,8 +59,7 @@ func GetQuestionsByIDs(req *http.Request, session *stackongo.Session, ids []int,
 		params.Page(questions.Page + 1)
 		nextPage, err := session.GetQuestions(ids, params)
 		if err != nil {
-			log.Errorf(c, "Failed at ln 68 of dataCollect:\t", err)
-			return nil, err
+			return nil, fmt.Errorf("Failed at ln 66 of dataCollect: %v", err)
 		}
 		if questions.Error_id != 0 {
 			return nil, fmt.Errorf("%v: %v", nextPage.Error_name, nextPage.Error_message)
