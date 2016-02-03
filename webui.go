@@ -65,11 +65,12 @@ type cacheInfo struct {
 
 // Data struct with SO information, caches, user information
 type webData struct {
-	Wrapper   *stackongo.Questions            // Request information
-	Caches    map[string][]stackongo.Question // Caches by question states
-	Qns       map[int]stackongo.User          // Map of users by question ids
-	Users     map[int]userData                // Map of users by user ids
-	CacheLock sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
+	Wrapper          *stackongo.Questions            // Request information
+	Caches           map[string][]stackongo.Question // Caches by question states
+	Qns              map[int]stackongo.User          // Map of users by question ids
+	Users            map[int]userData                // Map of users by user ids
+	MostRecentUpdate int64                           // Time of most recent update
+	CacheLock        sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
 type userData struct {
@@ -118,12 +119,11 @@ var db *sql.DB
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
-var mostRecentUpdate int64
 var lastPull int64
 var recentChangedQns []string
 
 func (r genReply) CacheUpdated() bool {
-	return mostRecentUpdate > r.UpdateTime
+	return data.MostRecentUpdate > r.UpdateTime
 }
 func (r genReply) Timestamp(timeUnix int64) string {
 	return time.Unix(timeUnix, 0).Format("Jan 2 at 15:04")
@@ -178,7 +178,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	time, _ := strconv.ParseInt(r.FormValue("time"), 10, 64)
 
 	// Writing the page to JSON format
-	pageText := "{\"Updated\": " + strconv.FormatBool(mostRecentUpdate > time) + ","
+	pageText := "{\"Updated\": " + strconv.FormatBool(data.MostRecentUpdate > time) + ","
 	pageText += "\"Questions\": ["
 	for _, question := range recentChangedQns {
 		pageText += "\"" + question + "\","
@@ -206,7 +206,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	lastPull = pullNewQuestions(db, ctx, lastPull)
 
 	// Refresh local cache if the database has been changed
-	if checkDBUpdateTime(ctx, "questions", mostRecentUpdate) {
+	if checkDBUpdateTime(ctx, "questions", data.MostRecentUpdate) {
 		log.Infof(ctx, "Refreshing cache")
 		refreshLocalCache(ctx)
 	}
@@ -644,7 +644,7 @@ func writeResponse(user stackongo.User, writeData webData, pageNum int, query []
 		},
 		User:       user,          // Current user information
 		Qns:        writeData.Qns, // Map users by questions answered
-		UpdateTime: mostRecentUpdate,
+		UpdateTime: data.MostRecentUpdate,
 		Query:      query,
 	}
 }

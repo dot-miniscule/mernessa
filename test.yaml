@@ -9,7 +9,7 @@
 
 application: stacktracker-1184
 module: default
-version: mtest
+version: test
 runtime: go
 api_version: go1
 automatic_scaling:

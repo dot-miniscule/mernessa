@@ -128,7 +128,7 @@ func readFromDb(ctx context.Context, queries string) webData {
 		sort.Sort(byCreationDate(tempData.Caches[cacheType]))
 	}
 
-	mostRecentUpdate = time.Now().Unix()
+	tempData.MostRecentUpdate = time.Now().Unix()
 	return tempData
 }
 
@@ -282,7 +282,7 @@ func addUserToDB(ctx context.Context, newUser stackongo.User) {
 func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.User) error {
 	log.Infof(ctx, "updating cache")
 
-	mostRecentUpdate = time.Now().Unix()
+	data.MostRecentUpdate = time.Now().Unix()
 
 	// required to collect post form data
 	r.ParseForm()
@@ -308,7 +308,7 @@ func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.Use
 			form_input := r.PostFormValue(questionID)
 			// Add the question to the appropriate cache, updating the state
 			if _, ok := newData.Caches[form_input]; ok {
-				question.Last_edit_date = mostRecentUpdate
+				question.Last_edit_date = data.MostRecentUpdate
 				newData.Caches[form_input] = append(newData.Caches[form_input], question)
 				for i := 0; i < len(newData.Caches[cacheType]); i++ {
 					if newData.Caches[cacheType][i].Question_id == question.Question_id {
@@ -348,6 +348,6 @@ func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.Use
 	go func(db *sql.DB, ctx context.Context, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
 		recentChangedQns = qnsTitles
 		backend.UpdateDb(db, ctx, qns, userId, lastUpdate)
-	}(db, ctx, changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
+	}(db, ctx, changedQns, changedQnsTitles, user.User_id, data.MostRecentUpdate)
 	return nil
 }
