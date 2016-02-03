@@ -49,7 +49,8 @@ func SqlInit() *sql.DB {
 	//dbString := os.Getenv("DB_STRING")
 	//db, err := sql.Open("mysql", dbString)
 	//dbString := os.Getenv("DB_STRING")
-	db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
+	db, err := sql.Open("mysql", "root@cloudsql(stacktracker-1184:stacktracker-db2)/stacktrackerdb")
+	//db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
 	if err != nil {
 		log.Println("Open fail: \t", err)
 		return nil

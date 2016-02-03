@@ -69,8 +69,8 @@ type webData struct {
 	Caches           map[string][]stackongo.Question // Caches by question states
 	Qns              map[int]stackongo.User          // Map of users by question ids
 	Users            map[int]userData                // Map of users by user ids
+	MostRecentUpdate int64                           // Time of most recent update
 	CacheLock        sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
-	MostRecentUpdate int64
 }
 
 type userData struct {

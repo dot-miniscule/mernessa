@@ -74,24 +74,6 @@ $(function() {
   });
 });
 
-// Function to fix window height
-// The main container (white div) will be at a minimum the height of the window size
-// If the container inside (the table) overflows, it will resize to fit.
-// Plus an offset of 300px to account for the header
-function setWindowHeight() {
-  var container = $('.wrap');
-  var inner = $('.tab-pane.active');
-  if(inner.height() > $(window).innerHeight()) {
-    container.height(inner.height()+300);
-  } else {
-    $('.container.wrap').css({ height: $(window).innerHeight() });
-    $(window).resize(function(){
-      $('.container.wrap').css({ height: $(window).innerHeight() });
-    });
-  }
-}
-
-//
 
 function setWindowHeights2() {
   var container = $('.wrap');

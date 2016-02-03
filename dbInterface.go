@@ -128,7 +128,7 @@ func readFromDb(ctx context.Context, queries string) webData {
 		sort.Sort(byCreationDate(tempData.Caches[cacheType]))
 	}
 
-	data.MostRecentUpdate = time.Now().Unix()
+	tempData.MostRecentUpdate = time.Now().Unix()
 	return tempData
 }
 
@@ -351,6 +351,6 @@ func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.Use
 	go func(db *sql.DB, ctx context.Context, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
 		recentChangedQns = qnsTitles
 		backend.UpdateDb(db, ctx, qns, userId, lastUpdate)
-	}(db, ctx, changedQns, changedQnsTitles, user.User_id, mostRecentUpdate)
+	}(db, ctx, changedQns, changedQnsTitles, user.User_id, data.MostRecentUpdate)
 	return nil
 }
