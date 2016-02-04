@@ -8,6 +8,7 @@ html, body {
 
 .wrap {
 	background-color:#fff;
+	min-height:100%;
 }
 
 .page-header {

@@ -287,6 +287,9 @@ func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.Use
 			questionID := cacheType + "_" + strconv.Itoa(question.Question_id)
 			// Collect form from Request
 			form_input := r.PostFormValue(questionID)
+			if question.Question_id == 7312562 {
+				log.Infof(ctx, "%s", form_input)
+			}
 			// Add the question to the appropriate cache, updating the state
 			if _, ok := newData.Caches[form_input]; ok {
 				question.Last_edit_date = data.MostRecentUpdate
@@ -324,7 +327,7 @@ func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.Use
 		data.Caches[cacheType] = newData.Caches[cacheType]
 	}
 	data.CacheLock.Unlock()
-
+	log.Infof(ctx, "Titles: %v", changedQnsTitles)
 	// Update the database
 	go func(db *sql.DB, ctx context.Context, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
 		recentChangedQns = qnsTitles
