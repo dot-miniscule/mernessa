@@ -543,38 +543,40 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	}
 }
 
+// Returns the current user requesting the page
 func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stackongo.User {
-	// Collect access token from browswer cookie
-	// If cookie does not exist, obtain token using code from cookie
-	// If code does not exist, redirect to login page for authorization
-	cookie, err := r.Cookie("access_token")
-	var token string
-	if err != nil {
-		code, err := r.Cookie("code")
-		if err != nil {
-			log.Infof(ctx, "Returning Guest user, %v", err.Error())
-			return guest
-		}
-		access_tokens, err := backend.ObtainAccessToken(code.Value)
-		if err != nil {
-			log.Warningf(ctx, "Access token not obtained: %v", err.Error())
-			return guest
-		}
-
-		log.Infof(ctx, "Setting cookie: access_token")
-		token = access_tokens["access_token"]
-		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: token})
-	} else {
-		token = cookie.Value
+	// Collect userId from browser cookie
+	username, err := r.Cookie("user_name")
+	if err == nil && username.Value != "" && username.Value != "Guest" {
+		return readUserFromDb(ctx, username.Value)
 	}
-	user, err := backend.AuthenticatedUser(map[string]string{}, token)
+
+	// If user_id cookie is not set, look for code in url request to collect access token.
+	// If code is not available, return guest user
+	code := r.FormValue("code")
+	if code == "" {
+		log.Infof(ctx, "Returning guest user")
+		return guest
+	}
+
+	// Collect access token using the recieved code
+	access_tokens, err := backend.ObtainAccessToken(code)
+	if err != nil {
+		log.Warningf(ctx, "Access token not obtained: %v", err.Error())
+		return guest
+	}
+
+	// Get the authenticated user with the collected access token
+	user, err := backend.AuthenticatedUser(map[string]string{}, access_tokens["access_token"])
 	if err != nil {
 		log.Warningf(ctx, err.Error())
 		return guest
 	}
+
+	// Add user to db if not already in
 	data.CacheLock.Lock()
 	if _, ok := data.Users[user.User_id]; !ok {
-		data.Users[user.User_id] = newUser(user, token)
+		data.Users[user.User_id] = newUser(user, access_tokens["access_token"])
 		addUserToDB(ctx, user)
 	}
 	data.CacheLock.Unlock()

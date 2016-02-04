@@ -345,6 +345,8 @@ $(function() {
 //-------- SETTING COOKIES -------//
 $(document).ready(function() {
   setCookies();
+  var url = removeQuery('code', window.location.href);
+  window.history.replaceState("", document.title, url);
   clearEmptyQueries();
 
   var subpage = window.location.href.split('?')[0].slice(window.location.href.lastIndexOf('/'));
@@ -363,12 +365,8 @@ $(document).ready(function() {
 
 //-------- COOKIES --------//
 function setCookies() {
-  var code = location.search.split('code=')[1];
-  if (code !== undefined && code !== '') {
-    document.cookie = 'code=' + code;
-  }
-  var url = removeQuery('code', window.location.href);
-  window.history.replaceState("", document.title, url);
+  // Set user cookie
+  document.cookie = 'user_name=' + localStorage['currentUser'];
 }
 
 //-------- Removing queries ---------//
