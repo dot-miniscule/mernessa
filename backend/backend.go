@@ -3,7 +3,9 @@ package backend
 import (
 	"dataCollect"
 	"errors"
+	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -15,8 +17,10 @@ import (
 )
 
 var (
-	tags    = []string{"google-places-api"}
-	appInfo = dataCollect.AppDetails{
+	transport http.RoundTripper
+	keyWords  = "places api"
+	tags      = []string{"google-places-api", "google-places"}
+	appInfo   = dataCollect.AppDetails{
 		Client_id:     "6029",
 		Redirect_uri:  "http://stacktracker-1184.appspot.com/home",
 		Client_secret: "ymefu0zw2TIULhSTM03qyg((",
@@ -36,16 +40,21 @@ var (
 )
 
 func SetTransport(c context.Context) {
-	ut := &urlfetch.Transport{Context: c}
-	stackongo.SetTransport(ut)
+	transport = &urlfetch.Transport{Context: c}
+	stackongo.SetTransport(transport)
 }
 
 func NewSession() {
 	session = stackongo.NewSession("stackoverflow")
 }
 
+type byCreationDate []stackongo.Question
+
+func (a byCreationDate) Len() int           { return len(a) }
+func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
+
 func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, error) {
-	// Set starting variable parameters
 	// Adding parameters to request
 	params := make(stackongo.Params)
 	params.Pagesize(100)
@@ -53,17 +62,66 @@ func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, erro
 	params.Todate(toDate)
 	params.Sort("creation")
 	params.Add("accepted", false)
-	params.AddVectorized("tagged", tags)
+	params.Add("closed", false)
 
-	questions, err := dataCollect.Collect(session, appInfo, params)
+	// Add questions tagged with "google-places-api"
+	params.Add("tagged", tags[0])
+	questions, err := dataCollect.Collect(appInfo, params, transport)
 	if err != nil {
 		return nil, err
 	}
+
+	if questions.Quota_remaining <= 0 {
+		return questions, fmt.Errorf("No StackExchange requests remaining")
+	}
+
+	// Add questions tagged with "google-places"
+	params.Add("tagged", tags[1])
+	params.Add("nottagged", tags[0])
+	tagQuestions, err := dataCollect.Collect(appInfo, params, transport)
+	if err != nil {
+		return questions, err
+	}
+	tagQuestions.Items = append(questions.Items, tagQuestions.Items...)
+	questions = tagQuestions
+	sort.Sort(byCreationDate(questions.Items))
+
+	if questions.Quota_remaining <= 0 {
+		return questions, fmt.Errorf("No StackExchange requests remaining")
+	}
+
+	// Add questions with "Places API" in the body
+	params.Del("tagged")
+	params.Add("body", keyWords)
+	params.AddVectorized("nottagged", tags)
+	bodyQuestions, err := dataCollect.Collect(appInfo, params, transport)
+	if err != nil {
+		return questions, err
+	}
+	bodyQuestions.Items = append(questions.Items, bodyQuestions.Items...)
+	questions = bodyQuestions
+	sort.Sort(byCreationDate(questions.Items))
+
+	if questions.Quota_remaining <= 0 {
+		return questions, fmt.Errorf("No StackExchange requests remaining")
+	}
+
+	// Add questions with "Places API" in the body
+	params.Del("body")
+	params.Add("title", keyWords)
+	titleQuestions, err := dataCollect.Collect(appInfo, params, transport)
+	if err != nil {
+		return questions, err
+	}
+	titleQuestions.Items = append(questions.Items, titleQuestions.Items...)
+	questions = titleQuestions
+	sort.Sort(byCreationDate(questions.Items))
+
 	return questions, nil
 }
 
 func NewSearch(r *http.Request, params stackongo.Params) (*stackongo.Questions, error) {
-	return dataCollect.Collect(session, appInfo, params)
+	return dataCollect.Collect(appInfo, params, transport)
 }
 
 func AuthURL() string {
