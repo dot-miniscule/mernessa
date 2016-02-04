@@ -247,7 +247,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		addQuestionHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
 		addNewQuestionToDatabaseHandler(w, r, ctx)
-	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" {
+	} else if strings.HasPrefix(r.URL.Path, "/?") || strings.HasPrefix(r.URL.Path, "/home") || r.URL.Path == "/" {
 		// Parse the html template to serve to the page
 		page := template.Must(template.ParseFiles("public/template.html"))
 		pageQuery := []string{
