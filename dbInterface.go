@@ -212,17 +212,9 @@ func checkDBUpdateTime(ctx context.Context, tableName string, lastUpdate int64) 
 	var (
 		last_updated int64
 	)
-	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'")
+	err := db.QueryRow("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'").Scan(&last_updated)
 	if err != nil {
-		log.Errorf(ctx, "Query failed: %v", err.Error())
-		return true
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&last_updated)
-		if err != nil {
-			log.Errorf(ctx, "Update time scan failed: %v", err.Error())
-		}
+		log.Errorf(ctx, "Update time scan failed: %v", err.Error())
 	}
 	return last_updated > lastUpdate
 }
