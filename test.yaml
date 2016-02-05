@@ -9,15 +9,12 @@
 
 application: stacktracker-1184
 module: default
-version: test
+version: mtest
 runtime: go
 api_version: go1
-automatic_scaling:
-  min_idle_instances: 1
-  max_idle_instances: 5  # default value
-  min_pending_latency: 30ms  # default value
-  max_pending_latency: automatic
-  max_concurrent_requests: 50
+
+manual_scaling:
+  instances: 1
 
 handlers:
 - url: /stylesheets
@@ -28,6 +25,9 @@ handlers:
 
 - url: /images
   static_dir: public/images
+
+- url: /_ah/start
+  script: _go_app
 
 - url: /.*
   script: _go_app

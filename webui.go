@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
+	"os"
 
 	"net/http"
 	"reflect"
@@ -23,6 +24,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
+
 )
 
 // Functions for sorting
@@ -116,6 +118,8 @@ var guest = stackongo.User{
 
 // Pointer to database connection to communicate with Cloud SQL
 var db *sql.DB
+var DB_STRING string
+
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
@@ -142,18 +146,11 @@ func (r queryReply) PagePlus(num int) int {
 //So no main needs to be defined
 //All routes go in to init
 func init() {
-
 	recentChangedQns = []string{}
 	lastPull = time.Now().Add(-1 * time.Hour * 24 * 7).Unix()
 
 	// Initialising stackongo session
 	backend.NewSession()
-
-	// Initialising sql database
-	db = backend.SqlInit()
-
-	// Downloading cache from sql
-	initCacheDownload()
 
 	// Handlers for pages
 	http.HandleFunc("/login", authHandler)
@@ -167,6 +164,24 @@ func init() {
 	http.HandleFunc("/search", handler)
 	http.HandleFunc("/addQuestion", handler)
 	http.HandleFunc("/pullNewQn", handler)
+	http.HandleFunc("/_ah/start", handleStart)
+}
+
+func handleStart(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	log.Infof(ctx, "pre run")
+	DB_STRING = os.Getenv("DB_STRING")
+	log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
+	// Initialising sql database
+	db = backend.SqlInit(DB_STRING)
+
+	// Downloading cache from sql
+	initCacheDownload()
+}
+
+func handleStop(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	log.Infof(ctx, "post run")
 }
 
 // Handler for authorizing user
@@ -201,8 +216,23 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Set context for logging
 	ctx := appengine.NewContext(r)
-	backend.SetTransport(ctx)
 
+	// // Write a request to the application to initialize the database connection
+	// res, err := http.Get("stacktracker-1184.appspot.com/initialize")
+	// if err != nil {
+	// 	log.Errorf(ctx, "%v", err)
+	// } else {
+	// 	defer res.Body.Close()
+	// 	contents, err := ioutil.ReadAll(res.Body)
+	// 	if err != nil {
+	// 		log.Errorf(ctx, "%v", err)
+	// 	} else {
+	// 		log.Infof(ctx, "%s", contents)
+	// 	}
+	// }
+
+	log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
+	backend.SetTransport(ctx)
 	if strings.HasPrefix(r.URL.Path, "/pullNewQn") {
 		newQnHandler(w, r, ctx)
 		return
@@ -253,7 +283,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		addQuestionHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
 		addNewQuestionToDatabaseHandler(w, r, ctx)
-	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" {
+	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" || 
+	  strings.HasPrefix(r.URL.Path, "/home") {
 		// Parse the html template to serve to the page
 		page := template.Must(template.ParseFiles("public/template.html"))
 		pageQuery := []string{
@@ -271,7 +302,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for adding new question page
-func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
+func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, 
+  pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
@@ -583,6 +615,10 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 		data.Users[user.User_id] = newUser(user, token)
 		addUserToDB(ctx, user)
 	}
+
+	//zhu li do the thing
+	updateLoginTime(ctx, user); 
+
 	data.CacheLock.Unlock()
 	return user
 }

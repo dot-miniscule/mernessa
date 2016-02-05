@@ -34,23 +34,9 @@ func returnDBString() {
 //It opens and closes connections to the underlying database
 //and manages a pool of connections as needed
 //returns a *sql.DB to query elsewhere.
-func SqlInit() *sql.DB {
-	//ipv6:= "tcp(" + net.JoinHostPort("2001:4860:4864:1:aebb:124d:884e:3108", "3306") + ")"
-	//log.Println("JoinHostPort -", ipv6)
-	/*sqldb := databaseInfo{
-		"root",
-		"mernessa",
-		"password",
-		"tcp(173.194.225.82:3306)",
-	} */
-	// log.Println(appengine.VersionID(ctx))
-	//TODO: MEREDITH change to ipv6 address so ipv4 can be released on cloud sql.
-	//		Also, update applog.ing for appengine context.
-	//dbString := os.Getenv("DB_STRING")
-	//db, err := sql.Open("mysql", dbString)
-	//dbString := os.Getenv("DB_STRING")
-	db, err := sql.Open("mysql", "root@cloudsql(stacktracker-1184:stacktracker-db2)/stacktrackerdb")
-	//db, err := sql.Open("mysql", "root@cloudsql(google.com:test-helloworld-1151:storage)/mernessa")
+func SqlInit(dbString string) *sql.DB {
+	
+	db, err := sql.Open("mysql", dbString)
 	if err != nil {
 		log.Println("Open fail: \t", err)
 		return nil
@@ -59,7 +45,6 @@ func SqlInit() *sql.DB {
 	//Usually would defer the closing of the database connection from here
 	//Assuming this function is called within another method, it will need to be closed at the
 	//return of that function --> db.Close()
-
 	log.Println("Pinging the database. This may take a moment...")
 
 	//Verify data source is valid
