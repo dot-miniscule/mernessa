@@ -1,9 +1,15 @@
 /* ====================== MAINPAGE  ===================== */
 /* THIS IS THE JAVASCRIPT FOR THE MAIN PAGE */
 
+// Logs out of current user
+function logout() {
+  document.cookie = "user_name=Guest";
+  window.location.reload();
+}
+
 function checkUser(username) {
   console.log('checking');
-    return username === "Guest";
+  return username === "Guest";
 }
 
 function submitForm(username, type, updateTime) {
@@ -15,7 +21,6 @@ function submitForm(username, type, updateTime) {
   console.log("")
   return checkDB(type, updateTime);
 }
-
 
 function checkDB(buttonPressed, updateTime) {
   if(buttonPressed == 'reopen') {
@@ -70,24 +75,8 @@ $(function() {
     url = addQuery('tab', tab, url);
     window.history.replaceState('', document.title, url);
     setActiveTab(window.location.href);
-    setWindowHeight();
   });
 });
-
-
-function setWindowHeights2() {
-  var container = $('.wrap');
-  var maxHeight = -1;
-  container.children().each(function() {
-    if($(this).height() > maxHeight) {
-      maxHeight = $(this).height();
-    }
-  });
-
-  if(maxHeight > container.height()) {
-    container.height(maxHeight);
-  }
-}
 
 // Function to remove query, i.e if questions are filtered by tag, user, URL, keyword etc.
 // URL splits on any query (?) and the & to maintain the currently selected tab.
@@ -116,7 +105,6 @@ function setActiveTab(sourceURL) {
   }
   $('li a[href="'+param+'"]').parent().addClass('active');
   $(param).addClass('active');
-  setWindowHeight();
 }
 
 //---------- CLEAR SELECTION BUTTON -------------- //
