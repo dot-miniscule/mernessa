@@ -43,6 +43,7 @@
                 <p id="welcomeSentence"><a href="/login">Login</a> with your StackOverflow account...</p>
               {{else}}
                 <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+                <button class="btn btn-default btn-xs" onclick="logout()">Logout</button>
               {{end}}
           </div>
         </div><!-- END ROW -->

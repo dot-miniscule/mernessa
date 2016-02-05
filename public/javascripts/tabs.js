@@ -1,9 +1,15 @@
 /* ====================== MAINPAGE  ===================== */
 /* THIS IS THE JAVASCRIPT FOR THE MAIN PAGE */
 
+// Logs out of current user
+function logout() {
+  document.cookie = "user_name=Guest";
+  window.location.reload();
+}
+
 function checkUser(username) {
   console.log('checking');
-    return username === "Guest";
+  return username === "Guest";
 }
 
 function submitForm(username, type, updateTime) {
@@ -15,7 +21,6 @@ function submitForm(username, type, updateTime) {
   console.log("")
   return checkDB(type, updateTime);
 }
-
 
 function checkDB(buttonPressed, updateTime) {
   if(buttonPressed == 'reopen') {

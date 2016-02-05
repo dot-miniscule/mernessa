@@ -21,7 +21,7 @@
     <!-- Optional theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     
     <link rel="stylesheet" type="text/css" href="stylesheets/styles.css">
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
@@ -44,6 +44,7 @@
                 <p id="welcomeSentence"><a href="/login">Login</a> with your StackOverflow account...</p>
               {{else}}
                 <a href="/user?id={{$reply.User.User_id}}">{{$reply.User.Display_name}} <img src="{{$reply.User.Profile_image}}" style="height:20px; width:20px"></a>
+                <button class="btn btn-default btn-xs" onclick="logout()">Logout</button>
               {{end}}
           </div>
         </div><!-- END ROW -->
