@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	transport http.RoundTripper
-	keyWords  = "places api"
-	tags      = []string{"google-places-api", "google-places"}
-	appInfo   = dataCollect.AppDetails{
+	transport http.RoundTripper                                // Interface to handle HTTP transactions
+	keyWords  = "places api"                                   // Main search parameters
+	tags      = []string{"google-places-api", "google-places"} // Tags to search for
+	appInfo   = dataCollect.AppDetails{                        // Information on StackExchange app
 		Client_id:     "6029",
 		Redirect_uri:  "http://stacktracker-1184.appspot.com/home",
 		Client_secret: "ymefu0zw2TIULhSTM03qyg((",
@@ -36,24 +36,28 @@ var (
 			"scope": "write_access, no_expiry",
 		},
 	}
-	session = new(stackongo.Session)
+	session = new(stackongo.Session) // Session to access StackExchange API
 )
 
-func SetTransport(c context.Context) {
-	transport = &urlfetch.Transport{Context: c}
-	stackongo.SetTransport(transport)
-}
-
-func NewSession() {
-	session = stackongo.NewSession("stackoverflow")
-}
-
+// Functions and type for sorting an array of Questions
 type byCreationDate []stackongo.Question
 
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
 
+// Setting the transport to allow stackongo to call StackExchange API
+func SetTransport(c context.Context) {
+	transport = &urlfetch.Transport{Context: c}
+	stackongo.SetTransport(transport)
+}
+
+// Create a new stackongo session
+func NewSession() {
+	session = stackongo.NewSession("stackoverflow")
+}
+
+// Returns StackOverflow questions asked between fromDate and toDate
 func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, error) {
 	// Adding parameters to request
 	params := make(stackongo.Params)
@@ -71,6 +75,7 @@ func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, erro
 		return nil, err
 	}
 
+	// Return if no quota remaining for the app
 	if questions.Quota_remaining <= 0 {
 		return questions, fmt.Errorf("No StackExchange requests remaining")
 	}
@@ -86,6 +91,7 @@ func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, erro
 	questions = tagQuestions
 	sort.Sort(byCreationDate(questions.Items))
 
+	// Return if no quota remaining for the app
 	if questions.Quota_remaining <= 0 {
 		return questions, fmt.Errorf("No StackExchange requests remaining")
 	}
@@ -102,6 +108,7 @@ func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, erro
 	questions = bodyQuestions
 	sort.Sort(byCreationDate(questions.Items))
 
+	// Return if no quota remaining for the app
 	if questions.Quota_remaining <= 0 {
 		return questions, fmt.Errorf("No StackExchange requests remaining")
 	}
@@ -120,22 +127,27 @@ func GetNewQns(fromDate time.Time, toDate time.Time) (*stackongo.Questions, erro
 	return questions, nil
 }
 
+// Return questions based on search parameters
 func NewSearch(r *http.Request, params stackongo.Params) (*stackongo.Questions, error) {
 	return dataCollect.Collect(appInfo, params, transport)
 }
 
+// Return URL to redirect user for authentication
 func AuthURL() string {
 	return stackongo.AuthURL(appInfo.Client_id, appInfo.Redirect_uri, appInfo.Options)
 }
 
+// Return access token from code
 func ObtainAccessToken(code string) (map[string]string, error) {
 	return stackongo.ObtainAccessToken(appInfo.Client_id, appInfo.Client_secret, code, appInfo.Redirect_uri)
 }
 
+// Return User associated with access_token
 func AuthenticatedUser(params map[string]string, access_token string) (stackongo.User, error) {
 	return session.AuthenticatedUser(params, map[string]string{"key": appInfo.Key, "access_token": access_token})
 }
 
+// Return User associated with user_id
 func GetUser(user_id int, params map[string]string) (stackongo.User, error) {
 	params["key"] = appInfo.Key
 	users, err := session.GetUsers([]int{user_id}, params)

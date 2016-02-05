@@ -14,8 +14,9 @@ import (
 	"github.com/laktek/Stack-on-Go/stackongo"
 )
 
-var host string = "https://api.stackexchange.com"
+var host string = "https://api.stackexchange.com" // API host site
 
+// Searches for questions on StackExchange API that match parameters
 func searchAdvanced(params map[string]string, transport http.RoundTripper) (*stackongo.Questions, error) {
 	request_path := "search/advanced"
 	output := new(stackongo.Questions)
@@ -25,6 +26,7 @@ func searchAdvanced(params map[string]string, transport http.RoundTripper) (*sta
 	return output, nil
 }
 
+// Sends a Get request through the transport and parses the response into collection
 func get(transport http.RoundTripper, section string, params map[string]string, collection interface{}) error {
 	client := &http.Client{Transport: transport}
 	response, err := client.Get(setupEndpoint(section, params).String())
@@ -40,6 +42,7 @@ func get(transport http.RoundTripper, section string, params map[string]string, 
 	return nil
 }
 
+// Return URL with params joined to path
 func setupEndpoint(path string, params map[string]string) *url.URL {
 	base_url, _ := url.Parse(host)
 	endpoint, _ := base_url.Parse("/2.2/" + path)
@@ -54,6 +57,7 @@ func setupEndpoint(path string, params map[string]string) *url.URL {
 	return endpoint
 }
 
+// Parse response into result
 func parseResponse(response *http.Response, result interface{}) error {
 	defer response.Body.Close()
 

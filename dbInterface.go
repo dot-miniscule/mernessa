@@ -14,6 +14,7 @@ import (
 	"google.golang.org/appengine/log"
 )
 
+// Downloading the local cache from database
 func initCacheDownload() {
 	data.CacheLock.Lock()
 	data.Users = readUsersFromDb(nil)
@@ -21,6 +22,7 @@ func initCacheDownload() {
 	refreshLocalCache(nil)
 }
 
+// Refresh local cache to get newly added or edited questions
 func refreshLocalCache(ctx context.Context) {
 	tempData := readFromDb(ctx, "")
 
@@ -35,11 +37,12 @@ func refreshLocalCache(ctx context.Context) {
 	data.CacheLock.Unlock()
 }
 
+// Returns questions and user data from the db
 func readFromDb(ctx context.Context, queries string) webData {
-	//Reading from database
 	if ctx != nil {
 		log.Infof(ctx, "Refreshing database read")
 	}
+
 	tempData := newWebData()
 	var (
 		url            string
@@ -59,6 +62,7 @@ func readFromDb(ctx context.Context, queries string) webData {
 	if queries != "" {
 		query = query + " WHERE state='unanswered' OR " + queries
 	}
+
 	rows, err := db.Query(query)
 	if err != nil {
 		if ctx != nil {
@@ -118,7 +122,7 @@ func readFromDb(ctx context.Context, queries string) webData {
 			}
 			tempData.Qns[id] = user
 			if _, ok := tempData.Users[user.User_id]; !ok {
-				tempData.Users[user.User_id] = newUser(user, "")
+				tempData.Users[user.User_id] = newUser(user)
 			}
 			tempData.Users[user.User_id].Caches[state] = append(tempData.Users[user.User_id].Caches[state], currentQ)
 		}
@@ -136,7 +140,6 @@ func readFromDb(ctx context.Context, queries string) webData {
 //Retrieves all distinct tags and the number of questions saved in the db with that tag
 func readTagsFromDb(ctx context.Context) []tagData {
 	var tempData []tagData
-
 	var (
 		tag   sql.NullString
 		count sql.NullInt64
@@ -162,8 +165,8 @@ func readTagsFromDb(ctx context.Context) []tagData {
 	return tempData
 }
 
-//Function to read all user data from the database when a /viewUsers request is made
-//Retrieves all users data
+// Function to read all user data from the database when a /viewUsers request is made
+// Retrieves all users data
 func readUsersFromDb(ctx context.Context) map[int]userData {
 
 	tempData := make(map[int]userData)
@@ -199,7 +202,7 @@ func readUsersFromDb(ctx context.Context) map[int]userData {
 			Profile_image: pic.String,
 			Link:          link.String,
 		}
-		tempData[int(id.Int64)] = newUser(currentUser, "")
+		tempData[int(id.Int64)] = newUser(currentUser)
 	}
 
 	return tempData
@@ -307,7 +310,7 @@ func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.Use
 				if form_input != "unanswered" {
 					newData.Qns[question.Question_id] = user
 					if _, ok := newData.Users[user.User_id]; !ok {
-						newData.Users[user.User_id] = newUser(user, "")
+						newData.Users[user.User_id] = newUser(user)
 					}
 
 					newData.Users[user.User_id].Caches[form_input] = append(newData.Users[user.User_id].Caches[form_input], question)
@@ -328,10 +331,11 @@ func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.Use
 	}
 	data.CacheLock.Unlock()
 	log.Infof(ctx, "Titles: %v", changedQnsTitles)
+
 	// Update the database
 	go func(db *sql.DB, ctx context.Context, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
 		recentChangedQns = qnsTitles
-		backend.UpdateDb(db, ctx, qns, userId, lastUpdate)
+		backend.UpdateQns(db, ctx, qns, userId, lastUpdate)
 	}(db, ctx, changedQns, changedQnsTitles, user.User_id, data.MostRecentUpdate)
 	return nil
 }
