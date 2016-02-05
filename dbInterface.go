@@ -212,52 +212,33 @@ func checkDBUpdateTime(ctx context.Context, tableName string, lastUpdate int64) 
 	var (
 		last_updated int64
 	)
-	rows, err := db.Query("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'")
+	err := db.QueryRow("SELECT last_updated FROM update_times WHERE table_name='" + tableName + "'").Scan(&last_updated)
 	if err != nil {
-		log.Errorf(ctx, "Query failed: %v", err.Error())
-		return true
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&last_updated)
-		if err != nil {
-			log.Errorf(ctx, "Update time scan failed: %v", err.Error())
-		}
+		log.Errorf(ctx, "Update time scan failed: %v", err.Error())
 	}
 	return last_updated > lastUpdate
 }
 
-func readUserFromDb(ctx context.Context, id string) stackongo.User {
+func readUserFromDb(ctx context.Context, username string) stackongo.User {
 	//Reading from database
 	log.Infof(ctx, "Refreshing database read")
 	var (
-		owner sql.NullInt64
+		id    sql.NullInt64
 		name  sql.NullString
 		image sql.NullString
-		link  sql.NullString
 	)
 	//Select all questions in the database and read into a new data object
-	rows, err := db.Query("SELECT * FROM user WHERE id=" + id)
+	err := db.QueryRow("SELECT id, name, pic FROM user WHERE name='"+username+"'").Scan(&id, &name, &image)
 	if err != nil {
-		log.Errorf(ctx, "User query failed: %v", err.Error())
+		log.Errorf(ctx, "User Scan failed: %v", err.Error())
 		return stackongo.User{}
 	}
 
-	defer rows.Close()
-	//Iterate through each row and add to the correct cache
-	for rows.Next() {
-		err := rows.Scan(&owner, &name, &image, &link)
-		if err != nil {
-			log.Errorf(ctx, "User Scan failed: %v", err.Error())
-			continue
-		}
-
-		if owner.Valid {
-			return stackongo.User{
-				User_id:       int(owner.Int64),
-				Display_name:  name.String,
-				Profile_image: name.String,
-			}
+	if id.Valid {
+		return stackongo.User{
+			User_id:       int(id.Int64),
+			Display_name:  name.String,
+			Profile_image: image.String,
 		}
 	}
 	return stackongo.User{}

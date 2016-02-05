@@ -24,7 +24,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
-
 )
 
 // Functions for sorting
@@ -119,7 +118,6 @@ var guest = stackongo.User{
 // Pointer to database connection to communicate with Cloud SQL
 var db *sql.DB
 var DB_STRING string
-
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
@@ -217,20 +215,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Set context for logging
 	ctx := appengine.NewContext(r)
 
-	// // Write a request to the application to initialize the database connection
-	// res, err := http.Get("stacktracker-1184.appspot.com/initialize")
-	// if err != nil {
-	// 	log.Errorf(ctx, "%v", err)
-	// } else {
-	// 	defer res.Body.Close()
-	// 	contents, err := ioutil.ReadAll(res.Body)
-	// 	if err != nil {
-	// 		log.Errorf(ctx, "%v", err)
-	// 	} else {
-	// 		log.Infof(ctx, "%s", contents)
-	// 	}
-	// }
-
 	log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
 	backend.SetTransport(ctx)
 	if strings.HasPrefix(r.URL.Path, "/pullNewQn") {
@@ -283,8 +267,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		addQuestionHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addNewQuestion") {
 		addNewQuestionToDatabaseHandler(w, r, ctx)
-	} else if strings.HasPrefix(r.URL.Path, "/?") || r.URL.Path == "/" || 
-	  strings.HasPrefix(r.URL.Path, "/home") {
+	} else if strings.HasPrefix(r.URL.Path, "/?") || strings.HasPrefix(r.URL.Path, "/home") || r.URL.Path == "/" {
 		// Parse the html template to serve to the page
 		page := template.Must(template.ParseFiles("public/template.html"))
 		pageQuery := []string{
@@ -302,8 +285,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for adding new question page
-func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, 
-  pageNum int, user stackongo.User) {
+func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context,
+	pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
@@ -581,43 +564,45 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	}
 }
 
+// Returns the current user requesting the page
 func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stackongo.User {
-	// Collect access token from browswer cookie
-	// If cookie does not exist, obtain token using code from cookie
-	// If code does not exist, redirect to login page for authorization
-	cookie, err := r.Cookie("access_token")
-	var token string
-	if err != nil {
-		code, err := r.Cookie("code")
-		if err != nil {
-			log.Infof(ctx, "Returning Guest user, %v", err.Error())
-			return guest
-		}
-		access_tokens, err := backend.ObtainAccessToken(code.Value)
-		if err != nil {
-			log.Warningf(ctx, "Access token not obtained: %v", err.Error())
-			return guest
-		}
-
-		log.Infof(ctx, "Setting cookie: access_token")
-		token = access_tokens["access_token"]
-		http.SetCookie(w, &http.Cookie{Name: "access_token", Value: token})
-	} else {
-		token = cookie.Value
+	// Collect userId from browser cookie
+	username, err := r.Cookie("user_name")
+	if err == nil && username.Value != "" && username.Value != "Guest" {
+		return readUserFromDb(ctx, username.Value)
 	}
-	user, err := backend.AuthenticatedUser(map[string]string{}, token)
+
+	// If user_id cookie is not set, look for code in url request to collect access token.
+	// If code is not available, return guest user
+	code := r.FormValue("code")
+	if code == "" {
+		log.Infof(ctx, "Returning guest user")
+		return guest
+	}
+
+	// Collect access token using the recieved code
+	access_tokens, err := backend.ObtainAccessToken(code)
+	if err != nil {
+		log.Warningf(ctx, "Access token not obtained: %v", err.Error())
+		return guest
+	}
+
+	// Get the authenticated user with the collected access token
+	user, err := backend.AuthenticatedUser(map[string]string{}, access_tokens["access_token"])
 	if err != nil {
 		log.Warningf(ctx, err.Error())
 		return guest
 	}
+
+	// Add user to db if not already in
 	data.CacheLock.Lock()
 	if _, ok := data.Users[user.User_id]; !ok {
-		data.Users[user.User_id] = newUser(user, token)
+		data.Users[user.User_id] = newUser(user, access_tokens["access_token"])
 		addUserToDB(ctx, user)
 	}
 
 	//zhu li do the thing
-	updateLoginTime(ctx, user); 
+	//updateLoginTime(ctx, user)
 
 	data.CacheLock.Unlock()
 	return user

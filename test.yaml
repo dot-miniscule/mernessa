@@ -26,7 +26,7 @@ handlers:
 - url: /images
   static_dir: public/images
 
-- url: /_ah/start
+- url: /_ah/.*
   script: _go_app
 
 - url: /.*
