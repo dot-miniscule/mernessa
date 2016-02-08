@@ -16,11 +16,14 @@ function validUser(username) {
 function submitForm(username, type, updateTime) {
   console.log("checking user");
   if (!validUser(username)) {
-    alert('Must be logged in to submit');
+    $('#loginModal').modal('show');
     return false;
   }
   return checkDB(type, updateTime);
 }
+
+// Function to create the login modal, to save on having to write the html markup multiple
+// times. Creates the content dynamically, to be hidden and shown.
 
 // Checks the update time of the database.
 // If the current page is outdated, check if the questions to be updated have been recently changed.
@@ -80,8 +83,8 @@ function checkDB(buttonPressed, updateTime) {
 // Nav bar active state
 $(".navigation a").on("click", function(){
   // Setting the active tab
-  $(".nav").find(".active").removeClass("active");
-  $(this).parent().addClass("active");
+  $(".nav").find(".active").removeClass(".active");
+  $(this).parent().addClass(".active");
 
   // Adjusting the url to match active tab
   var tab = $(this).attr("href").substring(1);
