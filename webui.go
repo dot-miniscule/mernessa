@@ -111,7 +111,6 @@ func newWebData() webData {
 
 const timeout = 6 * time.Hour // Time to wait between querying new SE questions
 
-<<<<<<< HEAD
 // Global variable with cache info
 var data = newWebData()
 
@@ -151,12 +150,6 @@ func init() {
 
 	// Initialising stackongo session
 	backend.NewSession()
-
-	// Initialising sql database
-	db = backend.SqlInit()
-
-	// Downloading local cache from sql
-	initCacheDownload()
 
 	// Handlers for pages
 	http.HandleFunc("/login", authHandler)
