@@ -121,7 +121,7 @@ var guest = stackongo.User{
 
 // Pointer to database connection to communicate with Cloud SQL
 var db *sql.DB
-var DB_STRING string
+var DB_STRING = ""
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
@@ -163,25 +163,40 @@ func init() {
 	http.HandleFunc("/search", handler)
 	http.HandleFunc("/addQuestion", handler)
 	http.HandleFunc("/pullNewQn", handler)
-	http.HandleFunc("/_ah/start", handleStart)
+}
+
+func checkForDBConnection() bool {
+	if(DB_STRING == "") {
+		return false
+	} else {
+		return true
+	}
+}
+
+func connectToDB(ctx context.Context) {
+	version := appengine.VersionID(ctx)
+	versionID := strings.Split(version, ".")
+	log.Infof(ctx, "Current serving app version: %s", versionID[0])
+	if(versionID[0] == "1") {
+		DB_STRING = os.Getenv("LIVE_DB")
+	} else {
+		DB_STRING = os.Getenv("TEST_DB")
+	}
+	log.Infof(ctx, "connecting to DB with string %s", DB_STRING)
+	db = backend.SqlInit(DB_STRING)	
 }
 
 func handleStart(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	log.Infof(ctx, "pre run")
-	DB_STRING = os.Getenv("DB_STRING")
-	log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
-	// Initialising sql database
-	db = backend.SqlInit(DB_STRING)
+	// DB_STRING = os.Getenv("DB_STRING")
+	// log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
+	// // Initialising sql database
+	// db = backend.SqlInit(DB_STRING)
 
-	// Downloading cache from sql
-	initCacheDownload()
+	// // Downloading cache from sql
 }
 
-func handleStop(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	log.Infof(ctx, "post run")
-}
 
 /* --------------- Handlers ---------------- */
 
@@ -201,6 +216,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 // Writes a JSON object to the page
 // ie. {"Updated": true, "Questions: ["Title1", "Title2"]}
 func updateHandler(w http.ResponseWriter, r *http.Request) {
+
 	time, _ := strconv.ParseInt(r.FormValue("time"), 10, 64)
 
 	// Writing the page to JSON format
@@ -228,7 +244,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Set context for logging
 	ctx := appengine.NewContext(r)
 
-	log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
+	if(!checkForDBConnection()) {
+		connectToDB(ctx)
+		initCacheDownload()
+	}
+
 	backend.SetTransport(ctx)
 	if strings.HasPrefix(r.URL.Path, "/pullNewQn") {
 		newQnHandler(w, r, ctx)
