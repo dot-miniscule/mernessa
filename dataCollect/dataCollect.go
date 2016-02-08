@@ -53,28 +53,32 @@ func GetQuestionsByIDs(session *stackongo.Session, ids []int, appInfo AppDetails
 	// Add standard parameters
 	params = addParams(appInfo, params)
 
-	// Search for questions
-	questions, err := session.GetQuestions(ids, params)
+	questions := &stackongo.Questions{Quota_remaining: 2}
+	startIndex, endIndex := 0, 100
+	for endIndex < len(ids) && questions.Quota_remaining > 1 {
+		// Search for questions
+		newSearch, err := session.GetQuestions(ids[startIndex:endIndex], params)
+		if err != nil {
+			return nil, fmt.Errorf("Failed at ln 57 of dataCollect: %v", err.Error())
+		}
+		if questions.Error_id != 0 {
+			return nil, fmt.Errorf("%v: %v", questions.Error_name, questions.Error_message)
+		}
+		newSearch.Items = append(questions.Items, newSearch.Items...)
+		questions = newSearch
+		startIndex = endIndex
+		endIndex += 100
+	}
+	newSearch, err := session.GetQuestions(ids[startIndex:], params)
 	if err != nil {
 		return nil, fmt.Errorf("Failed at ln 57 of dataCollect: %v", err.Error())
 	}
 	if questions.Error_id != 0 {
 		return nil, fmt.Errorf("%v: %v", questions.Error_name, questions.Error_message)
 	}
+	newSearch.Items = append(questions.Items, newSearch.Items...)
+	questions = newSearch
 
-	// If there are more pages of search results, repeat search with next page
-	for questions.Has_more && questions.Quota_remaining > 0 {
-		params.Page(questions.Page + 1)
-		nextPage, err := session.GetQuestions(ids, params)
-		if err != nil {
-			return nil, fmt.Errorf("Failed at ln 66 of dataCollect: %v", err)
-		}
-		if questions.Error_id != 0 {
-			return nil, fmt.Errorf("%v: %v", nextPage.Error_name, nextPage.Error_message)
-		}
-		nextPage.Items = append(questions.Items, nextPage.Items...)
-		questions = nextPage
-	}
 	return questions, nil
 }
 

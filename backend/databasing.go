@@ -268,7 +268,6 @@ func RemoveDeletedQuestions(db *sql.DB, ctx context.Context) error {
 	params := make(stackongo.Params)
 	params.Pagesize(100)
 	params.Sort("creation")
-	params.AddVectorized("tagged", tags)
 
 	questions, err := dataCollect.GetQuestionsByIDs(session, ids, appInfo, params)
 	if err != nil {
