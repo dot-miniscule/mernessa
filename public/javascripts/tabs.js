@@ -215,6 +215,7 @@ function displayNewQuestion(data) {
   var menu = $('.new_state_menu');
   var options = {}
   var cancel = $('.cancel-button');
+  $('.questionExists').empty();
   menu.empty();
   menu.off('change');
   btn.off('click');
@@ -379,10 +380,14 @@ function addQuestionToStackTracker(newQuestion, newState) {
         var alert = $('#new-question-alert');
         removeAlertClass(alert);
         alert.addClass('alert-success');
-        alert.html(
-          '<b>\"'+JSON.parse(newQuestion).Question_title+'\"</b> added to '+
-          localStorage["currentUser"]+'\'s '+newState+' questions successfully!'
-          );
+        var alertString
+         if(newState == "unanswered") {
+            alertString = "Question successfully added to list of"+newState+" questions!"
+          } else {
+            alertString = "Question successfully added to "+localStorage["currentUser"]+
+            "\'s "+newState+" questions!"
+          }
+        alert.html(alertString);
         alert.show();
       }
     });

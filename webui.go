@@ -128,13 +128,9 @@ func (r genReply) CacheUpdated() bool {
 	return data.MostRecentUpdate > r.UpdateTime
 }
 func (r genReply) Timestamp(timeUnix int64) string {
-	// est, err := time.LoadLocation("Australia/Sydney")
-	// if err != nil {
-	// 	log.Errorf(ctx, "Failed to read timezone of Australia/Sydney: ", err)
-	// } else {
-	// 	log.Infof(ctx, "Current time zone is: ", est)
-	// }
-	return time.Unix(timeUnix, 0).Format("Jan 2 at 15:04")
+	est, _ := time.LoadLocation("Australia/Sydney")
+	timeFormat := "Jan 2 at 15:04 2006"
+	return time.Unix(timeUnix, 0).In(est).Format(timeFormat)
 }
 func (r queryReply) PagePlus(num int) int {
 	return r.Page + num
