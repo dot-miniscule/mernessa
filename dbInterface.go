@@ -262,6 +262,23 @@ func addUserToDB(ctx context.Context, newUser stackongo.User) {
 	}
 }
 
+// Updates the login time for the current user
+func updateLoginTime(ctx context.Context, user stackongo.User) {
+	stmts, err := db.Prepare("UPDATE user SET last_login=? WHERE id=?")
+	if err != nil {
+		log.Errorf(ctx, "Update login time failed: %v", err.Error())
+	}
+
+	time := time.Now().Unix()
+
+	_, err = stmts.Exec(time, user.User_id)
+	if err != nil {
+		log.Errorf(ctx, "Execution of login update failed: %v", err.Error())
+	}
+
+	log.Infof(ctx, "Login time of user %s updated to %s!", user.User_id, time)
+}
+
 // updating the caches based on input from the appi
 func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.User) error {
 	log.Infof(ctx, "updating cache")

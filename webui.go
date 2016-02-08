@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
+	"os"
 
 	"net/http"
 	"reflect"
@@ -110,9 +111,17 @@ func newWebData() webData {
 
 const timeout = 6 * time.Hour // Time to wait between querying new SE questions
 
-var guest = stackongo.User{Display_name: "Guest"} // Standard guest user
-var data = newWebData()                           // Global variable with cache info
-var db *sql.DB                                    // Pointer to database connection to communicate with Cloud SQL
+// Global variable with cache info
+var data = newWebData()
+
+// Standard guest user
+var guest = stackongo.User{
+	Display_name: "Guest",
+}
+
+// Pointer to database connection to communicate with Cloud SQL
+var db *sql.DB
+var DB_STRING string
 
 //Stores the last time the database was read into the cache
 //This is then checked against the update time of the database and determine whether the cache should be updated
@@ -122,13 +131,9 @@ var recentChangedQns = []string{} // Array of the most recently changed question
 /* --------- Template functions ------------ */
 // Returns timeUnix as a formatted string
 func (r genReply) Timestamp(timeUnix int64) string {
-	// est, err := time.LoadLocation("Australia/Sydney")
-	// if err != nil {
-	// 	log.Errorf(ctx, "Failed to read timezone of Australia/Sydney: ", err)
-	// } else {
-	// 	log.Infof(ctx, "Current time zone is: ", est)
-	// }
-	return time.Unix(timeUnix, 0).Format("Jan 2 at 15:04")
+	est, _ := time.LoadLocation("Australia/Sydney")
+	timeFormat := "Jan 2 at 15:04 2006"
+	return time.Unix(timeUnix, 0).In(est).Format(timeFormat)
 }
 
 // Returns current page + num
@@ -140,15 +145,11 @@ func (r queryReply) PagePlus(num int) int {
 //So no main needs to be defined
 //All routes go in to init
 func init() {
+	recentChangedQns = []string{}
+	lastPull = time.Now().Add(-1 * time.Hour * 24 * 7).Unix()
 
 	// Initialising stackongo session
 	backend.NewSession()
-
-	// Initialising sql database
-	db = backend.SqlInit()
-
-	// Downloading local cache from sql
-	initCacheDownload()
 
 	// Handlers for pages
 	http.HandleFunc("/login", authHandler)
@@ -162,6 +163,24 @@ func init() {
 	http.HandleFunc("/search", handler)
 	http.HandleFunc("/addQuestion", handler)
 	http.HandleFunc("/pullNewQn", handler)
+	http.HandleFunc("/_ah/start", handleStart)
+}
+
+func handleStart(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	log.Infof(ctx, "pre run")
+	DB_STRING = os.Getenv("DB_STRING")
+	log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
+	// Initialising sql database
+	db = backend.SqlInit(DB_STRING)
+
+	// Downloading cache from sql
+	initCacheDownload()
+}
+
+func handleStop(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	log.Infof(ctx, "post run")
 }
 
 /* --------------- Handlers ---------------- */
@@ -208,8 +227,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Set context for logging
 	ctx := appengine.NewContext(r)
-	backend.SetTransport(ctx)
 
+	log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
+	backend.SetTransport(ctx)
 	if strings.HasPrefix(r.URL.Path, "/pullNewQn") {
 		newQnHandler(w, r, ctx)
 		return
@@ -280,7 +300,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for adding new question page
-func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
+func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context,
+	pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
 	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
@@ -595,6 +616,10 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 		data.Users[user.User_id] = newUser(user)
 		addUserToDB(ctx, user)
 	}
+
+	//zhu li do the thing
+	//updateLoginTime(ctx, user)
+
 	data.CacheLock.Unlock()
 	return user
 }

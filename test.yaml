@@ -9,10 +9,12 @@
 
 application: stacktracker-1184
 module: default
-version: test
+version: mtest
 runtime: go
 api_version: go1
-instance_class: F1
+
+manual_scaling:
+  instances: 1
 
 handlers:
 - url: /stylesheets
@@ -23,6 +25,9 @@ handlers:
 
 - url: /images
   static_dir: public/images
+
+- url: /_ah/.*
+  script: _go_app
 
 - url: /.*
   script: _go_app

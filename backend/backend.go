@@ -22,7 +22,7 @@ var (
 	tags      = []string{"google-places-api", "google-places"} // Tags to search for
 	appInfo   = dataCollect.AppDetails{                        // Information on StackExchange app
 		Client_id:     "6029",
-		Redirect_uri:  "http://stacktracker-1184.appspot.com/home",
+		Redirect_uri:  "http://mtest.stacktracker-1184.appspot.com/home",
 		Client_secret: "ymefu0zw2TIULhSTM03qyg((",
 		Key:           "nHI22oWrBEsUN8kHe4ARsQ((",
 

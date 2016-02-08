@@ -16,11 +16,14 @@ function validUser(username) {
 function submitForm(username, type, updateTime) {
   console.log("checking user");
   if (!validUser(username)) {
-    alert('Must be logged in to submit');
+    $('#loginModal').modal('show');
     return false;
   }
   return checkDB(type, updateTime);
 }
+
+// Function to create the login modal, to save on having to write the html markup multiple
+// times. Creates the content dynamically, to be hidden and shown.
 
 // Checks the update time of the database.
 // If the current page is outdated, check if the questions to be updated have been recently changed.
@@ -30,7 +33,7 @@ function checkDB(buttonPressed, updateTime) {
   if(buttonPressed == 'reopen') {
     buttonPressed = 'pending';
   }
-  
+
   // Send Post request to get if the database has been updated, and which questions have been updated.
   $.post('/dbUpdated?time='+updateTime, function( dataJSON ) {
 
@@ -80,8 +83,8 @@ function checkDB(buttonPressed, updateTime) {
 // Nav bar active state
 $(".navigation a").on("click", function(){
   // Setting the active tab
-  $(".nav").find(".active").removeClass("active");
-  $(this).parent().addClass("active");
+  $(".nav").find(".active").removeClass(".active");
+  $(this).parent().addClass(".active");
 
   // Adjusting the url to match active tab
   var tab = $(this).attr("href").substring(1);
@@ -104,7 +107,7 @@ function removePageQuery(queryString) {
   window.location = queries[0]+'?'+tab;
 }
 
-//---------- SET ACTIVE TAB --------------//
+
 // removes the currently active tab, and then finds the new one based on the URL
 // resizes the container div height
 function setActiveTab(sourceURL) {
@@ -126,7 +129,6 @@ function setActiveTab(sourceURL) {
 // If the user has previewed a question, and either cancelled its submission
 // or if they have previewed a question and want to preview a new one the table needs to be
 // cleared so content doesn't stack on top of itself
-
 function clearTextPreserveChildren(element) {
   element.contents().filter(function() {
     return(this.nodeType == 3);
@@ -134,12 +136,13 @@ function clearTextPreserveChildren(element) {
 }
 
 
-// Function to manually pull a question from StackOverflow using it's ID or URL
+// When a user enters a URL or ID into the search box on the find question page
 // Checks that the input from the form is either a URL or an id number
 // Parses the incoming string to isolate the question ID from the URL
-// Uses the result as a parameter in a call to Stack Exchange API
-// The response is returned as a JSON object, which is then inserted into the page
+// If its not valid, it yells at you, and instructs how to format 
 function pullQuestionFromStackOverflow() {
+  var alert = $('#new-question-alert');
+  alert.hide();
   var query = $('input#searchTerm').val();
 
   if(!$.isNumeric(query)) {
@@ -156,11 +159,33 @@ function pullQuestionFromStackOverflow() {
           pullNewQn(queryB);   
         }
       } else {
-        alert("Not a valid question URL or ID. Please try again");
+        removeAlertClass(alert);
+        alert.html('Not a valid search term.<br>Please enter a valid StackOverflow URL' +
+          'StackOverflow question ID. <br><br> Eg,'+
+          ' http://stackoverflow.com/questions/123456/example-question-title or 123456');
+        alert.addClass('alert-warning');
+        alert.show();
       }
     }
   } else {
     pullNewQn(query);
+  }
+}
+
+// Removes any of the following from an alert object:
+// success, info, warning, danger.
+// This is to ensure that new alerts assigned to the same object have the correct
+// level and there are no conflicts. Eg, on the addQuestion page, if a success alert
+// is followed by a danger, because a question could not be found or the search
+// query they entered was not valid, this will ensure the alert level is removed 
+// before a new one is added. 
+function removeAlertClass(alert) {
+  var classList = alert.attr("class").toString().split(' ');
+  for(var i=0; i < classList.length; i++) {
+    if(classList[i] === 'alert-success' || classList[i] === 'alert-info' || 
+      classList[i] === 'alert-warning' || classList[i] === 'alert-danger') {
+      alert.removeClass(classList[i]);
+    }
   }
 }
 
@@ -171,11 +196,15 @@ function pullQuestionFromStackOverflow() {
 function pullNewQn(query) {
   $.post('/pullNewQn?id='+query, function( data ) {
     var table = $('table');
-    var info = $('.questionExists');
+    var alert = $('#new-question-alert');
     clearTextPreserveChildren(table);
-    clearTextPreserveChildren(info);
+    clearTextPreserveChildren(alert);
     if(data == undefined || data == "") {
-      info.html("Question was unable to be pulled from the database. Sorry.")
+      alert.hide();
+      removeAlertClass(alert);
+      alert.addClass('alert-warning');
+      alert.html("Question was unable to be pulled from the database. Sorry.")
+      alert.show();
     } else {
     displayNewQuestion(data);
     }
@@ -197,11 +226,13 @@ function pullNewQn(query) {
 // into the database the question information is still available
 function displayNewQuestion(data) {
   var question = JSON.parse(data);
+  var alert = $('#new-question-alert');
   var type = question.Message;
   var btn = $('.function-button');
   var menu = $('.new_state_menu');
   var options = {}
   var cancel = $('.cancel-button');
+  $('.questionExists').empty();
   menu.empty();
   menu.off('change');
   btn.off('click');
@@ -281,9 +312,19 @@ function displayNewQuestion(data) {
   });
   menu.children().last().hide();
   if(question.Message != undefined && question.Message != "") {
-    $('.questionExists').html(question.Message);
+    alert.hide();
+    removeAlertClass(alert);
+    alert.html(
+      question.Message);
+    alert.addClass('alert-info');
+    alert.show();
   } else {
-    $('.questionExists').html('New question with ID '+question.Question_id);
+    alert.hide();
+    removeAlertClass(alert);
+    alert.html(
+      'New question with ID: '+question.Question_id+' found!');
+    alert.addClass('alert-info');
+    alert.show();
   }
   $('a.question_title').attr("href", question.Link).children('h4').html(question.Title);
   $('table td.question .bodySnippet').html(question.Body);
@@ -305,10 +346,18 @@ function displayNewQuestion(data) {
 // If the user chooses to cancel their question rather than add it to the database
 // This function will clear the table of any content, as well as remove anything
 // in local storage.
+// If you cancel it gives you attitude.
 function clearNewQuestionTable() {
   var table = $('table');
   clearTextPreserveChildren(table);
   table.addClass('hidden');
+  var alert = $('#new-question-alert');
+  clearTextPreserveChildren(alert);
+  alert.hide();
+  alert.html('Oh. Okay :(');
+  removeAlertClass(alert);
+  alert.addClass('alert-warning');
+  alert.show();
   $('.questionExists').empty();
   $('.questionExists').html("That's fine. We didn't want that question anyway.")
 }
@@ -316,7 +365,6 @@ function clearNewQuestionTable() {
 
 // Function to save aspects of the reply in local storage to post updated question state
 // to the backend when the user selects an action.
-
 function saveState(user, lastUpdateTime) {
   localStorage["currentUser"] = user;
   localStorage["lastUpdateTime"] = lastUpdateTime;
@@ -331,6 +379,8 @@ function saveState(user, lastUpdateTime) {
 
 // Function to post to server to add the new question to StackTrackers database
 // newQuestion is the stringified JSON data that is cached in localStorage
+// Checks if the user is logged in, alerts if not
+// If they are, it completes the post request and 
 function addQuestionToStackTracker(newQuestion, newState) {
   if (checkUser(localStorage["currentUser"])) {
     alert('Must be logged in to submit');
@@ -344,7 +394,18 @@ function addQuestionToStackTracker(newQuestion, newState) {
       contentType: 'application/json',
       data: JSON.stringify({"Question":newQuestion, "State":newState}),
       success: function( data ) {
-        
+        var alert = $('#new-question-alert');
+        removeAlertClass(alert);
+        alert.addClass('alert-success');
+        var alertString
+         if(newState == "unanswered") {
+            alertString = "Question successfully added to list of"+newState+" questions!"
+          } else {
+            alertString = "Question successfully added to "+localStorage["currentUser"]+
+            "\'s "+newState+" questions!"
+          }
+        alert.html(alertString);
+        alert.show();
       }
     });
   }
