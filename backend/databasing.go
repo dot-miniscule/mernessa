@@ -17,15 +17,12 @@ import (
 	applog "google.golang.org/appengine/log"
 )
 
+// Information for a sql database
 type databaseInfo struct {
 	username string
 	dbName   string
 	password string
 	IP       string
-}
-
-func returnDBString() {
-
 }
 
 //Create database connection & connection pool
@@ -35,7 +32,6 @@ func returnDBString() {
 //and manages a pool of connections as needed
 //returns a *sql.DB to query elsewhere.
 func SqlInit(dbString string) *sql.DB {
-	
 	db, err := sql.Open("mysql", dbString)
 	if err != nil {
 		log.Println("Open fail: \t", err)
@@ -203,6 +199,7 @@ func AddSingleQuestion(db *sql.DB, item stackongo.Question, state string, user i
 			return err
 		}
 	}
+
 	for _, tag := range item.Tags {
 		stmt, err := db.Prepare("INSERT IGNORE INTO question_tag(question_id, tag) VALUES(?, ?)")
 		if err != nil {
@@ -231,8 +228,11 @@ func AddQuestions(db *sql.DB, ctx context.Context, newQns *stackongo.Questions) 
 	return nil
 }
 
+// Remove any questions in db that does not exist in StackOverflow
 func RemoveDeletedQuestions(db *sql.DB, ctx context.Context) error {
 	defer UpdateTableTimes(db, ctx, "questions")
+
+	// Get questions from db
 	ids := []int{}
 	rows, err := db.Query("SELECT question_id FROM questions")
 	if err != nil {
@@ -259,10 +259,13 @@ func RemoveDeletedQuestions(db *sql.DB, ctx context.Context) error {
 		return err
 	}
 
+	// If the number of questions equal, no questions have been deleted
 	if len(questions.Items) == len(ids) {
 		return nil
 	}
 
+	// Find the questions not in SE
+	// Add to deletedQns
 	deletedQns := make([]int, 0, len(ids)-len(questions.Items))
 	for _, id := range ids {
 		deleted := true
@@ -277,6 +280,7 @@ func RemoveDeletedQuestions(db *sql.DB, ctx context.Context) error {
 		}
 	}
 
+	// Remove deletedQns from db
 	query := "DELETE FROM questions WHERE "
 	for i, id := range deletedQns {
 		query += "question_id=" + strconv.Itoa(id)
@@ -288,6 +292,8 @@ func RemoveDeletedQuestions(db *sql.DB, ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Remove tags associated with deleted questions
 	_, err = db.Exec("DELETE FROM question_tag WHERE question_id NOT IN (SELECT questions.question_id FROM questions)")
 	if err != nil {
 		return err
@@ -296,8 +302,8 @@ func RemoveDeletedQuestions(db *sql.DB, ctx context.Context) error {
 	return nil
 }
 
-//A crude way to find out if the working cache needs to be refreshed from the database.
-//Stores the current Unix time in update_times table on Cloud SQL */
+// A crude way to find out if the working cache needs to be refreshed from the database.
+// Stores the current Unix time in update_times table on Cloud SQL
 func UpdateTableTimes(db *sql.DB, ctx context.Context, tableName string) {
 	stmts, err := db.Prepare("UPDATE update_times SET last_updated=? WHERE table_name=?")
 	if err != nil {
@@ -315,15 +321,15 @@ func UpdateTableTimes(db *sql.DB, ctx context.Context, tableName string) {
 }
 
 // Fucntion to update the questions in qns in the database
-func UpdateDb(db *sql.DB, ctx context.Context, qns map[int]string, userId int, lastUpdate int64) {
+func UpdateQns(db *sql.DB, ctx context.Context, qns map[int]string, userId int, lastUpdate int64) {
 	applog.Infof(ctx, "Updating database")
 
 	if len(qns) == 0 {
 		return
 	}
 
-	query := "SELECT question_id FROM questions WHERE "
 	// Add questions to update to the query
+	query := "SELECT question_id FROM questions WHERE "
 	for id, _ := range qns {
 		query += "question_id=" + strconv.Itoa(id) + " OR "
 	}

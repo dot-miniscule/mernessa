@@ -7,38 +7,56 @@ function logout() {
   window.location.reload();
 }
 
-function checkUser(username) {
-  console.log('checking');
-  return username === "Guest";
+// Returns true if the user is not valid
+function validUser(username) {
+  return username !== "Guest";
 }
 
+// Verifies the user, and submits the Post form
 function submitForm(username, type, updateTime) {
   console.log("checking user");
-  if (checkUser(username)) {
-    alert('Must be logged in to submit');
+  if (!validUser(username)) {
+    $('#loginModal').modal('show');
     return false;
   }
-  console.log("")
   return checkDB(type, updateTime);
 }
 
+// Function to create the login modal, to save on having to write the html markup multiple
+// times. Creates the content dynamically, to be hidden and shown.
+
+// Checks the update time of the database.
+// If the current page is outdated, check if the questions to be updated have been recently changed.
+// If they have, send alert for confirmation.
+// Else submit the form.
 function checkDB(buttonPressed, updateTime) {
   if(buttonPressed == 'reopen') {
     buttonPressed = 'pending';
   }
-  console.log(buttonPressed, updateTime);
+
+  // Send Post request to get if the database has been updated, and which questions have been updated.
   $.post('/dbUpdated?time='+updateTime, function( dataJSON ) {
+
+    // Get the title of the question being updated
     var title;
-    if (buttonPressed == 'submit') {
+    if (buttonPressed == 'submit') { // If the form was updated through the menu
+
+      // The title is the text of the menu's grandparent's cousin.
       title = $('.new_state_menu option[value!="no_change"]:selected').parent().parent().parent().siblings('.question').children('.question_title').text();
-    } else if (buttonPressed != '') {
+    } else if (buttonPressed != '') { // If the form was updated through the buttons
+
+      // The title is the text of the button's grandparent's cousin.
       title = $('.one-click.clicked').parent().parent().parent().siblings('.question').children('.question_title').text();
+
+      // Replace the menu's value with the value of the button.
       $('.new_state_menu').val('no_change');
       $('.one-click.clicked').parent().siblings('.new_state_menu').val(buttonPressed);
     }
 
+    // Parse the data recieved in the Post request
     var data = JSON.parse(dataJSON);
-    if (data.Updated) {
+
+    if (data.Updated) { // If the database has been updated.
       // Writing the text to display in the confirm dialog box
       confirm_text = 'Database has been updated\nChanges:\n';
       for (i = 0; i < data.Questions.length; i++) {
@@ -49,7 +67,8 @@ function checkDB(buttonPressed, updateTime) {
       }
 
       confirm_text += '\nDo you wish to continue submit?';
-      if (confirm_text.indexOf('*') > -1) {
+      if (confirm_text.indexOf('*') > -1) { // If the question being updated is one of the recently changed questions.
+        // Send confirmation of submit.
         if (!confirm(confirm_text)) {
           $('form select').val('no_change');
           return;
@@ -61,22 +80,20 @@ function checkDB(buttonPressed, updateTime) {
 }
 
 
-// Sets the navbar active state
-$(".nav a").on("click", function(){
-   $(".nav").find(".active").removeClass("active");
-   $(this).parent().addClass("active");
-});
+// Nav bar active state
+$(".navigation a").on("click", function(){
+  // Setting the active tab
+  $(".nav").find(".active").removeClass(".active");
+  $(this).parent().addClass(".active");
 
-//TODO: VANESSA COMMENT
-$(function() {
-  $('.navigation a').on('click', function() {
-    var tab = $(this).attr("href").substring(1);
-    var subpage = window.location.href.slice(window.location.href.lastIndexOf('/'));
-    var url = removeQuery('tab', subpage)
-    url = addQuery('tab', tab, url);
-    window.history.replaceState('', document.title, url);
-    setActiveTab(window.location.href);
-  });
+  // Adjusting the url to match active tab
+  var tab = $(this).attr("href").substring(1);
+  var subpage = window.location.href.slice(window.location.href.lastIndexOf('/'));
+  var url = removeQuery('tab', subpage)
+  url = addQuery('tab', tab, url);
+  window.history.replaceState('', document.title, url);
+
+  setActiveTab(window.location.href);
 });
 
 // Function to remove query, i.e if questions are filtered by tag, user, URL, keyword etc.
@@ -394,10 +411,12 @@ function addQuestionToStackTracker(newQuestion, newState) {
   }
 }
 
-//TODO: VANESSA TO COMMENT THE REST
+// Submitting the Post form as a request
 $(function() {
   $('#stateForm').submit(function() {
+    // Set cookie for webui to check.
     document.cookie = 'submitting=true';
+
     // Intercept form submission and redirect back to the original page
     $.post( '/', $('#stateForm').serialize()).done(function( data ) {
       window.location = window.location.href.split('#')[0];
@@ -406,24 +425,31 @@ $(function() {
   });
 });
 
-//-------- SETTING COOKIES -------//
+//-------- SETTING PREP WHEN DOCUMENT LOADS -------//
 $(document).ready(function() {
+  // Set neccessary cookies for user verification.
   setCookies();
+
+  // Remove code query from url.
+  // If code query not in url, url remains the same.
   var url = removeQuery('code', window.location.href);
   window.history.replaceState("", document.title, url);
+
+  // Remove any queries without a value attached.
   clearEmptyQueries();
 
   var subpage = window.location.href.split('?')[0].slice(window.location.href.lastIndexOf('/'));
   if (window.location.search.indexOf('tab') == -1 &&
     subpage.indexOf('viewTags') == -1 && subpage.indexOf('viewUsers') == -1 &&
-    subpage.indexOf('addQuestion') == -1) {
+    subpage.indexOf('addQuestion') == -1) { // Add tab query to pages with questions.
     var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
     window.history.replaceState('', document.title, addedPath);
   } else if (window.location.search.indexOf('page') == -1 && (subpage.indexOf('viewTags') != -1 ||
-             subpage.indexOf('viewUsers') != -1)) {
+             subpage.indexOf('viewUsers') != -1)) { // Add page number query to viewing pages.
     var addedPath = subpage + addQuery('page', '1', window.location.search);
     window.history.replaceState('', document.title, addedPath);
   }
+
   setActiveTab(window.location.href);
 });
 
@@ -435,14 +461,20 @@ function setCookies() {
 
 //-------- Removing queries ---------//
 function clearEmptyQueries() {
+  // Get the host url
   var urlParts = window.location.href.split('?');
   var newURL = urlParts[0].slice(window.location.href.lastIndexOf('/'));
+
   var param;
   var params_arr = [];
   var queryString = urlParts[1];
 
+  // Get the list of queries.
   if (typeof queryString !== 'undefined') {
     params_arr = queryString.split('&');
+
+    // Range through queries, splitting them into the query and the value.
+    // If the value is empty, remove the query.
     for (var i = params_arr.length -1; i >= 0; i--) {
       query = params_arr[i].split('=')[1];
       if (query == '') {
@@ -451,10 +483,12 @@ function clearEmptyQueries() {
     }
     newURL += '?' + params_arr.join('&');
   }
+
+  // Replace the current URL with the updated URL
   window.history.replaceState('', document.title, newURL);
 }
 
-// returns path including modified query assuming sourceURL does not
+// Returns path including modified query assuming sourceURL does not
 // contain the key
 function addQuery(key, query, sourceURL) {
   var newURL = sourceURL;
@@ -469,7 +503,7 @@ function addQuery(key, query, sourceURL) {
   return newURL;
 }
 
-// returns path without query specified
+// Returns path without query specified
 function removeQuery(key, sourceURL) {
   var newURL = sourceURL.split('?')[0];
   var param;
