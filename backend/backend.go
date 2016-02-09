@@ -133,13 +133,13 @@ func NewSearch(r *http.Request, params stackongo.Params) (*stackongo.Questions, 
 }
 
 // Return URL to redirect user for authentication
-func AuthURL() string {
-	return stackongo.AuthURL(appInfo.Client_id, appInfo.Redirect_uri, appInfo.Options)
+func AuthURL(uri string) string {
+	return stackongo.AuthURL(appInfo.Client_id, uri, appInfo.Options)
 }
 
 // Return access token from code
-func ObtainAccessToken(code string) (map[string]string, error) {
-	return stackongo.ObtainAccessToken(appInfo.Client_id, appInfo.Client_secret, code, appInfo.Redirect_uri)
+func ObtainAccessToken(code, uri string) (map[string]string, error) {
+	return stackongo.ObtainAccessToken(appInfo.Client_id, appInfo.Client_secret, code, uri)
 }
 
 // Return User associated with access_token

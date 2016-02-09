@@ -52,10 +52,11 @@ type genReply struct {
 
 // Generic reply to send to other templates
 type queryReply struct {
-	User     stackongo.User
-	Page     int
-	LastPage int
-	Data     interface{}
+	User       stackongo.User
+	UpdateTime int64
+	Page       int
+	LastPage   int
+	Data       interface{}
 }
 
 // Info on the various caches
@@ -192,7 +193,7 @@ func connectToDB(ctx context.Context) {
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	log.Infof(ctx, "Redirecting to SO login")
-	auth_url := backend.AuthURL()
+	auth_url := backend.AuthURL(r.Header["Referer"][0])
 	header := w.Header()
 	header.Add("Location", auth_url)
 	w.WriteHeader(302)
@@ -309,7 +310,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context,
 	pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
+	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, data}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
 	}
 }
@@ -515,7 +516,7 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	if last > len(tagArray) {
 		last = len(tagArray)
 	}
-	if err := page.Execute(w, queryReply{user, pageNum, lastPage, tagArray[first:last]}); err != nil {
+	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, lastPage, tagArray[first:last]}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
 	}
 
@@ -554,7 +555,7 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Contex
 		queryArray,
 	}
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, 0, final}); err != nil {
+	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
@@ -581,7 +582,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	if n > 0 {
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
-	if err := page.Execute(w, queryReply{user, pageNum, 0, query}); err != nil {
+	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, query}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
@@ -602,8 +603,11 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 		return guest
 	}
 
+	queries := r.URL.Query()
+	queries.Del("code")
+	r.URL.RawQuery = queries.Encode()
 	// Collect access token using the recieved code
-	access_tokens, err := backend.ObtainAccessToken(code)
+	access_tokens, err := backend.ObtainAccessToken(code, r.URL.String())
 	if err != nil {
 		log.Warningf(ctx, "Access token not obtained: %v", err.Error())
 		return guest
