@@ -7,7 +7,7 @@
 # All Go packages for a given app are built into a single executable, and request dispatch is handled by the Go program itself. 
 # This is why we have called http.HandleFunc inside the init function to associate our handler with the web root ("/")
 
-application: stacktracker-1184
+application: google.com:stacktracker
 module: default
 version: test
 runtime: go
@@ -42,5 +42,5 @@ handlers:
 # These versions can be viewed at:
 # https://pantheon.corp.google.com/appengine/versions?project=stacktracker-1184
 env_variables:
-  TEST_DB: 'root@cloudsql(stacktracker-1184:stacktracker-db2)/test'
-  LIVE_DB: 'root@cloudsql(stacktracker-1184:stacktracker-db2)/stacktrackerdb'
+  TEST_DB: 'root@cloudsql(google.com:stacktracker:stacktracker-db)/test'
+  LIVE_DB: 'root@cloudsql(google.com:stacktracker:stacktracker-db)/live'

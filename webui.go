@@ -166,7 +166,7 @@ func init() {
 }
 
 func checkForDBConnection() bool {
-	if(DB_STRING == "") {
+	if DB_STRING == "" {
 		return false
 	} else {
 		return true
@@ -177,15 +177,14 @@ func connectToDB(ctx context.Context) {
 	version := appengine.VersionID(ctx)
 	versionID := strings.Split(version, ".")
 	log.Infof(ctx, "Current serving app version: %s", versionID[0])
-	if(versionID[0] == "live") {
+	if versionID[0] == "live" {
 		DB_STRING = os.Getenv("LIVE_DB")
 	} else {
 		DB_STRING = os.Getenv("TEST_DB")
 	}
 	log.Infof(ctx, "connecting to DB with string %s", DB_STRING)
-	db = backend.SqlInit(DB_STRING)	
+	db = backend.SqlInit(DB_STRING)
 }
-
 
 // Handler for authorizing user
 // Redirects user to a url for authentication
@@ -231,7 +230,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Set context for logging
 	ctx := appengine.NewContext(r)
 
-	if(!checkForDBConnection()) {
+	if !checkForDBConnection() {
 		connectToDB(ctx)
 		initCacheDownload()
 	}
