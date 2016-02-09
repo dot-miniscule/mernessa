@@ -177,7 +177,7 @@ func connectToDB(ctx context.Context) {
 	version := appengine.VersionID(ctx)
 	versionID := strings.Split(version, ".")
 	log.Infof(ctx, "Current serving app version: %s", versionID[0])
-	if(versionID[0] == "1") {
+	if(versionID[0] == "live") {
 		DB_STRING = os.Getenv("LIVE_DB")
 	} else {
 		DB_STRING = os.Getenv("TEST_DB")
@@ -186,19 +186,6 @@ func connectToDB(ctx context.Context) {
 	db = backend.SqlInit(DB_STRING)	
 }
 
-func handleStart(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	log.Infof(ctx, "pre run")
-	// DB_STRING = os.Getenv("DB_STRING")
-	// log.Infof(ctx, "CURRENT DB: %s", DB_STRING)
-	// // Initialising sql database
-	// db = backend.SqlInit(DB_STRING)
-
-	// // Downloading cache from sql
-}
-
-
-/* --------------- Handlers ---------------- */
 
 // Handler for authorizing user
 // Redirects user to a url for authentication

@@ -1,0 +1,46 @@
+# configuration file for app
+# Application identifier is hellovanessa
+# This code runs in go environment, with API version go1
+# Every request to a URL whos path matches the regular expression /.* (which is all URLS) should be handled by the Go program.
+# The _go_app value is a string recognized by the development web server and is ignored by the production App Engine servers. 
+
+# All Go packages for a given app are built into a single executable, and request dispatch is handled by the Go program itself. 
+# This is why we have called http.HandleFunc inside the init function to associate our handler with the web root ("/")
+
+application: stacktracker-1184
+module: default
+version: test
+runtime: go
+api_version: go1
+
+handlers:
+- url: /stylesheets
+  static_dir: public/stylesheets
+
+- url: /javascripts
+  static_dir: public/javascripts
+
+- url: /images
+  static_dir: public/images
+
+- url: /.*
+  script: _go_app
+
+# Environment variables define the address of the SQL instance to connect to
+# These are read in the application code, and depending on the version the app is deployed
+# to, the backend will select the correct DB string
+# 
+# The app deploys to the test version by default, as specified which will access TEST_DB 
+# in the version parameter above string
+# If you wish to deploy to the live version, you will need to specify that at deploy time
+# The following command will deploy to version 1, which is the default and live version
+#
+# 		goapp deploy -version live
+# 
+# You can deploy up to 10 versions simultaneously, simply by specifying a name for the 
+# version after the goapp deploy command.
+# These versions can be viewed at:
+# https://pantheon.corp.google.com/appengine/versions?project=stacktracker-1184
+env_variables:
+  TEST_DB: 'root@cloudsql(stacktracker-1184:stacktracker-db2)/test'
+  LIVE_DB: 'root@cloudsql(stacktracker-1184:stacktracker-db2)/stacktrackerdb'
