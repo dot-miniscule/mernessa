@@ -191,7 +191,7 @@ func handleStop(w http.ResponseWriter, r *http.Request) {
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	log.Infof(ctx, "Redirecting to SO login")
-	auth_url := backend.AuthURL()
+	auth_url := backend.AuthURL(r.Header["Referer"][0])
 	header := w.Header()
 	header.Add("Location", auth_url)
 	w.WriteHeader(302)
@@ -596,8 +596,11 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 		return guest
 	}
 
+	queries := r.URL.Query()
+	queries.Del("code")
+	r.URL.RawQuery = queries.Encode()
 	// Collect access token using the recieved code
-	access_tokens, err := backend.ObtainAccessToken(code)
+	access_tokens, err := backend.ObtainAccessToken(code, r.URL.String())
 	if err != nil {
 		log.Warningf(ctx, "Access token not obtained: %v", err.Error())
 		return guest
