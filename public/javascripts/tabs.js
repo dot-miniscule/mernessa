@@ -17,7 +17,7 @@ function submitForm(username, type, updateTime) {
   console.log("checking user");
   if (!validUser(username)) {
     buildModal();
-    $('.loginModal').modal('show');
+    $('#loginModal').modal('show');
     return false;
   }
   return checkDB(type, updateTime);
@@ -26,7 +26,7 @@ function submitForm(username, type, updateTime) {
 // Function to create the login modal, to save on having to write the html markup multiple
 // times. Creates the content dynamically, to be hidden and shown.
 function buildModal() {
-  var modal = $('.loginModal');
+  var modal = $('#loginModal');
   modal.html(
     '<div class="modal-dialog">'+
           '<div class="modal-content">'+
@@ -402,9 +402,9 @@ function saveState(user, lastUpdateTime) {
 // Checks if the user is logged in, alerts if not
 // If they are, it completes the post request and 
 function addQuestionToStackTracker(newQuestion, newState) {
-  console.log("result = ", validUser(localStorage["currentUser"]));
   if (!validUser(localStorage["currentUser"])) {
     buildModal();
+    $('#loginModal').modal('show');
   } else {
     var data = {"question": newQuestion, "state": newState};
     $.ajax({
