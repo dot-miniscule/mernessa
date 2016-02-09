@@ -52,10 +52,11 @@ type genReply struct {
 
 // Generic reply to send to other templates
 type queryReply struct {
-	User     stackongo.User
-	Page     int
-	LastPage int
-	Data     interface{}
+	User       stackongo.User
+	UpdateTime int64
+	Page       int
+	LastPage   int
+	Data       interface{}
 }
 
 // Info on the various caches
@@ -166,7 +167,7 @@ func init() {
 }
 
 func checkForDBConnection() bool {
-	if(DB_STRING == "") {
+	if DB_STRING == "" {
 		return false
 	} else {
 		return true
@@ -177,15 +178,14 @@ func connectToDB(ctx context.Context) {
 	version := appengine.VersionID(ctx)
 	versionID := strings.Split(version, ".")
 	log.Infof(ctx, "Current serving app version: %s", versionID[0])
-	if(versionID[0] == "live") {
+	if versionID[0] == "live" {
 		DB_STRING = os.Getenv("LIVE_DB")
 	} else {
 		DB_STRING = os.Getenv("TEST_DB")
 	}
 	log.Infof(ctx, "connecting to DB with string %s", DB_STRING)
-	db = backend.SqlInit(DB_STRING)	
+	db = backend.SqlInit(DB_STRING)
 }
-
 
 // Handler for authorizing user
 // Redirects user to a url for authentication
@@ -231,7 +231,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Set context for logging
 	ctx := appengine.NewContext(r)
 
-	if(!checkForDBConnection()) {
+	if !checkForDBConnection() {
 		connectToDB(ctx)
 		initCacheDownload()
 	}
@@ -310,7 +310,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context,
 	pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, 0, data}); err != nil {
+	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, data}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
 	}
 }
@@ -516,7 +516,7 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	if last > len(tagArray) {
 		last = len(tagArray)
 	}
-	if err := page.Execute(w, queryReply{user, pageNum, lastPage, tagArray[first:last]}); err != nil {
+	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, lastPage, tagArray[first:last]}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
 	}
 
@@ -555,7 +555,7 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Contex
 		queryArray,
 	}
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	if err := page.Execute(w, queryReply{user, pageNum, 0, final}); err != nil {
+	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
@@ -582,7 +582,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	if n > 0 {
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
-	if err := page.Execute(w, queryReply{user, pageNum, 0, query}); err != nil {
+	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, query}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
