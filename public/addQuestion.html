@@ -15,7 +15,7 @@
 
     <!-- STYLE SHEETS AND FONTS -->
 
-    <!-- Latest compiled and minified CSS -->
+      <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 
     <!-- Optional theme -->
@@ -32,6 +32,8 @@
             <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
         <![endif]-->
     <div class="container wrap">
+      <div class="modal fade loginModal" role="dialog">
+      </div><!-- /#loginModal -->
       <div class="page-header">
         <div class="row">
           <div class="col-lg-9 col-md-9 col-sm-6 col-xs-12">
@@ -142,7 +144,8 @@
 		        </div><!--/.row -->
 			</div><!-- END INNER WRAP -->
 		</div><!--END WRAP-->
-	<script type="text/javascript" src="/javascripts/tabs.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript" src="javascripts/tabs.js"></script>
   <script>
   //Saving the current user name and last db update time into local storage
   $(document).ready(saveState({{$reply.User.Display_name}}, {{$reply.Data.MostRecentUpdate}}));

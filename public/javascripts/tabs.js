@@ -16,7 +16,8 @@ function validUser(username) {
 function submitForm(username, type, updateTime) {
   console.log("checking user");
   if (!validUser(username)) {
-    $('#loginModal').modal('show');
+    buildModal();
+    $('.loginModal').modal('show');
     return false;
   }
   return checkDB(type, updateTime);
@@ -24,7 +25,26 @@ function submitForm(username, type, updateTime) {
 
 // Function to create the login modal, to save on having to write the html markup multiple
 // times. Creates the content dynamically, to be hidden and shown.
-
+function buildModal() {
+  var modal = $('.loginModal');
+  modal.html(
+    '<div class="modal-dialog">'+
+          '<div class="modal-content">'+
+            '<div class="modal-header">'+
+              '<button type="button" class="close" data-dismiss="modal">&times;</button>'+
+              '<h4 class="modal-title">Login fail</h4>'+
+            '</div><!--/.modal-header-->'+
+            '<div class="modal-body">'+
+              '<p>Must be logged in to continue.</p>'+
+              '<p><a href="/login">Login now.</a></p>'+
+            '</div>'+
+            '<div class="modal-footer">'+
+              '<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>'
+    )
+}
 // Checks the update time of the database.
 // If the current page is outdated, check if the questions to be updated have been recently changed.
 // If they have, send alert for confirmation.
@@ -81,7 +101,7 @@ function checkDB(buttonPressed, updateTime) {
 
 
 // Nav bar active state
-$(".navigation a").on("click", function(){
+$(".navbar a").on("click", function(){
   // Setting the active tab
   $(".nav").find(".active").removeClass(".active");
   $(this).parent().addClass(".active");
@@ -382,10 +402,10 @@ function saveState(user, lastUpdateTime) {
 // Checks if the user is logged in, alerts if not
 // If they are, it completes the post request and 
 function addQuestionToStackTracker(newQuestion, newState) {
-  if (checkUser(localStorage["currentUser"])) {
-    alert('Must be logged in to submit');
+  console.log("result = ", validUser(localStorage["currentUser"]));
+  if (!validUser(localStorage["currentUser"])) {
+    buildModal();
   } else {
-    console.log("Adding question to stacktracker.")
     var data = {"question": newQuestion, "state": newState};
     $.ajax({
       type: "POST",
