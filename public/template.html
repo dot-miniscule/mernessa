@@ -13,16 +13,19 @@
     <!-- Place favicon.ico in the root directory -->
     <title>Stack Tracker</title>
 
-    <!-- STYLE SHEETS AND FONTS -->
-
+    <!-- JAVASCRIPT, BOOTSTRAP, JQUERY, STYLESHEETS -->
+    
     <!-- Latest compiled and minified CSS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 
     <!-- Optional theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-    
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+    <script type="text/javascript" src="javascripts/tabs.js"></script>
     <link rel="stylesheet" type="text/css" href="stylesheets/styles.css">
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
   </head>
@@ -34,21 +37,6 @@
     <div class="container wrap">
       <!-- modal for alerting login state -->
       <div class="modal fade" id="loginModal" role="dialog">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal">&times;</button>
-              <h4 class="modal-title">Login fail</h4>
-            </div><!--/.modal-header-->
-            <div class="modal-body">
-              <p>Must be logged in to continue.</p>
-              <p><a href="/login">Login now.</a></p>
-            </div><!--/.modal-body-->
-            <div class="modal-footer">
-              <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-            </div><!--/.modal-footer-->
-          </div><!--/.modal-content-->
-        </div><!--/.modal-dialog-->
       </div><!-- /#loginModal -->
       <div class="page-header">
         <div class="row">
@@ -221,8 +209,6 @@
       </div><!-- /.container-fluid.content -->
     </div> <!-- END CONTAINER -->
 
-    <!-- JAVASCRIPT, BOOTSTRAP, JQUERY -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script type="text/javascript" src="javascripts/tabs.js"></script>
     <script>
       // Saving the update time and display name
