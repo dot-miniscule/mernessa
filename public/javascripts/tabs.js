@@ -85,7 +85,8 @@ function checkDB(buttonPressed, updateTime) {
           break;
         }
       }
-
+      
+      // Text to write in the confirmation dialog box.
       confirm_text += '\nDo you wish to continue submit?';
       if (confirm_text.indexOf('*') > -1) { // If the question being updated is one of the recently changed questions.
         // Send confirmation of submit.
@@ -95,7 +96,28 @@ function checkDB(buttonPressed, updateTime) {
         }
       }
     }
-    $('#stateForm').submit();
+
+    // Submit the form as a post request
+    $('#stateForm').submit(function() {
+      // Set cookie for webui to check.
+      document.cookie = 'submitting=true';
+
+      // Get the current state and the question id of the changed question.
+      var qnElems = $('.new_state_menu option[value!="no_change"]:selected').parent().attr('name').split("_");
+      var cache = qnElems[0];
+      var qnID = qnElems[1];
+
+      // Get the new state of the changed question.
+      var newState = $('.new_state_menu option[value!="no_change"]:selected').val();
+
+      // Post the state with the current state and id of the question.
+      // When done posting, redirect back to the original page.
+      $.post( '/', {'cache': cache, 'question_id': qnID, 'state': newState})
+        .done(function( data ) {
+          window.location = window.location.href.split('#')[0];
+        });
+      return false;
+    });
   });
 }
 
@@ -430,30 +452,6 @@ function addQuestionToStackTracker(newQuestion, newState) {
     });
   }
 }
-
-// Submitting the Post form as a request
-$(function() {
-  $('#stateForm').submit(function() {
-    // Set cookie for webui to check.
-    document.cookie = 'submitting=true';
-
-    // Get the current state and the question id of the changed question.
-    var qnElems = $('.new_state_menu option[value!="no_change"]:selected').parent().attr('name').split("_");
-    var cache = qnElems[0];
-    var qnID = qnElems[1];
-
-    // Get the new state of the changed question.
-    var newState = $('.new_state_menu option[value!="no_change"]:selected').val();
-
-    // Post the state with the current state and id of the question.
-    // When done posting, redirect back to the original page.
-    $.post( '/', {'cache': cache, 'question_id': qnID, 'state': newState})
-      .done(function( data ) {
-        window.location = window.location.href.split('#')[0];
-      });
-    return false;
-  });
-});
 
 //-------- SETTING PREP WHEN DOCUMENT LOADS -------//
 $(document).ready(function() {
