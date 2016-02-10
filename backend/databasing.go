@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/laktek/Stack-on-Go/stackongo"
 	"golang.org/x/net/context"
 	applog "google.golang.org/appengine/log"
@@ -37,7 +37,7 @@ func SqlInit(dbString string) *sql.DB {
 		log.Println("Open fail: \t", err)
 		return nil
 	}
-
+	_ = mysql.ErrInvalidConn
 	//Usually would defer the closing of the database connection from here
 	//Assuming this function is called within another method, it will need to be closed at the
 	//return of that function --> db.Close()
