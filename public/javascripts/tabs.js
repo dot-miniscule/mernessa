@@ -99,11 +99,13 @@ function checkDB(buttonPressed, updateTime) {
   });
 }
 
+// Highlight the selected navigation link
+
 
 // Nav bar active state
-$(".navbar a").on("click", function(){
+$(".navigation a").on("click", function(){
   // Setting the active tab
-  $(".nav").find(".active").removeClass(".active");
+  $(".nav.nav-tabs").find(".active").removeClass(".active");
   $(this).parent().addClass(".active");
 
   // Adjusting the url to match active tab

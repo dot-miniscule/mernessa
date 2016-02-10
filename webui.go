@@ -231,7 +231,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Set context for logging
 	ctx := appengine.NewContext(r)
 
-	if !checkForDBConnection() {
+	if (checkForDBConnection() == false) {
 		connectToDB(ctx)
 		initCacheDownload()
 	}
@@ -554,6 +554,8 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Contex
 		query[user.User_id],
 		queryArray,
 	}
+	log.Infof(ctx, "Current user = %v", final.User)
+	log.Infof(ctx, "Other users:\n%v", final.Others)
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
