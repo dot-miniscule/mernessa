@@ -154,9 +154,7 @@ func readUsersFromDb(ctx context.Context, params string) map[int]userData {
 	}
 	rows, err := db.Query(query)
 	if err != nil {
-		if ctx != nil {
-			log.Warningf(ctx, "User query failed: %v", err.Error())
-		}
+		log.Warningf(ctx, "User query failed: %v", err.Error())
 		return tempData
 	}
 
