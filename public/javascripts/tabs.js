@@ -417,10 +417,20 @@ $(function() {
     // Set cookie for webui to check.
     document.cookie = 'submitting=true';
 
-    // Intercept form submission and redirect back to the original page
-    $.post( '/', $('#stateForm').serialize()).done(function( data ) {
-      window.location = window.location.href.split('#')[0];
-    });
+    // Get the current state and the question id of the changed question.
+    var qnElems = $('.new_state_menu option[value!="no_change"]:selected').parent().attr('name').split("_");
+    var cache = qnElems[0];
+    var qnID = qnElems[1];
+
+    // Get the new state of the changed question.
+    var newState = $('.new_state_menu option[value!="no_change"]:selected').val();
+
+    // Post the state with the current state and id of the question.
+    // When done posting, redirect back to the original page.
+    $.post( '/', {'cache': cache, 'question_id': qnID, 'state': newState})
+      .done(function( data ) {
+        window.location = window.location.href.split('#')[0];
+      });
     return false;
   });
 });

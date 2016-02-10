@@ -3,6 +3,7 @@ package webui
 import (
 	"backend"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -14,34 +15,9 @@ import (
 	"google.golang.org/appengine/log"
 )
 
-// Downloading the local cache from database
-func initCacheDownload() {
-	data.CacheLock.Lock()
-	data.Users = readUsersFromDb(nil)
-	data.CacheLock.Unlock()
-	refreshLocalCache(nil)
-}
-
-// Refresh local cache to get newly added or edited questions
-func refreshLocalCache(ctx context.Context) {
-	tempData := readFromDb(ctx, "")
-
-	data.CacheLock.Lock()
-	for cacheType, _ := range tempData.Caches {
-		data.Caches[cacheType] = tempData.Caches[cacheType]
-	}
-	data.Qns = tempData.Qns
-	for id, info := range tempData.Users {
-		data.Users[id] = info
-	}
-	data.CacheLock.Unlock()
-}
-
-// Returns questions and user data from the db
-func readFromDb(ctx context.Context, queries string) webData {
-	if ctx != nil {
-		log.Infof(ctx, "Refreshing database read")
-	}
+// Returns questions and user data from the db filtered by parameters
+func readFromDb(ctx context.Context, params string) (webData, int64, error) {
+	log.Infof(ctx, "Refreshing database read")
 
 	tempData := newWebData()
 	var (
@@ -57,18 +33,17 @@ func readFromDb(ctx context.Context, queries string) webData {
 		pic            sql.NullString
 		link           sql.NullString
 	)
+
 	//Select all questions in the database and read into a new data object
 	query := "SELECT * FROM questions LEFT JOIN user ON questions.user=user.id"
-	if queries != "" {
-		query = query + " WHERE state='unanswered' OR " + queries
+	if params != "" {
+		query += " WHERE " + params
 	}
+	log.Infof(ctx, "query: %v", query)
 
 	rows, err := db.Query(query)
 	if err != nil {
-		if ctx != nil {
-			log.Errorf(ctx, "query failed: %v", err.Error())
-		}
-		return tempData
+		return tempData, 0, fmt.Errorf("query failed: %v", err.Error())
 	}
 
 	defer rows.Close()
@@ -76,10 +51,10 @@ func readFromDb(ctx context.Context, queries string) webData {
 	for rows.Next() {
 		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &last_edit_time, &owner, &name, &pic, &link)
 		if err != nil {
-			if ctx != nil {
-				log.Errorf(ctx, "query failed: %v", err)
-			}
+			log.Errorf(ctx, "query failed: %v", err)
+			continue
 		}
+
 		currentQ := stackongo.Question{
 			Question_id:   id,
 			Title:         title,
@@ -93,20 +68,16 @@ func readFromDb(ctx context.Context, queries string) webData {
 
 		var tagToAdd string
 		//Get tags for that question, based on the ID
-		tagRows, err := db.Query("SELECT tag from question_tag where question_id = ?", currentQ.Question_id)
+		tagRows, err := db.Query("SELECT tag FROM question_tag WHERE question_id = ?", currentQ.Question_id)
 		if err != nil {
-			if ctx != nil {
-				log.Errorf(ctx, "Tag retrieval failed: %v", err.Error())
-			}
+			log.Errorf(ctx, "Tag retrieval failed: %v", err.Error())
 			continue
 		}
 		defer tagRows.Close()
 		for tagRows.Next() {
 			err := tagRows.Scan(&tagToAdd)
 			if err != nil {
-				if ctx != nil {
-					log.Errorf(ctx, "Could not scan for tag: %v", err.Error())
-				}
+				log.Errorf(ctx, "Could not scan for tag: %v", err.Error())
 				continue
 			}
 			currentQ.Tags = append(currentQ.Tags, tagToAdd)
@@ -132,8 +103,7 @@ func readFromDb(ctx context.Context, queries string) webData {
 		sort.Sort(byCreationDate(tempData.Caches[cacheType]))
 	}
 
-	tempData.MostRecentUpdate = time.Now().Unix()
-	return tempData
+	return tempData, time.Now().Unix(), nil
 }
 
 //Function called when the /viewTags request is made
@@ -165,9 +135,9 @@ func readTagsFromDb(ctx context.Context) []tagData {
 	return tempData
 }
 
-// Function to read all user data from the database when a /viewUsers request is made
+// Function to read all user data filtered by params from the database when a /viewUsers request is made
 // Retrieves all users data
-func readUsersFromDb(ctx context.Context) map[int]userData {
+func readUsersFromDb(ctx context.Context, params string) map[int]userData {
 
 	tempData := make(map[int]userData)
 
@@ -178,7 +148,11 @@ func readUsersFromDb(ctx context.Context) map[int]userData {
 		link sql.NullString
 	)
 
-	rows, err := db.Query("SELECT * FROM user")
+	query := "SELECT * FROM user"
+	if params != "" {
+		query += " WHERE " + params
+	}
+	rows, err := db.Query(query)
 	if err != nil {
 		if ctx != nil {
 			log.Warningf(ctx, "User query failed: %v", err.Error())
@@ -279,80 +253,23 @@ func updateLoginTime(ctx context.Context, user stackongo.User) {
 	log.Infof(ctx, "Login time of user %s updated to %s!", user.User_id, time)
 }
 
-// updating the caches based on input from the appi
-func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.User) error {
+// updating the caches based on input from the app
+// Returns time of update
+func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.User) (int64, error) {
 	log.Infof(ctx, "updating cache")
 
-	data.MostRecentUpdate = time.Now().Unix()
+	updateTime := time.Now().Unix()
 
 	// required to collect post form data
 	r.ParseForm()
 
-	// Updated data
-	newData := data
-
-	// Question IDs of questions that have been updated
-	// Maps IDs to new states
-	changedQns := map[int]string{}
-	changedQnsTitles := []string{}
-
-	// Collect the submitted form info based on the name of the form
-	// Check each cache against the form data
-	for cacheType, cache := range data.Caches {
-
-		// Range through the array of the caches
-		for _, question := range cache {
-
-			// Get the full form names
-			questionID := cacheType + "_" + strconv.Itoa(question.Question_id)
-			// Collect form from Request
-			form_input := r.PostFormValue(questionID)
-			if question.Question_id == 7312562 {
-				log.Infof(ctx, "%s", form_input)
-			}
-			// Add the question to the appropriate cache, updating the state
-			if _, ok := newData.Caches[form_input]; ok {
-				question.Last_edit_date = data.MostRecentUpdate
-				newData.Caches[form_input] = append(newData.Caches[form_input], question)
-				for i := 0; i < len(newData.Caches[cacheType]); i++ {
-					if newData.Caches[cacheType][i].Question_id == question.Question_id {
-						newData.Caches[cacheType] = append(newData.Caches[cacheType][:i], newData.Caches[cacheType][i+1:]...)
-						break
-					}
-				}
-
-				// Update any info on the updated question
-				changedQns[question.Question_id] = form_input
-				changedQnsTitles = append(changedQnsTitles, question.Title)
-				if form_input != "unanswered" {
-					newData.Qns[question.Question_id] = user
-					if _, ok := newData.Users[user.User_id]; !ok {
-						newData.Users[user.User_id] = newUser(user)
-					}
-
-					newData.Users[user.User_id].Caches[form_input] = append(newData.Users[user.User_id].Caches[form_input], question)
-				}
-			}
-		}
-	}
-
-	for cacheType, _ := range newData.Caches {
-		sort.Sort(byCreationDate(newData.Caches[cacheType]))
-	}
-
-	data.CacheLock.Lock()
-	data.Qns = newData.Qns
-	data.Users = newData.Users
-	for cacheType, _ := range newData.Caches {
-		data.Caches[cacheType] = newData.Caches[cacheType]
-	}
-	data.CacheLock.Unlock()
-	log.Infof(ctx, "Titles: %v", changedQnsTitles)
+	cache := r.PostFormValue("cache")
+	qnID, _ := strconv.Atoi(r.PostFormValue("question_id"))
+	form_input := r.PostFormValue("state")
 
 	// Update the database
-	go func(db *sql.DB, ctx context.Context, qns map[int]string, qnsTitles []string, userId int, lastUpdate int64) {
-		recentChangedQns = qnsTitles
-		backend.UpdateQns(db, ctx, qns, userId, lastUpdate)
-	}(db, ctx, changedQns, changedQnsTitles, user.User_id, data.MostRecentUpdate)
-	return nil
+	if err := backend.UpdateQns(db, ctx, qnID, cache, form_input, user.User_id, mostRecentUpdate); err != nil {
+		return int64(0), err
+	}
+	return updateTime, nil
 }

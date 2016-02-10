@@ -68,12 +68,11 @@ type cacheInfo struct {
 
 // Data struct with SO information, caches, user information
 type webData struct {
-	Wrapper          *stackongo.Questions            // Request information
-	Caches           map[string][]stackongo.Question // Caches by question states
-	Qns              map[int]stackongo.User          // Map of users by question ids
-	Users            map[int]userData                // Map of users by user ids
-	MostRecentUpdate int64                           // Time of most recent update
-	CacheLock        sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
+	Wrapper   *stackongo.Questions            // Request information
+	Caches    map[string][]stackongo.Question // Caches by question states
+	Qns       map[int]stackongo.User          // Map of users by question ids
+	Users     map[int]userData                // Map of users by user ids
+	CacheLock sync.Mutex                      // For multithreading, will use to avoid updating cache and serving cache at the same time
 }
 
 // User information and the user's caches
@@ -112,9 +111,6 @@ func newWebData() webData {
 
 const timeout = 6 * time.Hour // Time to wait between querying new SE questions
 
-// Global variable with cache info
-var data = newWebData()
-
 // Standard guest user
 var guest = stackongo.User{
 	Display_name: "Guest",
@@ -128,6 +124,7 @@ var DB_STRING = ""
 //This is then checked against the update time of the database and determine whether the cache should be updated
 var lastPull = time.Now().Add(-1 * time.Hour * 24 * 7).Unix()
 var recentChangedQns = []string{} // Array of the most recently changed questions
+var mostRecentUpdate int64        // Time of most recent update
 
 /* --------- Template functions ------------ */
 // Returns timeUnix as a formatted string
@@ -167,11 +164,7 @@ func init() {
 }
 
 func checkForDBConnection() bool {
-	if DB_STRING == "" {
-		return false
-	} else {
-		return true
-	}
+	return !(DB_STRING == "")
 }
 
 func connectToDB(ctx context.Context) {
@@ -207,7 +200,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	time, _ := strconv.ParseInt(r.FormValue("time"), 10, 64)
 
 	// Writing the page to JSON format
-	pageText := "{\"Updated\": " + strconv.FormatBool(data.MostRecentUpdate > time) + ","
+	pageText := "{\"Updated\": " + strconv.FormatBool(mostRecentUpdate > time) + ","
 	pageText += "\"Questions\": ["
 	for _, question := range recentChangedQns {
 		pageText += "\"" + question + "\","
@@ -233,7 +226,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	if !checkForDBConnection() {
 		connectToDB(ctx)
-		initCacheDownload()
 	}
 
 	backend.SetTransport(ctx)
@@ -244,12 +236,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Pull any new questions added to StackOverflow
 	lastPull = updateDB(db, ctx, lastPull)
-
-	// Refresh local cache if the database has been changed
-	if checkDBUpdateTime(ctx, "questions", data.MostRecentUpdate) {
-		log.Infof(ctx, "Refreshing cache")
-		refreshLocalCache(ctx)
-	}
 
 	// Get the current user
 	user := getUser(w, r, ctx)
@@ -264,9 +250,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie("submitting")
 	if cookie != nil && cookie.Value == "true" {
 		// Update the cache based on the form values sent in the request
-		if err := updatingCache_User(ctx, r, user); err != nil {
-			log.Warningf(ctx, err.Error())
+		updateTime, err := updatingCache_User(ctx, r, user)
+		if err != nil {
+			log.Errorf(ctx, "Error updating cache: %v", err.Error())
+		} else {
+			mostRecentUpdate = updateTime
 		}
+
 		// Removing the cookie
 		http.SetCookie(w, &http.Cookie{Name: "submitting", Value: ""})
 	}
@@ -274,6 +264,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Send to valid subpages
 	// else errorHandler
 	if strings.HasPrefix(r.URL.Path, "/?") || strings.HasPrefix(r.URL.Path, "/home") || r.URL.Path == "/" {
+		// Get data to send to page
+		data, updateTime, err := readFromDb(ctx, "")
+		if err != nil {
+			log.Errorf(ctx, "Error reading from db: %v", err.Error())
+		} else {
+			mostRecentUpdate = updateTime
+		}
+
 		// Parse the html template to serve to the page
 		page := template.Must(template.ParseFiles("public/template.html"))
 		pageQuery := []string{
@@ -293,8 +291,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		viewTagsHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/viewUsers") {
 		viewUsersHandler(w, r, ctx, pageNum, user)
-	} else if strings.HasPrefix(r.URL.Path, "/userPage") {
-		userPageHandler(w, r, ctx, pageNum, user)
+		/*} else if strings.HasPrefix(r.URL.Path, "/userPage") {
+		userPageHandler(w, r, ctx, data, pageNum, user)*/
 	} else if strings.HasPrefix(r.URL.Path, "/search") {
 		searchHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addQuestion") {
@@ -310,7 +308,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context,
 	pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/addQuestion.html"))
-	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, data}); err != nil {
+	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, 0, nil}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
 	}
 }
@@ -391,26 +389,21 @@ func addNewQuestionToDatabaseHandler(w http.ResponseWriter, r *http.Request, ctx
 func searchHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 
 	search := r.FormValue("search")
-	id, _ := strconv.Atoi(search)
-	tempData := newWebData()
-	data.CacheLock.Lock()
 
-	for cacheType, cache := range data.Caches {
-		for _, question := range cache {
-			if question.Question_id == id || question.Link == search || contains(question.Tags, search) ||
-				strings.Contains(question.Body, search) || strings.Contains(question.Title, search) {
-
-				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
-			} else if owner, ok := data.Qns[question.Question_id]; ok {
-				if (id != 0 && owner.User_id == id) || strings.Contains(owner.Display_name, search) {
-					tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
-				}
-			}
-		}
+	query := "questions.question_id LIKE '" + search + "'" + // By question id
+		" OR questions.question_url LIKE '" + search + "'" + // By url
+		" OR questions.question_title LIKE '%" + search + "%'" + // By part of title
+		" OR questions.body LIKE '%" + search + "%'" + // By part of body
+		" OR (questions.user LIKE'" + search + "' AND questions.state!='unanswered')" + // By Owner id
+		" OR (user.name LIKE '%" + search + "%' AND questions.state!='unanswered')" + // By Owner display name
+		" OR questions.question_id IN (SELECT question_id FROM question_tag WHERE tag like '" + search + "')" // By tags
+	tempData, updateTime, err := readFromDb(ctx, query)
+	if err != nil {
+		log.Errorf(ctx, "Error reading from db: %v", err.Error())
+	} else {
+		mostRecentUpdate = updateTime
 	}
 
-	tempData.Qns = data.Qns
-	data.CacheLock.Unlock()
 	page := template.Must(template.ParseFiles("public/template.html"))
 
 	var pageQuery = []string{
@@ -428,21 +421,14 @@ func searchHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, 
 func tagHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 	// Collect query
 	tag := r.FormValue("tagSearch")
-	// Create a new webData struct
-	tempData := newWebData()
 
-	data.CacheLock.Lock()
-	// range through the question caches
-	// add if the question contains the tag
-	for cacheType, cache := range data.Caches {
-		for _, question := range cache {
-			if contains(question.Tags, tag) {
-				tempData.Caches[cacheType] = append(tempData.Caches[cacheType], question)
-			}
-		}
+	query := "questions.question_id IN (SELECT question_id FROM question_tag WHERE tag like '" + tag + "')" // By tags
+	tempData, updateTime, err := readFromDb(ctx, query)
+	if err != nil {
+		log.Errorf(ctx, "Error reading from db: %v", err.Error())
+	} else {
+		mostRecentUpdate = updateTime
 	}
-	tempData.Qns = data.Qns
-	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	var tagQuery = []string{
@@ -456,25 +442,17 @@ func tagHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pag
 
 // Handler to find all questions answered/being answered by the user in URL
 func userHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
-	userID, _ := strconv.Atoi(r.FormValue("id"))
+	userID_string := r.FormValue("id")
+	//userID_int, _ := strconv.Atoi(userID_string)
 	query := userData{}
 
 	// Create a new webData struct
-	tempData := newWebData()
-
-	data.CacheLock.Lock()
-	// Add caches associated to user to response
-	tempData.Caches["unanswered"] = data.Caches["unanswered"]
-	if userQuery, ok := data.Users[userID]; ok {
-		query = userQuery
-		for cacheType, cache := range data.Users[userID].Caches {
-			if cacheType != "unanswered" {
-				tempData.Caches[cacheType] = cache
-			}
-		}
-		tempData.Qns = data.Qns
+	tempData, updateTime, err := readFromDb(ctx, "state='unanswered' OR question.user="+userID_string)
+	if err != nil {
+		log.Errorf(ctx, "Error reading from db: %v", err.Error())
+	} else {
+		mostRecentUpdate = updateTime
 	}
-	data.CacheLock.Unlock()
 
 	page := template.Must(template.ParseFiles("public/template.html"))
 	var userQuery = []string{
@@ -516,7 +494,7 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	if last > len(tagArray) {
 		last = len(tagArray)
 	}
-	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, lastPage, tagArray[first:last]}); err != nil {
+	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, lastPage, tagArray[first:last]}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
 	}
 
@@ -527,7 +505,7 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 // User data is stored as a map, which gives no guarantee as to the order of iteration
 // It is first read into an array, and that array sorted lexicographically by the users Display name.
 func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
-	query := data.Users
+	query := readUsersFromDb(ctx, "")
 	var querySorted []userData
 	for id, i := range query {
 		if id != user.User_id {
@@ -555,12 +533,12 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Contex
 		queryArray,
 	}
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
-	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, final}); err != nil {
+	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
 
-func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
+func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, data webData, pageNum int, user stackongo.User) {
 	page := template.Must(template.ParseFiles("public/userPage.html"))
 	usr, _ := strconv.Atoi(r.FormValue("userId"))
 	currentUser := data.Users[usr]
@@ -582,7 +560,7 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	if n > 0 {
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
-	if err := page.Execute(w, queryReply{user, data.MostRecentUpdate, pageNum, 0, query}); err != nil {
+	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, 0, query}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
@@ -621,16 +599,11 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	}
 
 	// Add user to db if not already in
-	data.CacheLock.Lock()
-	if _, ok := data.Users[user.User_id]; !ok {
-		data.Users[user.User_id] = newUser(user)
-		addUserToDB(ctx, user)
-	}
+	addUserToDB(ctx, user)
 
 	//zhu li do the thing
 	//updateLoginTime(ctx, user)
 
-	data.CacheLock.Unlock()
 	return user
 }
 
@@ -698,10 +671,10 @@ func writeResponse(user stackongo.User, writeData webData, pageNum int, query []
 				Info:      "These are questions that will be answered in the next release",
 			},
 		},
-		User:       user,                  // Current user information
-		Qns:        writeData.Qns,         // Map users by questions answered
-		UpdateTime: data.MostRecentUpdate, // Time of last update
-		Query:      query,                 // Current query value
+		User:       user,             // Current user information
+		Qns:        writeData.Qns,    // Map users by questions answered
+		UpdateTime: mostRecentUpdate, // Time of last update
+		Query:      query,            // Current query value
 	}
 }
 

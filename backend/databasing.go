@@ -4,11 +4,11 @@ import (
 	"dataCollect"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"html"
 	"log"
 	//"os"
 	"strconv"
-	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -319,58 +319,33 @@ func UpdateTableTimes(db *sql.DB, ctx context.Context, tableName string) {
 	}
 }
 
-// Fucntion to update the questions in qns in the database
-func UpdateQns(db *sql.DB, ctx context.Context, qns map[int]string, userId int, lastUpdate int64) {
+// Function to update the questions in qns in the database
+func UpdateQns(db *sql.DB, ctx context.Context, qn int, originalState string, state string, userId int, lastUpdate int64) error {
 	applog.Infof(ctx, "Updating database")
 
-	if len(qns) == 0 {
-		return
+	if qn == 0 {
+		return nil
 	}
 
-	// Add questions to update to the query
-	query := "SELECT question_id FROM questions WHERE "
-	for id, _ := range qns {
-		query += "question_id=" + strconv.Itoa(id) + " OR "
-	}
-	query = strings.TrimSuffix(query, " OR ")
+	defer func(db *sql.DB, ctx context.Context) {
+		//Update the table on SQL keeping track of table modifications
+		UpdateTableTimes(db, ctx, "questions")
+		applog.Infof(ctx, "Database updated")
+	}(db, ctx)
 
-	// Pull the required questions from the database
-	rows, err := db.Query(query)
+	//Update the database, setting the state and the new user/owner of that question.
+	stmts, err := db.Prepare("UPDATE questions SET state=?,user=?,time_updated=? WHERE question_id=? AND state=?")
 	if err != nil {
-		applog.Errorf(ctx, "query failed: %v", err)
-		return
-	}
-	defer func() {
-		applog.Infof(ctx, "closing rows: updating")
-		rows.Close()
-	}()
-
-	var id int
-
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			applog.Errorf(ctx, "Question_id scan failed: %v", err.Error())
-			continue
-		}
-
-		//Update the database, setting the state and the new user/owner of that question.
-		stmts, err := db.Prepare("UPDATE questions SET state=?,user=?,time_updated=? where question_id=?")
-		if err != nil {
-			applog.Errorf(ctx, "Update prepare failed: %v", err.Error())
-			continue
-		}
-		if qns[id] == "unanswered" {
-			userId = 0
-		}
-
-		_, err = stmts.Exec(qns[id], userId, lastUpdate, id)
-		if err != nil {
-			applog.Errorf(ctx, "Update execution failed:\t%v", err.Error())
-		}
+		return fmt.Errorf("Update prepare failed: %v", err.Error())
 	}
 
-	//Update the table on SQL keeping track of table modifications
-	UpdateTableTimes(db, ctx, "questions")
-	applog.Infof(ctx, "Database updated")
+	if state == "unanswered" {
+		userId = 0
+	}
+
+	_, err = stmts.Exec(state, userId, lastUpdate, qn, originalState)
+	if err != nil {
+		return fmt.Errorf("Update execution failed: %v", err.Error())
+	}
+	return nil
 }

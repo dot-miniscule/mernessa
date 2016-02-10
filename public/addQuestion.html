@@ -145,7 +145,7 @@
 	<script type="text/javascript" src="/javascripts/tabs.js"></script>
   <script>
   //Saving the current user name and last db update time into local storage
-  $(document).ready(saveState({{$reply.User.Display_name}}, {{$reply.Data.MostRecentUpdate}}));
+  $(document).ready(saveState({{$reply.User.Display_name}}, {{$reply.UpdateTime}}));
   </script>
 	</body>
 </html>
