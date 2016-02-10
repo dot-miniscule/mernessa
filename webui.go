@@ -10,9 +10,8 @@ import (
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
-	"os"
-
 	"net/http"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -127,16 +126,26 @@ var recentChangedQns = []string{} // Array of the most recently changed question
 var mostRecentUpdate int64        // Time of most recent update
 
 /* --------- Template functions ------------ */
-// Returns timeUnix as a formatted string
-func (r genReply) Timestamp(timeUnix int64) string {
-	est, _ := time.LoadLocation("Australia/Sydney")
-	timeFormat := "Jan 2 at 15:04 2006"
-	return time.Unix(timeUnix, 0).In(est).Format(timeFormat)
-}
+var functions = template.FuncMap{
+	// Returns timeUnix as a formatted string
+	"Timestamp": func(timeUnix int64) string {
+		est, _ := time.LoadLocation("Australia/Sydney")
+		timeFormat := "Jan 2 at 15:04 2006"
+		return time.Unix(timeUnix, 0).In(est).Format(timeFormat)
+	},
 
-// Returns current page + num
-func (r queryReply) PagePlus(num int) int {
-	return r.Page + num
+	// Returns current page + num
+	"PagePlus": func(currPage int, num int) int {
+		return currPage + num
+	},
+
+	"RangeInts": func(start int, end int) []int {
+		var ints []int
+		for i := start; i < end+1; i++ {
+			ints = append(ints, i)
+		}
+		return ints
+	},
 }
 
 //The app engine will run its own main function and imports this code as a package
@@ -271,9 +280,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			mostRecentUpdate = updateTime
 		}
+		page := getTemplate("template.html")
 
 		// Parse the html template to serve to the page
-		page := template.Must(template.ParseFiles("public/template.html"))
+		page = template.Must(page, err)
 		pageQuery := []string{
 			"",
 			"",
@@ -291,8 +301,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		viewTagsHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/viewUsers") {
 		viewUsersHandler(w, r, ctx, pageNum, user)
-		/*} else if strings.HasPrefix(r.URL.Path, "/userPage") {
-		userPageHandler(w, r, ctx, data, pageNum, user)*/
 	} else if strings.HasPrefix(r.URL.Path, "/search") {
 		searchHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addQuestion") {
@@ -307,7 +315,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 // Handler for adding new question page
 func addQuestionHandler(w http.ResponseWriter, r *http.Request, ctx context.Context,
 	pageNum int, user stackongo.User) {
-	page := template.Must(template.ParseFiles("public/addQuestion.html"))
+	// Parse the html template to serve to the page
+	page := getTemplate("addQuestion.html")
+
 	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, 0, nil}); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
 	}
@@ -404,7 +414,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, 
 		mostRecentUpdate = updateTime
 	}
 
-	page := template.Must(template.ParseFiles("public/template.html"))
+	// Parse the html template to serve to the page
+	page := getTemplate("template.html")
 
 	var pageQuery = []string{
 		"search",
@@ -430,7 +441,9 @@ func tagHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pag
 		mostRecentUpdate = updateTime
 	}
 
-	page := template.Must(template.ParseFiles("public/template.html"))
+	// Parse the html template to serve to the page
+	page := getTemplate("template.html")
+
 	var tagQuery = []string{
 		"tag",
 		tag,
@@ -454,7 +467,9 @@ func userHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pa
 		mostRecentUpdate = updateTime
 	}
 
-	page := template.Must(template.ParseFiles("public/template.html"))
+	// Parse the html template to serve to the page
+	page := getTemplate("template.html")
+
 	var userQuery = []string{
 		"user",
 		query.User_info.Display_name,
@@ -484,7 +499,9 @@ func viewTagsHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 		}
 	}
 	tagArray = append(tagArray, tempTagArray)
-	page := template.Must(template.ParseFiles("public/viewTags.html"))
+
+	// Parse the html template to serve to the page
+	page := getTemplate("viewTags.html")
 	first := (pageNum - 1) * 5
 	last := pageNum * 5
 	lastPage := len(tagArray) / 5
@@ -532,14 +549,15 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Contex
 		query[user.User_id],
 		queryArray,
 	}
-	page := template.Must(template.ParseFiles("public/viewUsers.html"))
+
+	// Parse the html template to serve to the page
+	page := getTemplate("viewUsers.html")
 	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
 
 func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, data webData, pageNum int, user stackongo.User) {
-	page := template.Must(template.ParseFiles("public/userPage.html"))
 	usr, _ := strconv.Atoi(r.FormValue("userId"))
 	currentUser := data.Users[usr]
 	query := userData{User_info: currentUser.User_info}
@@ -560,6 +578,8 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 	if n > 0 {
 		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
 	}
+	// Parse the html template to serve to the page
+	page := getTemplate("userPage.html")
 	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, 0, query}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
@@ -683,7 +703,7 @@ func errorHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, s
 	w.WriteHeader(status)
 	switch status {
 	case http.StatusNotFound:
-		page := template.Must(template.ParseFiles("public/404.html"))
+		page := getTemplate("404.html")
 		if err := page.Execute(w, nil); err != nil {
 			errorHandler(w, r, ctx, http.StatusInternalServerError, err.Error())
 			return
@@ -691,6 +711,12 @@ func errorHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, s
 	case http.StatusInternalServerError:
 		w.Write([]byte("Internal error: " + err))
 	}
+}
+
+// Parses the html file referred to by templateFile and returns the template.
+func getTemplate(templateFile string) *template.Template {
+	page := template.New(templateFile).Funcs(functions)
+	return template.Must(page.ParseFiles("public/" + templateFile))
 }
 
 // Returns true if toFind is an element of slice

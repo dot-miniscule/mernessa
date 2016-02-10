@@ -39,7 +39,6 @@ func readFromDb(ctx context.Context, params string) (webData, int64, error) {
 	if params != "" {
 		query += " WHERE " + params
 	}
-	log.Infof(ctx, "query: %v", query)
 
 	rows, err := db.Query(query)
 	if err != nil {

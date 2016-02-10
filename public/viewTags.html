@@ -112,8 +112,15 @@
 			</div><!-- /.table-responsive -->
 		</div>
         <div>
-          {{if gt ($reply.PagePlus -1) 0}}<a href="/viewTags?page={{$reply.PagePlus -1}}">Prev</a>{{end}}
-          {{if lt $reply.Page $reply.LastPage}}  <a href="/viewTags?page={{$reply.PagePlus 1}}">Next</a>{{end}}
+          {{if gt (PagePlus $reply.Page -1) 0}}<a href="/viewTags?page={{PagePlus $reply.Page -1}}">Prev</a>{{end}}
+          {{range $i := RangeInts 1 $reply.LastPage}}
+            {{if eq $i $reply.Page}}
+              <strong>{{$i}}</strong>
+            {{else}}
+              <a href="/viewTags?page={{$i}}">{{$i}}</a>
+            {{end}}
+          {{end}}
+          {{if lt $reply.Page $reply.LastPage}}<a href="/viewTags?page={{PagePlus $reply.Page 1}}">Next</a>{{end}}
         </div>
       </div>
 	</body>
