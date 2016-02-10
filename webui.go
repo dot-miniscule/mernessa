@@ -156,7 +156,6 @@ func init() {
 	http.HandleFunc("/user", handler)
 	http.HandleFunc("/viewTags", handler)
 	http.HandleFunc("/viewUsers", handler)
-	http.HandleFunc("/userPage", handler)
 	http.HandleFunc("/dbUpdated", updateHandler)
 	http.HandleFunc("/search", handler)
 	http.HandleFunc("/addQuestion", handler)
@@ -291,8 +290,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		viewTagsHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/viewUsers") {
 		viewUsersHandler(w, r, ctx, pageNum, user)
-		/*} else if strings.HasPrefix(r.URL.Path, "/userPage") {
-		userPageHandler(w, r, ctx, data, pageNum, user)*/
 	} else if strings.HasPrefix(r.URL.Path, "/search") {
 		searchHandler(w, r, ctx, pageNum, user)
 	} else if strings.HasPrefix(r.URL.Path, "/addQuestion") {
@@ -443,11 +440,10 @@ func tagHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pag
 // Handler to find all questions answered/being answered by the user in URL
 func userHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pageNum int, user stackongo.User) {
 	userID_string := r.FormValue("id")
-	//userID_int, _ := strconv.Atoi(userID_string)
-	query := userData{}
+	log.Infof(ctx, "current user id=%s", userID_string)
 
 	// Create a new webData struct
-	tempData, updateTime, err := readFromDb(ctx, "state='unanswered' OR question.user="+userID_string)
+	tempData, updateTime, err := readFromDb(ctx, "state='unanswered' OR questions.user="+userID_string)
 	if err != nil {
 		log.Errorf(ctx, "Error reading from db: %v", err.Error())
 	} else {
@@ -455,11 +451,13 @@ func userHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, pa
 	}
 
 	page := template.Must(template.ParseFiles("public/template.html"))
-	var userQuery = []string{
+	userID_int, _ := strconv.Atoi(userID_string)
+	var Query = []string{
 		"user",
-		query.User_info.Display_name,
+		tempData.Users[userID_int].User_info.Display_name,
 	}
-	if err := page.Execute(w, writeResponse(user, tempData, pageNum, userQuery)); err != nil {
+	log.Infof(ctx, "Query = %v", Query)
+	if err := page.Execute(w, writeResponse(user, tempData, pageNum, Query)); err != nil {
 		log.Warningf(ctx, "%v", err.Error())
 	}
 }
@@ -532,40 +530,13 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Contex
 		query[user.User_id],
 		queryArray,
 	}
-	log.Infof(ctx, "Current user = %v", final.User)
-	log.Infof(ctx, "Other users:\n%v", final.Others)
+
 	page := template.Must(template.ParseFiles("public/viewUsers.html"))
 	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, 0, final}); err != nil {
 		log.Errorf(ctx, "%v", err.Error())
 	}
 }
 
-func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context, data webData, pageNum int, user stackongo.User) {
-	page := template.Must(template.ParseFiles("public/userPage.html"))
-	usr, _ := strconv.Atoi(r.FormValue("userId"))
-	currentUser := data.Users[usr]
-	query := userData{User_info: currentUser.User_info}
-
-	var n int
-	query.Caches = make(map[string][]stackongo.Question)
-
-	n = Min(3, len(currentUser.Caches["unanswered"]))
-	if n > 0 {
-		query.Caches["answered"] = currentUser.Caches["answered"][0:n]
-	}
-	n = Min(3, len(currentUser.Caches["pending"]))
-	if n > 0 {
-		query.Caches["pending"] = currentUser.Caches["pending"][0:n]
-	}
-
-	n = Min(3, len(currentUser.Caches["updating"]))
-	if n > 0 {
-		query.Caches["updating"] = currentUser.Caches["updating"][0:n]
-	}
-	if err := page.Execute(w, queryReply{user, mostRecentUpdate, pageNum, 0, query}); err != nil {
-		log.Errorf(ctx, "%v", err.Error())
-	}
-}
 
 // Returns the current user requesting the page
 func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stackongo.User {
