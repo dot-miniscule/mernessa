@@ -92,9 +92,9 @@
           <!-- Nav tabs -->
           <ul id="tabs" class="nav nav-tabs nav-justified tabs" data-tabs="tabs">
             <li class="navigation"><a href="#unanswered" data-toggle="tab">Unanswered ({{len ((index $reply.Caches 0).Questions)}})</a></li>
-            <li class="navigation"><a href="#answered" data-toggle="tab">Answered ({{len ((index $reply.Caches 1).Questions)}})</a></li>
             <li class="navigation"><a href="#pending" data-toggle="tab">Pending ({{len ((index $reply.Caches 2).Questions)}})</a></li>
             <li class="navigation"><a href="#updating" data-toggle="tab">Updating ({{len ((index $reply.Caches 3).Questions)}})</a></li>
+            <li class="navigation"><a href="#answered" data-toggle="tab">Answered ({{len ((index $reply.Caches 1).Questions)}})</a></li>
           </ul>
           {{if ne (index $reply.Query 0) ""}}
             <p>Filtering by:</p>

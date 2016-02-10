@@ -471,15 +471,20 @@ $(document).ready(function() {
   clearEmptyQueries();
 
   var subpage = window.location.href.split('?')[0].slice(window.location.href.lastIndexOf('/'));
+  // Add tab query to pages with questions.
   if (window.location.search.indexOf('tab') == -1 &&
     subpage.indexOf('viewTags') == -1 && subpage.indexOf('viewUsers') == -1 &&
-    subpage.indexOf('addQuestion') == -1) { // Add tab query to pages with questions.
-    var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
-    window.history.replaceState('', document.title, addedPath);
+    subpage.indexOf('addQuestion') == -1 && subpage.indexOf('user') == -1) {
+      var addedPath = subpage + addQuery('tab', 'unanswered', window.location.search);
+      window.history.replaceState('', document.title, addedPath);
   } else if (window.location.search.indexOf('page') == -1 && (subpage.indexOf('viewTags') != -1 ||
-             subpage.indexOf('viewUsers') != -1)) { // Add page number query to viewing pages.
-    var addedPath = subpage + addQuery('page', '1', window.location.search);
-    window.history.replaceState('', document.title, addedPath);
+    subpage.indexOf('viewUsers') != -1)) { // Add page number query to viewing pages.
+      var addedPath = subpage + addQuery('page', '1', window.location.search);
+      window.history.replaceState('', document.title, addedPath);
+  } else if(window.location.search.indexOf('tab') == -1 &&
+    subpage.indexOf('user') != -1) {
+      var addedPath = subpage + addQuery('tab', 'pending', window.location.search);
+      window.history.replaceState('', document.title, addedPath);
   }
 
   setActiveTab(window.location.href);
