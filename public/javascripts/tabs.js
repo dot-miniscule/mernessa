@@ -128,6 +128,7 @@ function checkDB(buttonPressed, updateTime) {
         });
       return false;
     });
+    $('#stateForm').submit();
   });
 }
 
