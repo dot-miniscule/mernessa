@@ -31,7 +31,7 @@ func readFromDb(ctx context.Context, params string) (webData, int64, error) {
 		owner          sql.NullInt64
 		name           sql.NullString
 		pic            sql.NullString
-		link           sql.NullString
+		last_login     sql.NullInt64
 	)
 
 	//Select all questions in the database and read into a new data object
@@ -48,7 +48,7 @@ func readFromDb(ctx context.Context, params string) (webData, int64, error) {
 	defer rows.Close()
 	//Iterate through each row and add to the correct cache
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &last_edit_time, &owner, &name, &pic, &link)
+		err := rows.Scan(&id, &title, &url, &state, &owner, &body, &creation_date, &last_edit_time, &owner, &name, &pic, &last_login)
 		if err != nil {
 			log.Errorf(ctx, "query failed: %v", err)
 			continue
@@ -86,9 +86,10 @@ func readFromDb(ctx context.Context, params string) (webData, int64, error) {
 
 		if owner.Valid {
 			user := stackongo.User{
-				User_id:       int(owner.Int64),
-				Display_name:  name.String,
-				Profile_image: pic.String,
+				User_id:          int(owner.Int64),
+				Display_name:     name.String,
+				Profile_image:    pic.String,
+				Last_access_date: last_login.Int64,
 			}
 			tempData.Qns[id] = user
 			if _, ok := tempData.Users[user.User_id]; !ok {
@@ -141,10 +142,10 @@ func readUsersFromDb(ctx context.Context, params string) map[int]userData {
 	tempData := make(map[int]userData)
 
 	var (
-		id   sql.NullInt64
-		name sql.NullString
-		pic  sql.NullString
-		link sql.NullString
+		id         sql.NullInt64
+		name       sql.NullString
+		pic        sql.NullString
+		last_login sql.NullInt64
 	)
 
 	query := "SELECT * FROM user"
@@ -159,7 +160,7 @@ func readUsersFromDb(ctx context.Context, params string) map[int]userData {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&id, &name, &pic, &link)
+		err := rows.Scan(&id, &name, &pic, &last_login)
 		if err != nil {
 			if ctx != nil {
 				log.Warningf(ctx, "User Scan failed: %v", err.Error())
@@ -168,10 +169,10 @@ func readUsersFromDb(ctx context.Context, params string) map[int]userData {
 		}
 
 		currentUser := stackongo.User{
-			User_id:       int(id.Int64),
-			Display_name:  name.String,
-			Profile_image: pic.String,
-			Link:          link.String,
+			User_id:          int(id.Int64),
+			Display_name:     name.String,
+			Profile_image:    pic.String,
+			Last_access_date: last_login.Int64,
 		}
 		tempData[int(id.Int64)] = newUser(currentUser)
 	}
@@ -197,12 +198,13 @@ func readUserFromDb(ctx context.Context, username string) stackongo.User {
 	//Reading from database
 	log.Infof(ctx, "Refreshing database read")
 	var (
-		id    sql.NullInt64
-		name  sql.NullString
-		image sql.NullString
+		id         sql.NullInt64
+		name       sql.NullString
+		image      sql.NullString
+		last_login sql.NullInt64
 	)
 	//Select all questions in the database and read into a new data object
-	err := db.QueryRow("SELECT id, name, pic FROM user WHERE name='"+username+"'").Scan(&id, &name, &image)
+	err := db.QueryRow("SELECT * FROM user WHERE name='"+username+"'").Scan(&id, &name, &image, &last_login)
 	if err != nil {
 		log.Errorf(ctx, "User Scan failed: %v", err.Error())
 		return stackongo.User{}
@@ -210,9 +212,10 @@ func readUserFromDb(ctx context.Context, username string) stackongo.User {
 
 	if id.Valid {
 		return stackongo.User{
-			User_id:       int(id.Int64),
-			Display_name:  name.String,
-			Profile_image: image.String,
+			User_id:          int(id.Int64),
+			Display_name:     name.String,
+			Profile_image:    image.String,
+			Last_access_date: last_login.Int64,
 		}
 	}
 	return stackongo.User{}
@@ -221,20 +224,20 @@ func readUserFromDb(ctx context.Context, username string) stackongo.User {
 // Write user data into the database
 func addUserToDB(ctx context.Context, newUser stackongo.User) {
 
-	stmts, err := db.Prepare("INSERT IGNORE INTO user (id, name, pic) VALUES (?, ?, ?)")
+	stmts, err := db.Prepare("INSERT IGNORE INTO user (id, name, pic, last_login) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		log.Infof(ctx, "Prepare failed: %v", err.Error())
 		return
 	}
 
-	_, err = stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image)
+	_, err = stmts.Exec(newUser.User_id, newUser.Display_name, newUser.Profile_image, newUser.Last_access_date)
 	if err != nil {
 		log.Errorf(ctx, "Insertion of new user failed: %v", err.Error())
 	}
 }
 
 // Updates the login time for the current user
-func updateLoginTime(ctx context.Context, user stackongo.User) {
+func updateLoginTime(ctx context.Context, user int) {
 	stmts, err := db.Prepare("UPDATE user SET last_login=? WHERE id=?")
 	if err != nil {
 		log.Errorf(ctx, "Update login time failed: %v", err.Error())
@@ -242,12 +245,12 @@ func updateLoginTime(ctx context.Context, user stackongo.User) {
 
 	time := time.Now().Unix()
 
-	_, err = stmts.Exec(time, user.User_id)
+	_, err = stmts.Exec(time, user)
 	if err != nil {
 		log.Errorf(ctx, "Execution of login update failed: %v", err.Error())
 	}
 
-	log.Infof(ctx, "Login time of user %s updated to %s!", user.User_id, time)
+	log.Infof(ctx, "Login time of user %s updated to %s!", user, time)
 }
 
 // updating the caches based on input from the app
