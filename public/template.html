@@ -32,8 +32,8 @@
   {{$reply := .}}
   <body>
     <!--[if lt IE 8]>
-            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
+      <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
     <div class="container wrap">
       <!-- modal for alerting login state -->
       <div class="modal fade" id="loginModal" role="dialog">
@@ -212,7 +212,12 @@
     <script type="text/javascript" src="javascripts/tabs.js"></script>
     <script>
       // Saving the update time and display name
-      $( document ).ready(saveState({{$reply.User.Display_name}}, {{$reply.UpdateTime}}));
+      $( document ).ready(function() {
+        saveState({{$reply.User.Display_name}}, {{$reply.UpdateTime}});
+        if ({{$reply.User.User_type}} == "not_on_SO") {
+          showModal('joinSO');
+        }
+      });
     </script>
     <!-- Latest compiled and minified JavaScript -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>

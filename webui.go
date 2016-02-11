@@ -110,11 +110,6 @@ func newWebData() webData {
 
 const timeout = 6 * time.Hour // Time to wait between querying new SE questions
 
-// Standard guest user
-var guest = stackongo.User{
-	Display_name: "Guest",
-}
-
 // Pointer to database connection to communicate with Cloud SQL
 var db *sql.DB
 var DB_STRING = ""
@@ -587,6 +582,9 @@ func userPageHandler(w http.ResponseWriter, r *http.Request, ctx context.Context
 
 // Returns the current user requesting the page
 func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stackongo.User {
+	guest := stackongo.User{
+		Display_name: "Guest",
+	}
 	// Collect userId from browser cookie
 	username, err := r.Cookie("user_name")
 	if err == nil && username.Value != "" && username.Value != "Guest" {
@@ -598,6 +596,7 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	code := r.FormValue("code")
 	if code == "" {
 		log.Infof(ctx, "Returning guest user")
+		guest.User_type = "no_code"
 		return guest
 	}
 
@@ -608,13 +607,15 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	access_tokens, err := backend.ObtainAccessToken(code, r.URL.String())
 	if err != nil {
 		log.Warningf(ctx, "Access token not obtained: %v", err.Error())
+		guest.User_type = "no_access_token"
 		return guest
 	}
 
 	// Get the authenticated user with the collected access token
 	user, err := backend.AuthenticatedUser(map[string]string{}, access_tokens["access_token"])
 	if err != nil {
-		log.Warningf(ctx, err.Error())
+		log.Warningf(ctx, "User not authenticated: %v", err)
+		guest.User_type = "not_on_SO"
 		return guest
 	}
 
@@ -623,7 +624,6 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 
 	//zhu li do the thing
 	//updateLoginTime(ctx, user)
-
 	return user
 }
 

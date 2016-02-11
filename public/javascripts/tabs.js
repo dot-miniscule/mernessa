@@ -3,21 +3,20 @@
 
 // Logs out of current user
 function logout() {
-  document.cookie = "user_name=Guest";
+  document.cookie = 'user_name=Guest';
   window.location.reload();
 }
 
 // Returns true if the user is not valid
 function validUser(username) {
-  return username !== "Guest";
+  return username !== 'Guest';
 }
 
 // Verifies the user, and submits the Post form
 function submitForm(username, type, updateTime) {
-  console.log("checking user");
+  console.log('checking user');
   if (!validUser(username)) {
-    buildModal();
-    $('#loginModal').modal('show');
+    showModal('login');
     return false;
   }
   return checkDB(type, updateTime);
@@ -25,26 +24,37 @@ function submitForm(username, type, updateTime) {
 
 // Function to create the login modal, to save on having to write the html markup multiple
 // times. Creates the content dynamically, to be hidden and shown.
-function buildModal() {
+function showModal(type) {
   var modal = $('#loginModal');
-  modal.html(
+  var modalHTML =
     '<div class="modal-dialog">'+
-          '<div class="modal-content">'+
-            '<div class="modal-header">'+
-              '<button type="button" class="close" data-dismiss="modal">&times;</button>'+
-              '<h4 class="modal-title">Login fail</h4>'+
-            '</div><!--/.modal-header-->'+
-            '<div class="modal-body">'+
-              '<p>Must be logged in to continue.</p>'+
-              '<p><a href="/login">Login now.</a></p>'+
-            '</div>'+
-            '<div class="modal-footer">'+
-              '<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>'+
-            '</div>'+
-          '</div>'+
-        '</div>'
-    )
+      '<div class="modal-content">'+
+        '<div class="modal-header">'+
+          '<button type="button" class="close" data-dismiss="modal">&times;</button>'+
+          '<h4 class="modal-title">Login fail</h4>'+
+        '</div><!--/.modal-header-->'+
+        '<div class="modal-body">';
+
+  if (type === 'login') {
+    modalHTML +=
+          '<p>Must be logged in to continue.</p>'+
+          '<p><a href="/login">Login now.</a></p>';
+  } else if (type === 'joinSO') {
+    modalHTML +=
+          '<p>Must be registered on StackOverflow to continue.</p>'+
+          '<p><a href="https://stackoverflow.com/users/join" target="_blank">Join now.</a></p>';
+  }
+  modalHTML +=
+        '</div>'+
+        '<div class="modal-footer">'+
+           '<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  modal.html(modalHTML);
+  modal.modal('show');
 }
+
 // Checks the update time of the database.
 // If the current page is outdated, check if the questions to be updated have been recently changed.
 // If they have, send alert for confirmation.
