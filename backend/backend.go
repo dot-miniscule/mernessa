@@ -21,9 +21,9 @@ var (
 	keyWords  = "places api"                                   // Main search parameters
 	tags      = []string{"google-places-api", "google-places"} // Tags to search for
 	appInfo   = dataCollect.AppDetails{                        // Information on StackExchange app
-		Client_id:     "6029",
-		Client_secret: "ymefu0zw2TIULhSTM03qyg((",
-		Key:           "nHI22oWrBEsUN8kHe4ARsQ((",
+		Client_id:     "6468",
+		Client_secret: "KlF5ZF)0ERYB0yij7f9ghA((",
+		Key:           "Zp4GuwMhvF9yY9Hd51H1hw((",
 
 		Filters: "!*7Pmg80Pr9s5.fICa8ob-dRh8NP6",
 		// Filters include:
