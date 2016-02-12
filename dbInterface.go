@@ -100,8 +100,11 @@ func readFromDb(ctx context.Context, params string) (webData, int64, error) {
 	}
 
 	for cacheType, _ := range tempData.Caches {
-		sort.Sort(byCreationDate(tempData.Caches[cacheType]))
+		if cacheType != "pending" {
+			sort.Sort(byCreationDate(tempData.Caches[cacheType]))
+		}
 	}
+	sort.Sort(byUpdateTime(tempData.Caches["pending"]))
 
 	return tempData, time.Now().Unix(), nil
 }
@@ -241,6 +244,7 @@ func updateLoginTime(ctx context.Context, user int) {
 	stmts, err := db.Prepare("UPDATE user SET last_login=? WHERE id=?")
 	if err != nil {
 		log.Errorf(ctx, "Update login time failed: %v", err.Error())
+		return
 	}
 
 	time := time.Now().Unix()
@@ -248,13 +252,14 @@ func updateLoginTime(ctx context.Context, user int) {
 	_, err = stmts.Exec(time, user)
 	if err != nil {
 		log.Errorf(ctx, "Execution of login update failed: %v", err.Error())
+		return
 	}
 
 	log.Infof(ctx, "Login time of user %s updated to %s!", user, time)
 }
 
-// updating the caches based on input from the app
-// Returns time of update
+// Updating the caches based on input from the app.
+// Returns time of update.
 func updatingCache_User(ctx context.Context, r *http.Request, user stackongo.User) (int64, error) {
 	log.Infof(ctx, "updating cache")
 

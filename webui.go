@@ -27,15 +27,20 @@ import (
 
 // Functions for sorting
 type byCreationDate []stackongo.Question
-type ByDisplayName []userData
+type byUpdateTime []stackongo.Question
+type byDisplayName []userData
 
 func (a byCreationDate) Len() int           { return len(a) }
 func (a byCreationDate) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byCreationDate) Less(i, j int) bool { return a[i].Creation_date > a[j].Creation_date }
 
-func (a ByDisplayName) Len() int      { return len(a) }
-func (a ByDisplayName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a ByDisplayName) Less(i, j int) bool {
+func (a byUpdateTime) Len() int           { return len(a) }
+func (a byUpdateTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byUpdateTime) Less(i, j int) bool { return a[i].Last_edit_date > a[j].Last_edit_date }
+
+func (a byDisplayName) Len() int      { return len(a) }
+func (a byDisplayName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byDisplayName) Less(i, j int) bool {
 	return a[i].User_info.Display_name < a[j].User_info.Display_name
 }
 
@@ -45,8 +50,8 @@ type genReply struct {
 	Caches     []cacheInfo            // Slice of the 4 caches (Unanswered, Answered, Pending, Updating)
 	User       stackongo.User         // Information on the current user
 	Qns        map[int]stackongo.User // Map of users by question ids
-	UpdateTime int64
-	Query      []string // String array holding query and query type (tag vs user)
+	UpdateTime int64                  // Time of most recent update at time of reply
+	Query      []string               // String array holding query and query type (tag vs user)
 }
 
 // Generic reply to send to other templates
@@ -88,10 +93,10 @@ type tagData struct {
 
 // Simplified user struct
 type userInfo struct {
-	ID   int
-	Name string
-	Pic  string
-	Link string
+	ID         int
+	Name       string
+	Pic        string
+	Last_login int64
 }
 
 // Creates an initialised webData struct
@@ -524,7 +529,7 @@ func viewUsersHandler(w http.ResponseWriter, r *http.Request, ctx context.Contex
 			querySorted = append(querySorted, i)
 		}
 	}
-	sort.Sort(ByDisplayName(querySorted))
+	sort.Sort(byDisplayName(querySorted))
 
 	var queryArray [][]userData
 	var tempQueryArray []userData
@@ -557,10 +562,13 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	guest := stackongo.User{
 		Display_name: "Guest",
 	}
+
 	// Collect userId from browser cookie
 	username, err := r.Cookie("user_name")
 	if err == nil && username.Value != "" && username.Value != "Guest" {
-		return readUserFromDb(ctx, username.Value)
+		user := readUserFromDb(ctx, username.Value)
+		updateLoginTime(ctx, user.User_id)
+		return user
 	}
 
 	// If user_id cookie is not set, look for code in url request to collect access token.
@@ -595,7 +603,7 @@ func getUser(w http.ResponseWriter, r *http.Request, ctx context.Context) stacko
 	addUserToDB(ctx, user)
 
 	//zhu li do the thing
-	//updateLoginTime(ctx, user)
+	updateLoginTime(ctx, user.User_id)
 	return user
 }
 
