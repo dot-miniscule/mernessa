@@ -468,9 +468,6 @@ function addQuestionToStackTracker(newQuestion, newState) {
 
 //-------- SETTING PREP WHEN DOCUMENT LOADS -------//
 $(document).ready(function() {
-  // Set neccessary cookies for user verification.
-  setCookies();
-
   // Remove code query from url.
   // If code query not in url, url remains the same.
   var url = removeQuery('code', window.location.href);

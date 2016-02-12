@@ -214,6 +214,7 @@
       // Saving the update time and display name
       $( document ).ready(function() {
         saveState({{$reply.User.Display_name}}, {{$reply.UpdateTime}});
+        setCookies();
         if ({{$reply.User.User_type}} == "not_on_SO") {
           showModal('joinSO');
         }
